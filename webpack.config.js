@@ -7,7 +7,7 @@ const isDevelopment = process.env.NODE_ENV !== 'production';
 module.exports = {
     mode: 'development',
     entry: {
-        app: './src/index.tsx',
+        index: './src/index.tsx',
         'editor.worker': 'monaco-editor/esm/vs/editor/editor.worker.js',
         'json.worker': 'monaco-editor/esm/vs/language/json/json.worker',
         'css.worker': 'monaco-editor/esm/vs/language/css/css.worker',
@@ -15,10 +15,21 @@ module.exports = {
         'ts.worker': 'monaco-editor/esm/vs/language/typescript/ts.worker',
     },
     devServer: {
+        static: './dist',
         hot: true,
+        port: 8080,
+        allowedHosts: 'auto',
+        // DEBUG:
+        // Only for development mode
+        headers: {
+            'Access-Control-Allow-Origin': '*', // unpkg.com
+            // 'Access-Control-Allow-Origin': 'unpkg.com',		// unpkg.com
+            'Access-Control-Allow-Headers': '*', // GET
+            'Access-Control-Allow-Methods': '*',
+        },
     },
     resolve: {
-        extensions: ['*', '.js', '.jsx', '.tsx', '.ts'],
+        extensions: ['.*', '.js', '.jsx', '.tsx', '.ts'],
     },
     output: {
         globalObject: 'self',
@@ -48,12 +59,16 @@ module.exports = {
                 ],
             },
             {
-                test: /\.css$/,
-                use: ['style-loader', 'css-loader'],
+                test: /\.(sa|sc|c)ss$/,
+                use: ['style-loader', 'css-loader', 'sass-loader'],
             },
             {
                 test: /\.ttf$/,
                 use: ['file-loader'],
+            },
+            {
+                test: /\.(png|svg|jpg|jpeg|gif)$/i,
+                type: 'asset/resource',
             },
         ],
     },
