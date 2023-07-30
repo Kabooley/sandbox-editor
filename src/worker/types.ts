@@ -1,24 +1,26 @@
+export type { TypingsResult } from './fetchLibs.worker';
+
 export enum OrderTypes {
     Bundle = "bundle",
     JsxHighlight = "jsxhighlight",
     FetchLibs = "featch-libs"
 };
 
-type iOrder = "order" | "bundle" | "jsxhighlight" | "eslint" | "featch-libs";
+type iOrder = "order" | "bundle" | "jsxhighlight" | "eslint" | "fetch-libs";
 
 /***
  * Common property which must be included in any messages.
- * 
- * 
- * @property {Error | null} err - Error occured amoung bundling process.
  * */ 
-interface iMessage {
+interface iRequest {
     order: iOrder;
 };
 
-export interface iBuildResult {
-    bundledCode: string;
+export interface iResponse {
     err: Error | null;
+};
+
+export interface iBuildResult extends iResponse {
+    bundledCode: string;
 };
 
 /***
@@ -28,10 +30,17 @@ export interface iBuildResult {
  * @property {string} bundledCode - Bundled code to be send to main thread.
  * @property {Error | null} err - Error occured during bundling.
  * */ 
-export interface iOrderBundle extends iMessage {
+export interface iOrderBundle extends iRequest {
     rawCode: string;
 };
 
 // Message through bundle.worker.ts to main thread 
 // must be follow interface.
 export interface iOrderBundleResult extends iBuildResult {};
+
+export interface iFetchedOutput {
+    [modulePath: string]: string;
+};
+
+// export interface iResultFetchTypings extends iResponse, TypingsResult {};
+

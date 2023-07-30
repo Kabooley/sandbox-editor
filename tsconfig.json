@@ -1,12 +1,19 @@
 {
     "compilerOptions": {
         "sourceMap": true,
-        "module": "es2020",
+        "module": "ES2020",
         "moduleResolution": "node",
         "strict": true,
         "target": "ES6",
         "outDir": "./dist",
-        "lib": ["dom", "es5", "es6", "es2015.collection", "es2015.promise"],
+        "lib": [
+            "dom",
+            "es5",
+            "es6",
+            "es2015.collection",
+            "es2015.promise",
+            "WebWorker"
+        ],
         "types": [],
         "baseUrl": "./node_modules",
         "jsx": "preserve",
