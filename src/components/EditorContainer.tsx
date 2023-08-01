@@ -107,7 +107,7 @@ class EditorContainer extends React.Component<iProps, iState> {
             );
 
             // DEBUG:
-            console.log("[EditorContainer] workers are generated");
+            console.log('[EditorContainer] workers are generated');
 
             // NOTE: temporary send fetch order manually
             this._fetchTyping(temporaryDependencies);
@@ -191,11 +191,16 @@ class EditorContainer extends React.Component<iProps, iState> {
     _onMessageOfTypings(e: MessageEvent<TypingsResult>) {
         const { name, version, typings, err } = e.data;
         if (err) throw err;
+
+        // DEBUG:
+        console.log('[EditorContainer][_onMessageOfTypings] typings:');
+        console.log(typings);
+
         typings && this._addTypings(typings);
     }
 
     // Register typing data to monaco-editor library.
-    _addTypings = (typings: {[key: string]: string}) => {
+    _addTypings = (typings: { [key: string]: string }) => {
         Object.keys(typings).forEach((path) => {
             const extraLib = extraLibs.get(path);
 
@@ -230,7 +235,6 @@ class EditorContainer extends React.Component<iProps, iState> {
     // Request fetchLibs.worker to fetch typing data.
     _fetchTyping(dependencies: { [key: string]: string }) {
         Object.keys(dependencies).forEach((key) => {
-            
             // DEBUG:
             console.log(`[App] sent dependency: ${key}@${dependencies[key]}`);
 
