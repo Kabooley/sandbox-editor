@@ -125,6 +125,11 @@ TODO: ~上記全てを実現するためにcondesandboxでいうところの`ove
 
 TODO: templateのcontext化
 
+- [実装：template](#実装：template)
+- [実装：Context for dependency state](#実装：Context-for-dependency-state)
+- [[esbuild] bundle multiple files](#[esbuild]-bundle-multiple-files)
+
+
 ## 実装：template
 
 - VanillaJS
@@ -141,7 +146,7 @@ TODO: templateのcontext化
 
 実例を作ってからどう実装すべきか考えてみる
 
-#### TypeScript + React
+#### Template: TypeScript + React
 
 - tsconfig.json
 - file
@@ -253,7 +258,55 @@ package.json:
 ```
 
 - どうやってすべてのファイルを一つにバンドリングするのか
-- どうやって
+    --> esbuild plugin次第
+
+- どうやってpackage.json、tsconfig.jsonの設定がかかわってくるのか？そもそも自分のアプリケーションに必要なのか？
+
+## 実装：Context for dependency state
+
+依存関係の反映方法：
+
+マウント時：template files --> package.json --> dependency list stateの生成 --> dependency list stateを必要なコンポーネントへ渡す(context) --> 依存関係の取得　--> 依存関係のインストール（多分MonacoEditorのマウント時）
+
+更新時：依存関係を追加または削除する機能を持つコンポーネントからactionがdispatchされる --> dependency list stateの更新 --> 必要なコンポーネントが更新情報に応じて更新 --> MonacoEditor.tsxが更新情報に基づいてaddExtraLibまたは削除
+
+- TODO: tempalte filesからの依存関係の取得機能
+- TODO: dependency list stateの生成、コンテキスト化
+- TODO: dependency list stateのproviderの適用
+
+よく考えたらfiles context依存である。
+
+つまるところ、
+
+SearchDependency.tsxきっかけでもどこからでも、
+
+package.jsonの更新 --> filesの更新 --> 更新filesの提供 --> 各コンポーネントの再レンダリング
+
+となる。
+
+SearchDependency.tsxからfiles更新actionのディスパッチ
+
+files更新
+
+MonacoEditor.tsxがfiles["package.json"]からdependencyを取得し更新内容を検査、新規追加モジュールをインストールする
+
+filesコンテキストで、`ADD_DEPENDENCY`みたいなアクションを追加できるか？
+
+依存関係をローディング中であるというstateを持たせたい。
+
+
+#### [esbuild] bundle multiple files
+
+https://github.com/evanw/esbuild/issues/1952
+
+unpkgで拾ってくるモジュールのimport文と、ローカルから拾ってきたいモジュールのimport文の区別をつけられるのか？
+
+- bundleリクエストを送信したときに、その時点の最新のファイル情報をbundlerへ渡す
+- ローカルパスを解決するプラグインを追加する
+
+- TODO: 現状のバンドリングプラグインのパスの解決の流れを復習
+- TODO: ローカルパスの解決をするプラグインの追加
+
 
 ## 実装：overmind
 
