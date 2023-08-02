@@ -17,8 +17,14 @@ https://github.com/codesandbox/codesandbox-client/tree/9a75ddff1312faaf9fcd3f7f8
 -   TODO: [dependency-data](#dependency-data)
 -   TODO: [Split Pane section](#Split-Pane-section)
 -   TODO: [Component](#Component)
+-   TODO: [How to fetch dependency from SearchDependency component](#How-to-fetch-dependency-from-SearchDependency-component)
+- TODO: [実装：overmind](#実装：overmind)
 -   TODO: [](#)
--   TODO: [](#)
+
+#### codesandbox
+
+view test
+- https://codesandbox.io/s/test-searchdependency-view-vqq823
 
 ## dependency data
 
@@ -93,6 +99,178 @@ Pane セクションを縦に分割する。
 
 ```
 
+
+## How to fetch dependency from SearchDependency component
+
+TODO: アプリケーションで適用する選択可能なtemplateを生成する
+
+typescript環境
+javascript環境
+react環境
+typescript + react環境
+
+の４つ
+
+TODO: templateにdependencyリストを含め、マウント時にtypingsをインストールするようにする
+
+TODO: dependencyはSearchDependencyコンポーネントから追加・削除できるようにする
+
+TODO: 動的削除または追加されたdepedencyはcontext経由でMonacoEditorコンポーネントへ渡されてそこでインストールされるという機能にする
+
+TODO: SearchDependencyではインストール完了までローディングサークルとか表示しとく
+
+なのでloadingを示すstateが必要
+
+TODO: ~上記全てを実現するためにcondesandboxでいうところの`overmind`を実装する必要がある。~
+
+TODO: templateのcontext化
+
+## 実装：template
+
+- VanillaJS
+- TypeScript
+- React
+- TypeScript + React
+
+---
+
+- パッケージ依存関係
+- ファイル
+- バンドリング設定？
+---
+
+実例を作ってからどう実装すべきか考えてみる
+
+#### TypeScript + React
+
+- tsconfig.json
+- file
+- dependency
+
+```TypeScript
+// Depdnency
+const typescriptreactDependency = [
+    "react@18.2.0",
+    "react-dom@18.2.0",
+    "react-scripts@18.2.0",
+    // typescriptは必要なのか？
+];
+```
+
+```TypeScript
+const typescriptreactFiles = [
+  {
+    path: 'public',
+    language: '',
+    value: '',
+    isFolder: true
+  },
+  {
+    path: 'public/index.html',
+    language: 'html',
+    value: `<!DOCTYPE html>\r\n<html lang="en">\r\n\r\n<head>\r\n<meta charset="utf-8">\r\n<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">\r\n<meta name="theme-color" content="#000000">\r\n\r\n<title>React App</title>\r\n</head>\r\n\r\n<body>\r\n<noscript>\r\nYou need to enable JavaScript to run this app.\r\n</noscript>\r\n<div id="root"></div>\r\n</html>`,
+    isFolder: false
+  },
+  {
+    path: 'src',
+    language: '',
+    value: '',
+    isFolder: true
+  },
+  {
+    path: 'src/index.tsx',
+    language: 'typescript',
+    value: '',
+    isFolder: false
+  },
+  {
+    path: 'src/App.tsx',
+    language: 'typescript',
+    value: '',
+    isFolder: false
+  },
+  {
+    path: 'src/styles.css',
+    language: 'css',
+    value: '',
+    isFolder: false
+  },
+//   
+// NOTE: this package.json includes dependencies.
+// 
+  {
+    path: 'package.json',
+    language: 'json',
+    value: '',
+    isFolder: false
+  },
+  {
+    path: 'tsconfig.json',
+    language: 'json',
+    value: '',
+    isFolder: false
+  },
+];
+```
+
+package.json:
+
+```JSON
+{
+    "name": "typescript-react-template",
+    "version": "1.0.0",
+    "description": "blah blah blah",
+    "main": "src/index.tsx",
+    "dependencies": {
+        // "loader-utils": "3.2.1",
+        "react": "18.2.0",
+        "react-dom": "18.2.0",
+        "react-scripts": "5.0.1"
+    },
+    "devDependencies": {
+        "@types/react": "18.0.25",
+        "@types/react-dom": "18.0.9",
+        "typescript": "4.4.2"
+    },
+}
+```
+
+```JSON
+{
+    "include": [
+        "./src/**/*"
+    ],
+    "compilerOptions": {
+        "strict": true,
+        "esModuleInterop": true,
+        "lib": [
+            "dom",
+            "es2015"
+        ],
+        "jsx": "react-jsx"
+    }
+}
+```
+
+- どうやってすべてのファイルを一つにバンドリングするのか
+- どうやって
+
+## 実装：overmind
+
+結論：実装しない。
+
+https://github.com/codesandbox/codesandbox-client/tree/9a75ddff1312faaf9fcd3f7f8a019de0f464ab47/packages/app/src/app/overmind
+
+どうやって「複数の値のstate」を一つのコンテキストにまとめてアプリケーション全体に適用させるのか
+
+結局サードパーティ製のライブラリを使っていただけだった。
+
+`overmind-react`
+
+https://overmindjs.org/views/react
+
+
+
 ## [JavaScript] `Debounced`
 
 https://lodash.com/docs/4.17.15#debounce
@@ -143,9 +321,10 @@ not debounced の例だと常にイベントが発生すると呼び出される
 
 呼出の回数が異なる。
 
+## [React] Too much ContextProvider
 
-#### Reactで`_.debounce`
+別に問題はないとのこと。
 
-```TypeScript
+すっきりさせたいなら次の方法を試せばいいとのこと。
 
-```
+https://stackoverflow.com/questions/51504506/too-many-react-context-providers
