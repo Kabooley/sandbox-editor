@@ -18,13 +18,16 @@ https://github.com/codesandbox/codesandbox-client/tree/9a75ddff1312faaf9fcd3f7f8
 -   TODO: [Split Pane section](#Split-Pane-section)
 -   TODO: [Component](#Component)
 -   TODO: [How to fetch dependency from SearchDependency component](#How-to-fetch-dependency-from-SearchDependency-component)
-- TODO: [実装：overmind](#実装：overmind)
+-   TODO: [実装：overmind](#実装：overmind)
 -   TODO: [](#)
+
+-   別件：意味のない git commit をなかったことにしたいときにどうすればいいのか
 
 #### codesandbox
 
 view test
-- https://codesandbox.io/s/test-searchdependency-view-vqq823
+
+-   https://codesandbox.io/s/test-searchdependency-view-vqq823
 
 ## dependency data
 
@@ -99,58 +102,57 @@ Pane セクションを縦に分割する。
 
 ```
 
-
 ## How to fetch dependency from SearchDependency component
 
-TODO: アプリケーションで適用する選択可能なtemplateを生成する
+TODO: アプリケーションで適用する選択可能な template を生成する
 
-typescript環境
-javascript環境
-react環境
-typescript + react環境
+typescript 環境
+javascript 環境
+react 環境
+typescript + react 環境
 
 の４つ
 
-TODO: templateにdependencyリストを含め、マウント時にtypingsをインストールするようにする
+TODO: template に dependency リストを含め、マウント時に typings をインストールするようにする
 
-TODO: dependencyはSearchDependencyコンポーネントから追加・削除できるようにする
+TODO: dependency は SearchDependency コンポーネントから追加・削除できるようにする
 
-TODO: 動的削除または追加されたdepedencyはcontext経由でMonacoEditorコンポーネントへ渡されてそこでインストールされるという機能にする
+TODO: 動的削除または追加された depedency は context 経由で MonacoEditor コンポーネントへ渡されてそこでインストールされるという機能にする
 
-TODO: SearchDependencyではインストール完了までローディングサークルとか表示しとく
+TODO: SearchDependency ではインストール完了までローディングサークルとか表示しとく
 
-なのでloadingを示すstateが必要
+なので loading を示す state が必要
 
-TODO: ~上記全てを実現するためにcondesandboxでいうところの`overmind`を実装する必要がある。~
+TODO: ~上記全てを実現するために condesandbox でいうところの`overmind`を実装する必要がある。~
 
-TODO: templateのcontext化
+TODO: template の context 化
 
-- [実装：template](#実装：template)
-- [実装：Context for dependency state](#実装：Context-for-dependency-state)
-- [[esbuild] bundle multiple files](#[esbuild]-bundle-multiple-files)
-
+-   [実装：template](#実装：template)
+-   [実装：Context for dependency state](#実装：Context-for-dependency-state)
+-   [[esbuild] bundle multiple files](#[esbuild]-bundle-multiple-files)
 
 ## 実装：template
 
-- VanillaJS
-- TypeScript
-- React
-- TypeScript + React
+-   VanillaJS
+-   TypeScript
+-   React
+-   TypeScript + React
 
 ---
 
-- パッケージ依存関係
-- ファイル
-- バンドリング設定？
+-   パッケージ依存関係
+-   ファイル
+-   バンドリング設定？
+
 ---
 
 実例を作ってからどう実装すべきか考えてみる
 
 #### Template: TypeScript + React
 
-- tsconfig.json
-- file
-- dependency
+-   tsconfig.json
+-   file
+-   dependency
 
 ```TypeScript
 // Depdnency
@@ -200,9 +202,9 @@ const typescriptreactFiles = [
     value: '',
     isFolder: false
   },
-//   
+//
 // NOTE: this package.json includes dependencies.
-// 
+//
   {
     path: 'package.json',
     language: 'json',
@@ -257,56 +259,34 @@ package.json:
 }
 ```
 
-- どうやってすべてのファイルを一つにバンドリングするのか
-    --> esbuild plugin次第
+-   どうやってすべてのファイルを一つにバンドリングするのか
+    --> esbuild plugin 次第
 
-- どうやってpackage.json、tsconfig.jsonの設定がかかわってくるのか？そもそも自分のアプリケーションに必要なのか？
+-   どうやって package.json、tsconfig.json の設定がかかわってくるのか？そもそも自分のアプリケーションに必要なのか？
 
-## 実装：Context for dependency state
+## 実装：Adding and Deleting dependencies
 
-依存関係の反映方法：
+NOTE: 参考
+https://github.com/codesandbox/codesandbox-client/blob/df8844a3cb183fa4f5d42f86ea55a55eca5a3f00/packages/app/src/app/overmind/namespaces/editor/actions.ts#L128
 
-マウント時：template files --> package.json --> dependency list stateの生成 --> dependency list stateを必要なコンポーネントへ渡す(context) --> 依存関係の取得　--> 依存関係のインストール（多分MonacoEditorのマウント時）
+https://github.com/codesandbox/codesandbox-client/blob/df8844a3cb183fa4f5d42f86ea55a55eca5a3f00/packages/app/src/app/overmind/namespaces/editor/internalActions.ts#L328
 
-更新時：依存関係を追加または削除する機能を持つコンポーネントからactionがdispatchされる --> dependency list stateの更新 --> 必要なコンポーネントが更新情報に応じて更新 --> MonacoEditor.tsxが更新情報に基づいてaddExtraLibまたは削除
+codesandbox はどうなっているかというと、
 
-- TODO: tempalte filesからの依存関係の取得機能
-- TODO: dependency list stateの生成、コンテキスト化
-- TODO: dependency list stateのproviderの適用
-
-よく考えたらfiles context依存である。
-
-つまるところ、
-
-SearchDependency.tsxきっかけでもどこからでも、
-
-package.jsonの更新 --> filesの更新 --> 更新filesの提供 --> 各コンポーネントの再レンダリング
-
-となる。
-
-SearchDependency.tsxからfiles更新actionのディスパッチ
-
-files更新
-
-MonacoEditor.tsxがfiles["package.json"]からdependencyを取得し更新内容を検査、新規追加モジュールをインストールする
-
-filesコンテキストで、`ADD_DEPENDENCY`みたいなアクションを追加できるか？
-
-依存関係をローディング中であるというstateを持たせたい。
-
+-   package.json の編集 --> SearchDependency にも反映される
+-   SearchDependency から入力する --> package.json にも反映される
 
 #### [esbuild] bundle multiple files
 
 https://github.com/evanw/esbuild/issues/1952
 
-unpkgで拾ってくるモジュールのimport文と、ローカルから拾ってきたいモジュールのimport文の区別をつけられるのか？
+unpkg で拾ってくるモジュールの import 文と、ローカルから拾ってきたいモジュールの import 文の区別をつけられるのか？
 
-- bundleリクエストを送信したときに、その時点の最新のファイル情報をbundlerへ渡す
-- ローカルパスを解決するプラグインを追加する
+-   bundle リクエストを送信したときに、その時点の最新のファイル情報を bundler へ渡す
+-   ローカルパスを解決するプラグインを追加する
 
-- TODO: 現状のバンドリングプラグインのパスの解決の流れを復習
-- TODO: ローカルパスの解決をするプラグインの追加
-
+-   TODO: 現状のバンドリングプラグインのパスの解決の流れを復習
+-   TODO: ローカルパスの解決をするプラグインの追加
 
 ## 実装：overmind
 
@@ -314,15 +294,13 @@ unpkgで拾ってくるモジュールのimport文と、ローカルから拾っ
 
 https://github.com/codesandbox/codesandbox-client/tree/9a75ddff1312faaf9fcd3f7f8a019de0f464ab47/packages/app/src/app/overmind
 
-どうやって「複数の値のstate」を一つのコンテキストにまとめてアプリケーション全体に適用させるのか
+どうやって「複数の値の state」を一つのコンテキストにまとめてアプリケーション全体に適用させるのか
 
 結局サードパーティ製のライブラリを使っていただけだった。
 
 `overmind-react`
 
 https://overmindjs.org/views/react
-
-
 
 ## [JavaScript] `Debounced`
 

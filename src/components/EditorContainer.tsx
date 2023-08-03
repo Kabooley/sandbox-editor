@@ -19,6 +19,7 @@ import { OrderTypes, TypingsResult } from '../worker/types';
 
 // import MonacoEditor from './Monaco/MonacoEditor';
 import MonacoEditor from './Monaco/MonacoEditor';
+import { getFilenameFromPath, isJsonString } from '../utils';
 
 interface iProps {
     files: File[];
@@ -29,7 +30,13 @@ interface iProps {
 interface iState {
     currentFilePath: string;
     currentCode: string;
+    currentDependencies: { [moduleName: string]: string };
 }
+
+interface iPackagejson {
+    dependencies: { [moduleName: string]: string};
+    devDependencies: { [moduleName: string]: string};
+};
 
 const editorConstructOptions: monaco.editor.IStandaloneEditorConstructionOptions =
     {
@@ -48,17 +55,18 @@ const extraLibs = new Map<
     { js: monaco.IDisposable; ts: monaco.IDisposable }
 >();
 
-// NOTE: temporary, hard code dependencies for src/index.tsx
-const temporaryDependencies: { [key: string]: string } = {
-    react: '18.0.4',
-    'react-dom': '18.0.4',
-};
+// // NOTE: temporary, hard code dependencies for src/index.tsx
+// const temporaryDependencies: { [key: string]: string } = {
+//     react: '18.0.4',
+//     'react-dom': '18.0.4',
+// };
 
 class EditorContainer extends React.Component<iProps, iState> {
     state = {
         currentFilePath: '',
         // NOTE: temporary
         currentCode: '',
+        currentDependencies: {}
     };
     _bundleWorker: Worker | undefined;
     _fetchLibsWorker: Worker | undefined;
@@ -86,6 +94,13 @@ class EditorContainer extends React.Component<iProps, iState> {
                 currentCode: selectedFile.getValue(),
             });
 
+        
+        const packagejson = files.find(f => getFilenameFromPath(f.getPath()) === 'package.json')!.getValue();
+        const dependencies = (JSON.parse(packagejson) as iPackagejson).dependencies;
+        this.setState({
+            currentDependencies: dependencies
+        });
+
         if (window.Worker) {
             this._bundleWorker = new Worker(
                 new URL('/src/worker/bundle.worker.ts', import.meta.url),
@@ -106,11 +121,7 @@ class EditorContainer extends React.Component<iProps, iState> {
                 false
             );
 
-            // DEBUG:
-            console.log('[EditorContainer] workers are generated');
-
-            // NOTE: temporary send fetch order manually
-            this._fetchTyping(temporaryDependencies);
+            this._fetchTyping(dependencies);
         }
     }
 
@@ -118,6 +129,8 @@ class EditorContainer extends React.Component<iProps, iState> {
         const { files } = this.props;
 
         const selectedFile = files.find((f) => f.isSelected());
+
+        // When selected file was changed
         if (prevState.currentFilePath !== selectedFile?.getPath()) {
             selectedFile &&
                 this.setState({
@@ -125,6 +138,11 @@ class EditorContainer extends React.Component<iProps, iState> {
                     currentCode: selectedFile.getValue(),
                 });
         }
+
+        // update dependency
+        const packagejson = files.find(f => getFilenameFromPath(f.getPath()) === 'package.json')!.getValue();
+        const dependencies = (JSON.parse(packagejson) as iPackagejson).dependencies;
+        if(Object.keys(dependencies))
     }
 
     componentWillUnmount() {
