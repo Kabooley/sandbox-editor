@@ -4,7 +4,7 @@
  * **************************************************/ 
 import React, { createContext, useContext, useReducer, Dispatch } from 'react';
 
-interface iDependency {
+export interface iDependency {
     // moduleName: version
     [moduleName: string]: string;
 }
@@ -26,9 +26,14 @@ type ActionMap<M extends { [index: string]: any }> = {
 };
 
 type iDependencyActionsPayload = {
+    // ひとまず一つのmoduleにたいしてのみdispatchするという仕様にする
     [Types.AddDependency]: {
         moduleName: string;
         version: string;
+        // dependencies: {
+        //     // module name: version
+        //     [name: string]: string;
+        // }
     };
     [Types.RemoveDependency]: {
         moduleName: string;
@@ -50,7 +55,12 @@ function dependenciesReducer(
 ) {
     switch (action.type) {
         case Types.AddDependency: {
+            // DEBUG:
+            console.log(`[DependencyContext] ${Types.AddDependency}`);
+            
             const { moduleName, version } = action.payload;
+
+            console.log(`Fetch ${action.payload.moduleName}@${action.payload.version}`);
 
             // Check same name + version is exist
             if (Object.keys(dependencies).find((m) => m === moduleName)) {
@@ -84,8 +94,8 @@ function dependenciesReducer(
                 delete updatedDependencies[moduleName];
                 return updatedDependencies;
             }
-            defualt: {
-                throw new Error('Unknown action ' + action.type);
+        default: {
+                throw new Error('Unknown action ');
             }
     }
 }

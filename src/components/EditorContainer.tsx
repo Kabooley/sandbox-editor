@@ -13,8 +13,13 @@ import type { iOrderBundleResult } from '../worker/types';
 import type { File } from '../data/files';
 import type { iFilesActions } from '../context/FilesContext';
 import type { iBundledCodeActions } from '../context/BundleContext';
+import type {
+    iDependency,
+    iDependencyActions,
+} from '../context/DependecyContext';
 import { Types as bundledContextTypes } from '../context/BundleContext';
 import { Types as filesContextTypes } from '../context/FilesContext';
+import { Types as dependenciesContextTypes } from '../context/DependecyContext';
 import { OrderTypes, TypingsResult } from '../worker/types';
 
 // import MonacoEditor from './Monaco/MonacoEditor';
@@ -23,8 +28,10 @@ import { getFilenameFromPath, isJsonString } from '../utils';
 
 interface iProps {
     files: File[];
+    dependencies: iDependency;
     dispatchFiles: React.Dispatch<iFilesActions>;
     dispatchBundledCode: React.Dispatch<iBundledCodeActions>;
+    dispatchDependencies: React.Dispatch<iDependencyActions>;
 }
 
 interface iState {
@@ -34,9 +41,9 @@ interface iState {
 }
 
 interface iPackagejson {
-    dependencies: { [moduleName: string]: string};
-    devDependencies: { [moduleName: string]: string};
-};
+    dependencies: { [moduleName: string]: string };
+    devDependencies: { [moduleName: string]: string };
+}
 
 const editorConstructOptions: monaco.editor.IStandaloneEditorConstructionOptions =
     {
@@ -55,18 +62,14 @@ const extraLibs = new Map<
     { js: monaco.IDisposable; ts: monaco.IDisposable }
 >();
 
-// // NOTE: temporary, hard code dependencies for src/index.tsx
-// const temporaryDependencies: { [key: string]: string } = {
-//     react: '18.0.4',
-//     'react-dom': '18.0.4',
-// };
+
 
 class EditorContainer extends React.Component<iProps, iState> {
     state = {
         currentFilePath: '',
         // NOTE: temporary
         currentCode: '',
-        currentDependencies: {}
+        currentDependencies: {},
     };
     _bundleWorker: Worker | undefined;
     _fetchLibsWorker: Worker | undefined;
@@ -85,7 +88,10 @@ class EditorContainer extends React.Component<iProps, iState> {
     }
 
     componentDidMount() {
-        const { files } = this.props;
+        // DEBUG:
+        console.log('[EditorContainer] did mount');
+
+        const { files, dispatchDependencies } = this.props;
 
         const selectedFile = files.find((f) => f.isSelected());
         selectedFile &&
@@ -94,11 +100,29 @@ class EditorContainer extends React.Component<iProps, iState> {
                 currentCode: selectedFile.getValue(),
             });
 
-        
-        const packagejson = files.find(f => getFilenameFromPath(f.getPath()) === 'package.json')!.getValue();
-        const dependencies = (JSON.parse(packagejson) as iPackagejson).dependencies;
+        const packagejson = files
+            .find((f) => getFilenameFromPath(f.getPath()) === 'package.json')!
+            .getValue();
+        const dependencies = (JSON.parse(packagejson) as iPackagejson)
+            .dependencies;
         this.setState({
-            currentDependencies: dependencies
+            currentDependencies: dependencies,
+        });
+
+        Object.keys(dependencies).forEach((depKey) => {
+            // DEBUG:
+            console.log(
+                '[EditorCotainer][componentDidMount] dispatch dependencies:'
+            );
+            console.log(`${depKey}@${[dependencies[depKey]]}`);
+
+            dispatchDependencies({
+                type: dependenciesContextTypes.AddDependency,
+                payload: {
+                    moduleName: depKey,
+                    version: dependencies[depKey],
+                },
+            });
         });
 
         if (window.Worker) {
@@ -126,7 +150,7 @@ class EditorContainer extends React.Component<iProps, iState> {
     }
 
     componentDidUpdate(prevProp: iProps, prevState: iState) {
-        const { files } = this.props;
+        const { files, dependencies } = this.props;
 
         const selectedFile = files.find((f) => f.isSelected());
 
@@ -139,10 +163,17 @@ class EditorContainer extends React.Component<iProps, iState> {
                 });
         }
 
-        // update dependency
-        const packagejson = files.find(f => getFilenameFromPath(f.getPath()) === 'package.json')!.getValue();
-        const dependencies = (JSON.parse(packagejson) as iPackagejson).dependencies;
-        if(Object.keys(dependencies))
+        // When dependencies are modified
+        //
+        // compare curretState.dependencies and dependencies
+        //
+        // fetchLibs if new dependency was in dependencies
+        //
+        // AND CHECK snack code
+        // NOTE: compare this.props.dependencies and this.prevState.dependencies
+
+        // TODO: Implement comparision method for two object that have same properties of not.
+
     }
 
     componentWillUnmount() {
@@ -254,7 +285,9 @@ class EditorContainer extends React.Component<iProps, iState> {
     _fetchTyping(dependencies: { [key: string]: string }) {
         Object.keys(dependencies).forEach((key) => {
             // DEBUG:
-            console.log(`[App] sent dependency: ${key}@${dependencies[key]}`);
+            console.log(
+                `[EditorContainer][_fetchTyping] sent dependency: ${key}@${dependencies[key]}`
+            );
 
             this._fetchLibsWorker &&
                 this._fetchLibsWorker.postMessage({

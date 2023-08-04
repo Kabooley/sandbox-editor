@@ -24,9 +24,11 @@ const Layout = (): JSX.Element => {
                 <SplitPane>
                     <FilesProvider>
                         <BundledCodeProvider>
-                            <Pane />
-                            <EditorSection />
-                            <PreviewSection />
+                            <DependenciesProvider>
+                                <Pane />
+                                <EditorSection />
+                                <PreviewSection />
+                            </DependenciesProvider>
                         </BundledCodeProvider>
                     </FilesProvider>
                 </SplitPane>
