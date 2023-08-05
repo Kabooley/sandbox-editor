@@ -100,30 +100,23 @@ class EditorContainer extends React.Component<iProps, iState> {
                 currentCode: selectedFile.getValue(),
             });
 
-        const packagejson = files
-            .find((f) => getFilenameFromPath(f.getPath()) === 'package.json')!
-            .getValue();
-        const dependencies = (JSON.parse(packagejson) as iPackagejson)
-            .dependencies;
-        this.setState({
-            currentDependencies: dependencies,
-        });
+        const dependencies = this._getDependencies(files);
 
-        Object.keys(dependencies).forEach((depKey) => {
-            // DEBUG:
-            console.log(
-                '[EditorCotainer][componentDidMount] dispatch dependencies:'
-            );
-            console.log(`${depKey}@${[dependencies[depKey]]}`);
+        // Object.keys(dependencies).forEach((depKey) => {
+        //     // DEBUG:
+        //     console.log(
+        //         '[EditorCotainer][componentDidMount] dispatch dependencies:'
+        //     );
+        //     console.log(`${depKey}@${[dependencies[depKey]]}`);
 
-            dispatchDependencies({
-                type: dependenciesContextTypes.AddDependency,
-                payload: {
-                    moduleName: depKey,
-                    version: dependencies[depKey],
-                },
-            });
-        });
+        //     dispatchDependencies({
+        //         type: dependenciesContextTypes.AddDependency,
+        //         payload: {
+        //             moduleName: depK ey,
+        //             version: dependencies[depKey],
+        //         },
+        //     });
+        // });
 
         if (window.Worker) {
             this._bundleWorker = new Worker(
@@ -163,16 +156,6 @@ class EditorContainer extends React.Component<iProps, iState> {
                 });
         }
 
-        // When dependencies are modified
-        //
-        // compare curretState.dependencies and dependencies
-        //
-        // fetchLibs if new dependency was in dependencies
-        //
-        // AND CHECK snack code
-        // NOTE: compare this.props.dependencies and this.prevState.dependencies
-
-        // TODO: Implement comparision method for two object that have same properties of not.
 
     }
 
@@ -316,7 +299,19 @@ class EditorContainer extends React.Component<iProps, iState> {
             type: filesContextTypes.ChangeSelectedFile,
             payload: { selectedFilePath: selected },
         });
-    }
+    };
+
+    _getDependencies(files: File[]) {
+        const packageJson = files
+            .find((f) => getFilenameFromPath(f.getPath()) === 'package.json')!
+            .getValue();
+        const dependencies = (JSON.parse(packageJson) as iPackagejson)
+            .dependencies;
+        const devDependencies = (JSON.parse(packageJson) as iPackagejson)
+        .devDependencies;
+
+        return {...dependencies, ...devDependencies};
+    };
 
     render() {
         return (

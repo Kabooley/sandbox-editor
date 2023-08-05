@@ -361,6 +361,8 @@ not debounced の例だと常にイベントが発生すると呼び出される
 https://stackoverflow.com/questions/51504506/too-many-react-context-providers
 
 
+## 実装：依存関係管理
+
 #### codesandbox-client 依存関係の処理方法の分析
 
 - SearchDependencies/index.tsx要約
@@ -714,5 +716,40 @@ export const setCode = (
 
   なので一方通行の処理である。考える方はらくちん。
 
+
+
+#### 実装
+
+依存関係を取得するのは現状EditorContainerで行っているが、
+
+これを上位に移設して、EditorContainer以下は依存関係のオブジェクトを読み取るだけになる。
+
+上位は「追加」または「削除」のリクエストを受信して、
+
+依存関係を追加・削除を行ってから、結果を介コンポーネントへ返す仕様とする。
+
+- dependenciesのcontextを生成する
+
+- `Types.initializeDependencies`とかのアクションを追加して、依存関係をtemplate.typescript.files.packagejson[dependencies|devDepenencies]から取得し、fetchLibs.workerで取得する
+
+- `getDependenciesFromPackageJson()`みたいな便利な関数を使えるようにしたい。
+
+
+懸念：
+
+- TODO: 要確認）workerはcontextで利用できるのか？
+
+
+#### 実装 `getDependenciesFromPackageJson`
+
+こいつはどこにあればいいんだ？
+
+アプリケーションで扱うFile[]は、files.ts --> FilesContext::initializeFile:File[]
+
+こいつを取得できるのが条件
+
+カスタムフックで作成できるか試す
+
+`hooks/usePackageJson.ts`
 
 

@@ -1,8 +1,9 @@
 /****************************************************
  * NOTE: MonacoEditor, Explorer, SearchDependencyにまたがって提供されなくてはならない。
- * 
+ * NOTE: files情報が必ず必要なので、FilesContextよりも下位でProviderを提供しなくてはならないかも。
  * **************************************************/ 
 import React, { createContext, useContext, useReducer, Dispatch } from 'react';
+import { usePackageJson } from '../hooks/usePackageJson';
 
 export interface iDependency {
     // moduleName: version
@@ -40,6 +41,9 @@ type iDependencyActionsPayload = {
         version: string;
     };
 };
+
+
+const initialDependencies: iDependency = usePackageJson();
 
 export type iDependencyActions =
     ActionMap<iDependencyActionsPayload>[keyof ActionMap<iDependencyActionsPayload>];
@@ -100,7 +104,6 @@ function dependenciesReducer(
     }
 }
 
-const initialDependencies: iDependency = {};
 
 export const DependenciesProvider = ({ children }: { children: React.ReactNode }) => {
     const [dependencies, dispatch] = useReducer(
