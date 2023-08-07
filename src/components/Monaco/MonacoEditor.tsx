@@ -351,8 +351,6 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
                 .getModels()
                 .find((m) => m.uri === oldModelUrl);
 
-            console.log(model?.getValue());
-
             model &&
                 this.props.onDidChangeModel(
                     removeFirstSlash(oldModelUrl.path),

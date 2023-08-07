@@ -1,35 +1,64 @@
 # Implement dependency installer
 
-Like codesandbox.
+installerというか依存関係をどうやって管理・適用させるかの話。
 
-To install dependency dynamically, it is hard to know what module user need and install appropriately version of them.
-
-So I decide to implement manual dependency installer for user,
-
-so they can install what version of them and what modules they want.
 
 ## 参考
 
 https://github.com/codesandbox/codesandbox-client/tree/9a75ddff1312faaf9fcd3f7f8a019de0f464ab47/packages/app/src/app/pages/Sandbox/SearchDependencies
 
+https://github.com/codesandbox/codesandbox-client/blob/df8844a3cb183fa4f5d42f86ea55a55eca5a3f00/packages/app/src/app/overmind/namespaces/editor/actions.ts#L128
+
+https://github.com/codesandbox/codesandbox-client/blob/df8844a3cb183fa4f5d42f86ea55a55eca5a3f00/packages/app/src/app/overmind/namespaces/editor/internalActions.ts#L328
+
+## Summary
+
+- [TODOs](#TODOs)
+- [View of SearchDependency](#View-of-SearchDependency)
+- [Interface dependency data](#Interface-dependency-data)
+- [依存関係管理](#依存関係管理)
+- [TypeScript + Reactのテンプレートデータを作ってみる](#TypeScript-+-Reactのテンプレートデータを作ってみる)
+
 ## TODOs
 
 -   TODO: [dependency-data](#dependency-data)
 -   TODO: [Split Pane section](#Split-Pane-section)
--   TODO: [Component](#Component)
--   TODO: [How to fetch dependency from SearchDependency component](#How-to-fetch-dependency-from-SearchDependency-component)
 -   TODO: [実装：overmind](#実装：overmind)
 -   TODO: [](#)
 
 -   別件：意味のない git commit をなかったことにしたいときにどうすればいいのか
 
-#### codesandbox
 
-view test
+## View of SearchDependency 
 
--   https://codesandbox.io/s/test-searchdependency-view-vqq823
+#### view test
 
-## dependency data
+- https://codesandbox.io/s/test-searchdependency-view-vqq823
+
+#### split Pane section
+
+Pane セクションを縦に分割する。
+
+```HTML
+<!-- PaneSection/Pane以下のコンポーネント -->
+<section class="Depencies">
+    <!-- VSCodeのpaneのメニューカラム -->
+    <!-- VSCodeの`OPEN EDITORS`と同じ -->
+    <div class="menu-column"></div>
+    <!-- 以下、メニューカラムが開いたときに表示されるコンテンツ -->
+    <div class="Dependencies installer form">
+        <div>
+            <input type="text" />
+        </div>
+    </div>
+    <div class="Dependencies installed-dependencies-list">
+        <!-- install済のモジュールを一覧表示する -->
+    </div>
+</section>
+```
+
+
+## Interface dependency data
 
 将来的にはテンプレートに応じて用意することになるかと。
 
@@ -58,97 +87,9 @@ view test
 interface iDependency {
     [path: string]: string;
 };
-
-/**
- * TODO: 実際、何をあらかじめ用意しておくべでしょうか。
- *
- * */
-export const dependencyTemplateOf_React_TypeScript: iDependency = {
-    react: '18.0.4',
-    'react-dom': '18.0.4',
-};
 ```
 
-## split Pane section
-
-Pane セクションを縦に分割する。
-
-```HTML
-<!-- PaneSection/Pane以下のコンポーネント -->
-<section class="Depencies">
-    <!-- VSCodeのpaneのメニューカラム -->
-    <!-- VSCodeの`OPEN EDITORS`と同じ -->
-    <div class="menu-column"></div>
-    <!-- 以下、メニューカラムが開いたときに表示されるコンテンツ -->
-    <div class="Dependencies installer form">
-        <div>
-            <input type="text" />
-        </div>
-    </div>
-    <div class="Dependencies installed-dependencies-list">
-        <!-- install済のモジュールを一覧表示する -->
-    </div>
-</section>
-```
-
-## Component
-
--   (有効なパッケージ名であるかどうか検査する) いやいらないかな
--   入力内容に応じて一致する又は近しい npm モジュールとバージョンを予測で表示する。
--   有効なパッケージ名とバージョンであるならば、dependency-data へ追加し、直接 fetchLibs.worker を呼び出す？
--   install 済のモジュールは無効にさせる？
-
-```TypeScript
-
-```
-
-## How to fetch dependency from SearchDependency component
-
-TODO: アプリケーションで適用する選択可能な template を生成する
-
-typescript 環境
-javascript 環境
-react 環境
-typescript + react 環境
-
-の４つ
-
-TODO: template に dependency リストを含め、マウント時に typings をインストールするようにする
-
-TODO: dependency は SearchDependency コンポーネントから追加・削除できるようにする
-
-TODO: 動的削除または追加された depedency は context 経由で MonacoEditor コンポーネントへ渡されてそこでインストールされるという機能にする
-
-TODO: SearchDependency ではインストール完了までローディングサークルとか表示しとく
-
-なので loading を示す state が必要
-
-TODO: ~上記全てを実現するために condesandbox でいうところの`overmind`を実装する必要がある。~
-
-TODO: template の context 化
-
--   [実装：template](#実装：template)
--   [実装：Context for dependency state](#実装：Context-for-dependency-state)
--   [[esbuild] bundle multiple files](#[esbuild]-bundle-multiple-files)
-
-## 実装：template
-
--   VanillaJS
--   TypeScript
--   React
--   TypeScript + React
-
----
-
--   パッケージ依存関係
--   ファイル
--   バンドリング設定？
-
----
-
-実例を作ってからどう実装すべきか考えてみる
-
-#### Template: TypeScript + React
+## TypeScript + Reactのテンプレートデータを作ってみる
 
 -   tsconfig.json
 -   file
@@ -264,19 +205,8 @@ package.json:
 
 -   どうやって package.json、tsconfig.json の設定がかかわってくるのか？そもそも自分のアプリケーションに必要なのか？
 
-## 実装：Adding and Deleting dependencies
 
-NOTE: 参考
-https://github.com/codesandbox/codesandbox-client/blob/df8844a3cb183fa4f5d42f86ea55a55eca5a3f00/packages/app/src/app/overmind/namespaces/editor/actions.ts#L128
-
-https://github.com/codesandbox/codesandbox-client/blob/df8844a3cb183fa4f5d42f86ea55a55eca5a3f00/packages/app/src/app/overmind/namespaces/editor/internalActions.ts#L328
-
-codesandbox はどうなっているかというと、
-
--   package.json の編集 --> SearchDependency にも反映される
--   SearchDependency から入力する --> package.json にも反映される
-
-#### [esbuild] bundle multiple files
+## [esbuild] bundle multiple files
 
 https://github.com/evanw/esbuild/issues/1952
 
@@ -302,66 +232,9 @@ https://github.com/codesandbox/codesandbox-client/tree/9a75ddff1312faaf9fcd3f7f8
 
 https://overmindjs.org/views/react
 
-## [JavaScript] `Debounced`
-
-https://lodash.com/docs/4.17.15#debounce
-
-https://css-tricks.com/debouncing-throttling-explained-examples/
-
-https://www.freecodecamp.org/news/javascript-debounce-example/
-
-What is `debounce` ?
-
-例えばキーボードの`a`キーを押すとする。ユーザがキーを押してから離すまでの間に、実は「`a`キーが押されている」という信号が何度も送信される。この何度も信号を受け取る必要がないように、一度その信号が送信されたら他の同じ信号をあらかじめ決めた時間だけ無視するようにする機能のこと。
-
-JavaScript の例でいえば、ユーザがフォームで入力したときに入力内容に応じて検索クエリを送信する仕組みがあるとして、ある程度の入力があってからクエリを送信するために入力中一定期間タイプ内容を無視するようにする機能とか？
-
-今回の開発の例でいえば：
-
--   エディタの入力内容を捉えてバンドリングする場合、debounced することで入力内容がある程度時間をおいてからバンドリングリクエストを送信できるのでリクエストの数を節約できる
-
--   ウィンドウのリサイズの調整再計算機能を debounce すれば resize イベント全てに反応しないけれど一定間隔ごとに実行できる。
-
-例：
-
-```JavaScript
-function debounce(func, timeout = 300){
-  let timer;
-  return (...args) => {
-    clearTimeout(timer);
-    timer = setTimeout(() => { func.apply(this, args); }, timeout);
-  };
-}
-function saveInput(){
-  console.log('Saving data');
-}
-const processChange = debounce(() => saveInput());
-```
-
-```HTML
-<!-- Debounced -->
-<input type="text" onkeyup="processChange()" />
-
-<!-- Not debounced -->
-<input type="text" onkeyup="saveInput()" />
-```
-
-Debounced の例ならば 300 ミリ秒まってから saveInput()が呼び出されるが、
-
-not debounced の例だと常にイベントが発生すると呼び出されるので
-
-呼出の回数が異なる。
-
-## [React] Too much ContextProvider
-
-別に問題はないとのこと。
-
-すっきりさせたいなら次の方法を試せばいいとのこと。
-
-https://stackoverflow.com/questions/51504506/too-many-react-context-providers
 
 
-## 実装：依存関係管理
+## 依存関係管理
 
 #### codesandbox-client 依存関係の処理方法の分析
 
@@ -711,12 +584,23 @@ export const setCode = (
 
 わかったこと：
 
+- ユーザが依存関係を追加する手段は、SearchDependencyフォームからの追加、package.jsonファイルで依存関係を追加するの2通りである（はず
+
+- 依存関係の追加は、その追加するモジュールの名前とバージョンをpackage.jsonに追加することで「保存」される。
+
+- 実際のモジュールをインストールするわけではない（はず）
+
 - 既存の依存関係と比較をしないで、常に追加処理を行う。
   最終的に`packageJson[type][name] = version || 'latest';`という方法で追加されるので、既存があっても上書きすることになる。
 
   なので一方通行の処理である。考える方はらくちん。
 
+となると、
 
+- package.jsonが更新されたら、それを検知してtypingsを取得するための機能が必要になる
+  これがそのまま動的typings取得機能となる。
+
+- 
 
 #### 実装
 

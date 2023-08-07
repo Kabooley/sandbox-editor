@@ -8,19 +8,19 @@
 import path from 'path-browserify'; // Instead of using 'path'.
 import { createStore, set as setItem, get as getItem } from 'idb-keyval';
 import semver from 'semver';
-import type { iResponse } from './types';
 import { OrderTypes } from './types';
+import type { iFetchResponse } from './types';
 
 declare const self: DedicatedWorkerGlobalScope;
 declare const ts: any;
 
-export interface TypingsResult extends iResponse {
+export interface TypingsResult {
     name: string;
     version: string;
     typings: FetchOutput['paths'];
 }
 
-type FetchOutput = {
+export type FetchOutput = {
     resolvedVersion?: string;
     paths: {
         [key: string]: string;
@@ -431,7 +431,7 @@ self.addEventListener('message', (event) => {
                 version,
                 typings: result,
                 err: null
-            } as TypingsResult),
+            } as iFetchResponse),
         (error) => {
             if (error.code === 'FALLBACK_TYPES') {
               const err = `
@@ -452,7 +452,7 @@ self.addEventListener('message', (event) => {
                     version,
                     typings: error.typings,
                     err: new Error(err)
-                } as TypingsResult);
+                } as iFetchResponse);
             }
 
             console.error(error);

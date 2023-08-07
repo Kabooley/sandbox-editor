@@ -20,11 +20,12 @@ import type {
 import { Types as bundledContextTypes } from '../context/BundleContext';
 import { Types as filesContextTypes } from '../context/FilesContext';
 import { Types as dependenciesContextTypes } from '../context/DependecyContext';
-import { OrderTypes, TypingsResult } from '../worker/types';
+import { OrderTypes, iFetchResponse } from '../worker/types';
 
 // import MonacoEditor from './Monaco/MonacoEditor';
 import MonacoEditor from './Monaco/MonacoEditor';
-import { getFilenameFromPath, isJsonString } from '../utils';
+import { getFilenameFromPath, isJsonValid, sortObjectByKeys } from '../utils';
+import debounce from 'lodash/debounce';
 
 interface iProps {
     files: File[];
@@ -62,8 +63,6 @@ const extraLibs = new Map<
     { js: monaco.IDisposable; ts: monaco.IDisposable }
 >();
 
-
-
 class EditorContainer extends React.Component<iProps, iState> {
     state = {
         currentFilePath: '',
@@ -91,7 +90,7 @@ class EditorContainer extends React.Component<iProps, iState> {
         // DEBUG:
         console.log('[EditorContainer] did mount');
 
-        const { files, dispatchDependencies } = this.props;
+        const { files } = this.props;
 
         const selectedFile = files.find((f) => f.isSelected());
         selectedFile &&
@@ -101,22 +100,6 @@ class EditorContainer extends React.Component<iProps, iState> {
             });
 
         const dependencies = this._getDependencies(files);
-
-        // Object.keys(dependencies).forEach((depKey) => {
-        //     // DEBUG:
-        //     console.log(
-        //         '[EditorCotainer][componentDidMount] dispatch dependencies:'
-        //     );
-        //     console.log(`${depKey}@${[dependencies[depKey]]}`);
-
-        //     dispatchDependencies({
-        //         type: dependenciesContextTypes.AddDependency,
-        //         payload: {
-        //             moduleName: depK ey,
-        //             version: dependencies[depKey],
-        //         },
-        //     });
-        // });
 
         if (window.Worker) {
             this._bundleWorker = new Worker(
@@ -143,6 +126,9 @@ class EditorContainer extends React.Component<iProps, iState> {
     }
 
     componentDidUpdate(prevProp: iProps, prevState: iState) {
+        // DEBUG:
+        console.log("[EditorContainer][componentDidUpdate]");
+
         const { files, dependencies } = this.props;
 
         const selectedFile = files.find((f) => f.isSelected());
@@ -155,8 +141,34 @@ class EditorContainer extends React.Component<iProps, iState> {
                     currentCode: selectedFile.getValue(),
                 });
         }
+        if(/^package\.json$/.test(getFilenameFromPath(this.state.currentFilePath))) {
+            debounce
 
+        }
+    }
 
+    _checkModifiedDependencies(files: File[], previousDependencies: iDependency) {
+        const packagejson = files.find(f => /^package\.json$/.test(f.getPath()) )?.getValue();
+        packagejson && console.log(isJsonValid(packagejson));
+        if(!isJsonValid(packagejson!)) { return; }
+        // DEBUG:
+        console.log("[EditorContainer][checkModifiedDependencies] is package.json valid?");
+        const { dependencies, devDependencies } = JSON.parse(packagejson!);
+        
+        // TODO: 検討：ここで差分を探し出すのか、それともdependenciesに送信して差分を探す仕事を別に任せるのか
+        // 少なくともsnackではどうしているのか調査してみる。
+
+        // sortの仕事もcontextの方でやってもらえばええねん
+        // const latesDependencies = sortObjectByKeys({...dependencies, ...devDependencies});
+
+        // 多分このままdispatchすることにした方がシンプルでいいよね
+        // this.props.dispatchDependencies({
+        //     type: dependenciesContextTypes.updateDependencies,
+        //     payload: {
+        //         dependencies: {...dependencies, ...devDependencies}
+        //     }
+        // });
+        
     }
 
     componentWillUnmount() {
@@ -194,6 +206,24 @@ class EditorContainer extends React.Component<iProps, iState> {
                 },
             },
         });
+
+
+        /**
+         * JSONファイルの編集が入力中か入力完了なのかは、
+         * JSON.parseでエラーがあるかどうかで判断ができrる
+         * 
+         * なのでカレントモデルがpackage.jsonの場合は
+         * つどJSON.parseして依存関係などが変更されていないかチェックする
+         * 
+         * 
+         * ただし、入力一文字ごとに反応させると大変なので
+         * componentDidUpdateでdebounceさせる
+         * */ 
+        if(/^package\.json$/.test(path)) {
+            // DEBUG: 
+            console.log("[EditorContainer][onEditorContentChange] package.json changed.");
+            // この時点のdependenciesを記録しておくとか？
+        }
     }
 
     // NOTE: Temporary method.
@@ -220,7 +250,7 @@ class EditorContainer extends React.Component<iProps, iState> {
     }
 
     // Callback for 'message' event of fetchLibs.worker
-    _onMessageOfTypings(e: MessageEvent<TypingsResult>) {
+    _onMessageOfTypings(e: MessageEvent<iFetchResponse>) {
         const { name, version, typings, err } = e.data;
         if (err) throw err;
 
@@ -282,7 +312,12 @@ class EditorContainer extends React.Component<iProps, iState> {
     }
 
     // Save previous model value
-    _onDidChangeModel(path: string, value: string) {
+    /**
+     * Detect if it's package.json
+     * 
+     * 
+     * */ 
+    _onDidChangeModel(oldModelPath: string, newModelPath: string) {
         // this.props.dispatchFiles({
         //     type: filesContextTypes.Change,
         //     payload: {
@@ -292,6 +327,18 @@ class EditorContainer extends React.Component<iProps, iState> {
         //         },
         //     },
         // });
+
+        // Set parser if current module is package.json
+        if(/^package\.json$/.test(newModelPath)) {
+            // DEBUG: 
+            console.log("[EditorContainer][onDidChangeModle] now model is package.json.");
+            // この時点のdependenciesを記録しておくとか？
+        }
+        if(/^package\.json$/.test(oldModelPath)) {
+            // DEBUG: 
+            console.log("[EditorContainer][onDidChangeModle] now model is NOT package.json.");
+            // この時点のdependenciesを記録しておくとか？
+        }
     }
 
     _onChangeSelectedTab(selected: string) {
@@ -299,19 +346,16 @@ class EditorContainer extends React.Component<iProps, iState> {
             type: filesContextTypes.ChangeSelectedFile,
             payload: { selectedFilePath: selected },
         });
-    };
+    }
 
     _getDependencies(files: File[]) {
         const packageJson = files
             .find((f) => getFilenameFromPath(f.getPath()) === 'package.json')!
             .getValue();
-        const dependencies = (JSON.parse(packageJson) as iPackagejson)
-            .dependencies;
-        const devDependencies = (JSON.parse(packageJson) as iPackagejson)
-        .devDependencies;
+        const { dependencies, devDependencies } = JSON.parse(packageJson) as iPackagejson;
 
-        return {...dependencies, ...devDependencies};
-    };
+        return { ...dependencies, ...devDependencies };
+    }
 
     render() {
         return (

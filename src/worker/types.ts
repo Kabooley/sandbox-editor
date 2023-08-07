@@ -1,4 +1,4 @@
-export type { TypingsResult } from './fetchLibs.worker';
+import type { TypingsResult } from './fetchLibs.worker';
 
 export enum OrderTypes {
     Bundle = 'bundle',
@@ -8,16 +8,15 @@ export enum OrderTypes {
 
 type iOrder = 'order' | 'bundle' | 'jsxhighlight' | 'eslint' | 'fetch-libs';
 
-/***
- * Common property which must be included in any messages.
- * */
 interface iRequest {
     order: iOrder;
 }
 
-export interface iResponse {
+interface iResponse {
     err: Error | null;
 }
+
+// --- BUNDLE --- 
 
 export interface iBuildResult extends iResponse {
     bundledCode: string;
@@ -38,8 +37,17 @@ export interface iOrderBundle extends iRequest {
 // must be follow interface.
 export interface iOrderBundleResult extends iBuildResult {}
 
-export interface iFetchedOutput {
-    [modulePath: string]: string;
+// --- FetchLibsWorker ---
+
+export interface iFetchRequest extends iRequest {
+    name: string;
+    version: string;
 }
+
+export interface iFetchResponse extends TypingsResult, iResponse {};
+
+// export interface iFetchedOutput {
+//     [modulePath: string]: string;
+// }
 
 // export interface iResultFetchTypings extends iResponse, TypingsResult {};

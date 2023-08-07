@@ -1,8 +1,17 @@
 /****************************************************
- * NOTE: MonacoEditor, Explorer, SearchDependencyにまたがって提供されなくてはならない。
- * NOTE: files情報が必ず必要なので、FilesContextよりも下位でProviderを提供しなくてはならないかも。
- * **************************************************/ 
+ * TODO: sortObjectByKeys
+ * TODO: add, removeをなくしてすべてupdateに統一する
+ *
+ *  initializeDependenciesを初期化するためにpackage.jsonの情報が必要
+ *  依存関係リストを更新するたびにpackage.jsonファイルを内部的に更新する必要があるので
+ *
+ * 実際のモジュールの取得は、EditorContainer.tsx::fetchLibs.workerの仕事で、
+ * こっちは依存関係のリストの更新と提供を仕事とする。
+ *
+ * 本当はそのモジュール名称とバージョンが一致するのか検証してから追加したいのだけどね、困難である。
+ * **************************************************/
 import React, { createContext, useContext, useReducer, Dispatch } from 'react';
+import semver from 'semver';
 import { usePackageJson } from '../hooks/usePackageJson';
 
 export interface iDependency {
@@ -13,6 +22,7 @@ export interface iDependency {
 export enum Types {
     AddDependency = 'ADD_DEPENDENCY',
     RemoveDependency = 'REMOVE_DEPENDENCY',
+    Update = 'UPDATE_DEPENDENCY',
 }
 
 type ActionMap<M extends { [index: string]: any }> = {
@@ -40,13 +50,23 @@ type iDependencyActionsPayload = {
         moduleName: string;
         version: string;
     };
+    [Types.Update]: {
+        dependencies: iDependency;
+    };
 };
-
-
-const initialDependencies: iDependency = usePackageJson();
 
 export type iDependencyActions =
     ActionMap<iDependencyActionsPayload>[keyof ActionMap<iDependencyActionsPayload>];
+
+// Thus Error occured:
+//
+// Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:
+// 1. You might have mismatching versions of React and the renderer (such as React DOM)
+// 2. You might be breaking the Rules of Hooks
+// 3. You might have more than one copy of React in the same app
+// See https://reactjs.org/link/invalid-hook-call for tips about how to debug and fix this problem.
+// const packageJson = usePackageJson();
+// const packageJsonCode = JSON.parse(packageJson.getValue());
 
 export const DependencyContext = createContext<iDependency>({});
 export const DependencyDispatchContext = createContext<
@@ -58,54 +78,76 @@ function dependenciesReducer(
     action: iDependencyActions
 ) {
     switch (action.type) {
+        /**
+         * Always fetches requested module even if the module is already exists.
+         *
+         * DON'T CASE the version of module is exist or not.
+         *
+         * Semantic version.
+         * */
         case Types.AddDependency: {
             // DEBUG:
             console.log(`[DependencyContext] ${Types.AddDependency}`);
-            
+
             const { moduleName, version } = action.payload;
 
-            console.log(`Fetch ${action.payload.moduleName}@${action.payload.version}`);
+            console.log(
+                `Add ${action.payload.moduleName}@${action.payload.version}`
+            );
 
-            // Check same name + version is exist
-            if (Object.keys(dependencies).find((m) => m === moduleName)) {
-                // 今のところモジュール名が同じということだけでエラーとする
+            // TODO: semverを使って有効なバージョンを決定する
+            const guessedVersion = semver.valid(version)
+                ? `${semver.major(version)}.${semver.minor(version)}`
+                : 'latest';
+
+            const updatedDeps = Object.assign({}, dependencies);
+            updatedDeps[moduleName] = guessedVersion;
+
+            // DEBUG:
+            console.log('be like this:');
+            console.log(updatedDeps);
+
+            return updatedDeps;
+        }
+        case Types.RemoveDependency: {
+            const { moduleName, version } = action.payload;
+            if (
+                !Object.keys(dependencies).find(
+                    (m) =>
+                        `${m}@${dependencies[m]}` === `${moduleName}@${version}`
+                )
+            ) {
                 throw new Error(
-                    'Error: Required module about to add to dependency is already exist'
+                    'Error: Required module that about to remove is not exist on dependencies.'
                 );
             }
 
-            // NOTE: call fetchLibs.worker
-            // Add module If worker did not return error
-            return Object.assign({}, dependencies, { moduleName: version });
+            // delete dependencies[moduleName];
+            const updatedDeps = Object.assign({}, dependencies);
+            delete updatedDeps[moduleName];
+            //
+            // TODO: sort list
+            //
+            return updatedDeps;
         }
-        case Types.RemoveDependency:
-            {
-                const { moduleName, version } = action.payload;
-                if (
-                    !Object.keys(dependencies).find(
-                        (m) =>
-                            `${m}@${dependencies[m]}` ===
-                            `${moduleName}@${version}`
-                    )
-                ) {
-                    throw new Error(
-                        'Error: Required module that about to remove is not exist on dependencies.'
-                    );
-                }
-
-                // delete dependencies[moduleName];
-                const updatedDependencies = Object.assign({}, dependencies);
-                delete updatedDependencies[moduleName];
-                return updatedDependencies;
-            }
+        case Types.Update: {
+            // TODO: sort them
+            // TODO: compare with dependencies
+            // TODO: apply change
+        }
         default: {
-                throw new Error('Unknown action ');
-            }
+            throw new Error('Unknown action ');
+        }
     }
 }
 
+const initialDependencies: iDependency = {};
 
-export const DependenciesProvider = ({ children }: { children: React.ReactNode }) => {
+export const DependenciesProvider = ({
+    children,
+}: {
+    children: React.ReactNode;
+}) => {
     const [dependencies, dispatch] = useReducer(
         dependenciesReducer,
         initialDependencies
