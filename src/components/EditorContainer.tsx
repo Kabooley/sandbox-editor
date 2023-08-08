@@ -26,6 +26,7 @@ import { OrderTypes, iFetchResponse } from '../worker/types';
 import MonacoEditor from './Monaco/MonacoEditor';
 import { getFilenameFromPath, isJsonValid, sortObjectByKeys } from '../utils';
 import debounce from 'lodash/debounce';
+import isEqual from 'lodash/isEqual';
 
 interface iProps {
     files: File[];
@@ -38,7 +39,7 @@ interface iProps {
 interface iState {
     currentFilePath: string;
     currentCode: string;
-    currentDependencies: { [moduleName: string]: string };
+    // currentDependencies: { [moduleName: string]: string };
 }
 
 interface iPackagejson {
@@ -68,7 +69,7 @@ class EditorContainer extends React.Component<iProps, iState> {
         currentFilePath: '',
         // NOTE: temporary
         currentCode: '',
-        currentDependencies: {},
+        // currentDependencies: {},
     };
     _bundleWorker: Worker | undefined;
     _fetchLibsWorker: Worker | undefined;
@@ -84,6 +85,7 @@ class EditorContainer extends React.Component<iProps, iState> {
         this._onDidChangeModel = this._onDidChangeModel.bind(this);
         this._onMessageOfTypings = this._onMessageOfTypings.bind(this);
         this._addTypings = this._addTypings.bind(this);
+        this._getDependenciesFromPackageJson = this._getDependenciesFromPackageJson.bind(this);
     }
 
     componentDidMount() {
@@ -99,7 +101,7 @@ class EditorContainer extends React.Component<iProps, iState> {
                 currentCode: selectedFile.getValue(),
             });
 
-        const dependencies = this._getDependencies(files);
+        const dependencies = this._getDependenciesFromPackageJson(files);
 
         if (window.Worker) {
             this._bundleWorker = new Worker(
@@ -128,8 +130,9 @@ class EditorContainer extends React.Component<iProps, iState> {
     componentDidUpdate(prevProp: iProps, prevState: iState) {
         // DEBUG:
         console.log("[EditorContainer][componentDidUpdate]");
+        console.log(this.state.currentFilePath);
 
-        const { files, dependencies } = this.props;
+        const { files, dependencies, dispatchDependencies } = this.props;
 
         const selectedFile = files.find((f) => f.isSelected());
 
@@ -141,35 +144,34 @@ class EditorContainer extends React.Component<iProps, iState> {
                     currentCode: selectedFile.getValue(),
                 });
         }
-        if(/^package\.json$/.test(getFilenameFromPath(this.state.currentFilePath))) {
-            debounce
-
-        }
-    }
-
-    _checkModifiedDependencies(files: File[], previousDependencies: iDependency) {
+        // In case current file is package.json
+        // 
+        // まだ無限ループ
         const packagejson = files.find(f => /^package\.json$/.test(f.getPath()) )?.getValue();
-        packagejson && console.log(isJsonValid(packagejson));
-        if(!isJsonValid(packagejson!)) { return; }
-        // DEBUG:
-        console.log("[EditorContainer][checkModifiedDependencies] is package.json valid?");
-        const { dependencies, devDependencies } = JSON.parse(packagejson!);
-        
-        // TODO: 検討：ここで差分を探し出すのか、それともdependenciesに送信して差分を探す仕事を別に任せるのか
-        // 少なくともsnackではどうしているのか調査してみる。
 
-        // sortの仕事もcontextの方でやってもらえばええねん
-        // const latesDependencies = sortObjectByKeys({...dependencies, ...devDependencies});
+        if(/^package\.json$/.test(this.state.currentFilePath) && isJsonValid(packagejson!)) {
+            const packageJsonCode = JSON.parse(packagejson!);
+            const latestDependencies = sortObjectByKeys({...packageJsonCode.dependencies, ...packageJsonCode.devDependencies});
+            const prevDependencies = sortObjectByKeys(dependencies);
 
-        // 多分このままdispatchすることにした方がシンプルでいいよね
-        // this.props.dispatchDependencies({
-        //     type: dependenciesContextTypes.updateDependencies,
-        //     payload: {
-        //         dependencies: {...dependencies, ...devDependencies}
-        //     }
-        // });
-        
-    }
+            // if(!isEqual(latestDependencies, prevDependencies)) {
+
+            //     // DEBUG:
+            //     console.log("[EditorContainer][componentDidUpdate] dispatch latest package.json dependencies");
+
+            //     dispatchDependencies({
+            //         type: dependenciesContextTypes.UpdatePackageJson,
+            //         payload: {
+            //             dependencies: latestDependencies
+            //         }
+            //     });
+            // }
+
+            console.log(latestDependencies);
+            console.log(prevDependencies);
+        }
+    };
+
 
     componentWillUnmount() {
         this._bundleWorker &&
@@ -206,24 +208,6 @@ class EditorContainer extends React.Component<iProps, iState> {
                 },
             },
         });
-
-
-        /**
-         * JSONファイルの編集が入力中か入力完了なのかは、
-         * JSON.parseでエラーがあるかどうかで判断ができrる
-         * 
-         * なのでカレントモデルがpackage.jsonの場合は
-         * つどJSON.parseして依存関係などが変更されていないかチェックする
-         * 
-         * 
-         * ただし、入力一文字ごとに反応させると大変なので
-         * componentDidUpdateでdebounceさせる
-         * */ 
-        if(/^package\.json$/.test(path)) {
-            // DEBUG: 
-            console.log("[EditorContainer][onEditorContentChange] package.json changed.");
-            // この時点のdependenciesを記録しておくとか？
-        }
     }
 
     // NOTE: Temporary method.
@@ -348,13 +332,11 @@ class EditorContainer extends React.Component<iProps, iState> {
         });
     }
 
-    _getDependencies(files: File[]) {
-        const packageJson = files
-            .find((f) => getFilenameFromPath(f.getPath()) === 'package.json')!
-            .getValue();
-        const { dependencies, devDependencies } = JSON.parse(packageJson) as iPackagejson;
-
-        return { ...dependencies, ...devDependencies };
+    _getDependenciesFromPackageJson(files: File[]) {
+        const packagejson = files.find(f => /^package\.json$/.test(f.getPath()) )?.getValue();
+        if(!isJsonValid(packagejson!)) { return {}; }
+        const { dependencies, devDependencies } = JSON.parse(packagejson!);
+        return {...dependencies, ...devDependencies};
     }
 
     render() {

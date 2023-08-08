@@ -1,7 +1,6 @@
 # Implement dependency installer
 
-installerというか依存関係をどうやって管理・適用させるかの話。
-
+installer というか依存関係をどうやって管理・適用させるかの話。
 
 ## 参考
 
@@ -13,11 +12,11 @@ https://github.com/codesandbox/codesandbox-client/blob/df8844a3cb183fa4f5d42f86e
 
 ## Summary
 
-- [TODOs](#TODOs)
-- [View of SearchDependency](#View-of-SearchDependency)
-- [Interface dependency data](#Interface-dependency-data)
-- [依存関係管理](#依存関係管理)
-- [TypeScript + Reactのテンプレートデータを作ってみる](#TypeScript-+-Reactのテンプレートデータを作ってみる)
+-   [TODOs](#TODOs)
+-   [View of SearchDependency](#View-of-SearchDependency)
+-   [Interface dependency data](#Interface-dependency-data)
+-   [依存関係管理](#依存関係管理)
+-   [TypeScript + React のテンプレートデータを作ってみる](#TypeScript-+-Reactのテンプレートデータを作ってみる)
 
 ## TODOs
 
@@ -28,12 +27,13 @@ https://github.com/codesandbox/codesandbox-client/blob/df8844a3cb183fa4f5d42f86e
 
 -   別件：意味のない git commit をなかったことにしたいときにどうすればいいのか
 
+-   [別件] [esbuild でマルチファイルをバンドルする方法](#esbuildでマルチファイルをバンドルする方法)
 
-## View of SearchDependency 
+## View of SearchDependency
 
 #### view test
 
-- https://codesandbox.io/s/test-searchdependency-view-vqq823
+-   https://codesandbox.io/s/test-searchdependency-view-vqq823
 
 #### split Pane section
 
@@ -56,7 +56,6 @@ Pane セクションを縦に分割する。
     </div>
 </section>
 ```
-
 
 ## Interface dependency data
 
@@ -89,7 +88,7 @@ interface iDependency {
 };
 ```
 
-## TypeScript + Reactのテンプレートデータを作ってみる
+## TypeScript + React のテンプレートデータを作ってみる
 
 -   tsconfig.json
 -   file
@@ -205,7 +204,6 @@ package.json:
 
 -   どうやって package.json、tsconfig.json の設定がかかわってくるのか？そもそも自分のアプリケーションに必要なのか？
 
-
 ## [esbuild] bundle multiple files
 
 https://github.com/evanw/esbuild/issues/1952
@@ -232,15 +230,13 @@ https://github.com/codesandbox/codesandbox-client/tree/9a75ddff1312faaf9fcd3f7f8
 
 https://overmindjs.org/views/react
 
-
-
 ## 依存関係管理
 
 #### codesandbox-client 依存関係の処理方法の分析
 
-- SearchDependencies/index.tsx要約
+-   SearchDependencies/index.tsx 要約
 
-    onConfirmまたはactions.workspace.getDependencies()から依存関係を反映させる
+    onConfirm または actions.workspace.getDependencies()から依存関係を反映させる
 
 ```JavaScript
     // 予測候補を出すための処理を行うので無視
@@ -256,52 +252,52 @@ export const SearchDependencies = ({ onConfirm }) => {
     const actions = useActions();
     const { workspace, editor } = useAppState();
     const list = useRef();
-  
+
     const [isPrivateDependency, setIsPrivateDependency] = React.useState<boolean>(
       false
     );
-  
+
     const handleSelect = async (hit: DependencyType) => {
       let version = workspace.hitToVersionMap[hit.objectID];
-  
+
       if (!version && hit.tags) {
         version = hit.tags.latest;
       }
-  
+
       await onConfirm(hit.name, version);
     };
-  
+
     const handleManualSelect = (hitName: string) => {
       if (!hitName) {
         return;
       }
-  
+
       const isScoped = hitName.startsWith('@');
       let version = 'latest';
-  
+
       const splittedName = hitName.split('@');
-  
+
       if (splittedName.length > (isScoped ? 2 : 1)) {
         version = splittedName.pop();
       }
-  
+
       const depName = splittedName.join('@');
-  
+
       onConfirm(depName, version);
     };
-  
+
     const onSelectDependencies = () => {
       Object.values(workspace.selectedDependencies)
         .filter(a => a)
         .map(handleSelect);
     };
-  
+
     const onChange = (value?: string) => {
       let searchValue = value;
       if (searchValue.includes('@') && !searchValue.startsWith('@')) {
         searchValue = value.split('@')[0];
       }
-  
+
       if (searchValue.startsWith('@')) {
         // if it starts with one and has a version
         if (searchValue.split('@').length === 3) {
@@ -309,26 +305,26 @@ export const SearchDependencies = ({ onConfirm }) => {
           searchValue = `@${part[0]}${part[1]}`;
         }
       }
-  
+
       actions.workspace.getDependencies(searchValue);
-  
+
       setIsPrivateDependency(
         editor.currentSandbox &&
           isPrivateScope(editor.currentSandbox, searchValue)
       );
     };
-  
+
     useEffect(() => {
       actions.workspace.clearSelectedDependencies();
       // Why did we call this? The action just returns when undefined
       // actions.workspace.getDependencies();
-  
+
       return () => {
         actions.workspace.changeDependencySearch('');
       };
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
-  
+
     return (
       <div
         className="search-dependencies"
@@ -350,7 +346,7 @@ export const SearchDependencies = ({ onConfirm }) => {
   };
 ```
 
-- `actions.workspace.getDependencies`
+-   `actions.workspace.getDependencies`
 
 ```TypeScript
 export const getDependencies = async (
@@ -367,7 +363,7 @@ export const getDependencies = async (
 
 ```
 
-- onConfirm
+-   onConfirm
 
 書いてある通り。
 
@@ -389,14 +385,14 @@ export const SearchDependenciesModal: FunctionComponent = () => {
 };
 ```
 
-- `addNpmDependency`
+-   `addNpmDependency`
 
 https://github.com/codesandbox/codesandbox-client/blob/7886537619345681fed4bd2ee6168273ac32ad04/packages/app/src/app/overmind/namespaces/editor/actions.ts#L128
 
-1. package.jsonの`dependencies`か`devDependencies`か判定する
-2. 引数versionが指定されなかったら`latest`にする
-3. nameと更新したversion変数から依存関係をfetchし、一致するもしくは近いバージョンの依存関係を取得する
-4. package.jsonへ追加する
+1. package.json の`dependencies`か`devDependencies`か判定する
+2. 引数 version が指定されなかったら`latest`にする
+3. name と更新した version 変数から依存関係を fetch し、一致するもしくは近いバージョンの依存関係を取得する
+4. package.json へ追加する
 
 ```TypeScript
 
@@ -446,7 +442,7 @@ export const addNpmDependency = withOwnedSandbox(
       }
     }
 
-    // 結果をpackage.jsonへ反映させる 
+    // 結果をpackage.jsonへ反映させる
     await actions.editor.internal.addNpmDependencyToPackageJson({
       name,
       version: newVersion,
@@ -461,13 +457,13 @@ export const addNpmDependency = withOwnedSandbox(
 );
 ```
 
-- `package.json`への反映
+-   `package.json`への反映
 
 https://github.com/codesandbox/codesandbox-client/blob/7886537619345681fed4bd2ee6168273ac32ad04/packages/app/src/app/overmind/namespaces/editor/internalActions.ts#L328
 
-package.jsonファイルをJSON.parseで中身取得
+package.json ファイルを JSON.parse で中身取得
 新規の依存関係を追加
-JSON.stringifyでJSONへ再変換した内容を`actions.editor.setCode({ moduleShortid, code });`とやらでおそらく反映させている
+JSON.stringify で JSON へ再変換した内容を`actions.editor.setCode({ moduleShortid, code });`とやらでおそらく反映させている
 
 ```TypeScript
 export const addNpmDependencyToPackageJson = async (
@@ -495,7 +491,7 @@ export const addNpmDependencyToPackageJson = async (
   const type = isDev ? 'devDependencies' : 'dependencies';
 
   packageJson[type] = packageJson[type] || {};
-    // NOTE: ここで追加  
+    // NOTE: ここで追加
   packageJson[type][name] = version || 'latest';
   packageJson[type] = sortObjectByKeys(packageJson[type]);
 
@@ -521,9 +517,9 @@ export const addNpmDependencyToPackageJson = async (
 
 ```
 
-- [別件] codesandboxの内部的な変更をトリガーとするファイル変更の反映の仕方
+-   [別件] codesandbox の内部的な変更をトリガーとするファイル変更の反映の仕方
 
-1. shortIdというのはcondesandboxがエディタで扱っている仮想ファイルのidのことだと思う
+1. shortId というのは condesandbox がエディタで扱っている仮想ファイルの id のことだと思う
 2. あとはコメントに書いてある通り
 
 ```TypeScript
@@ -584,51 +580,49 @@ export const setCode = (
 
 わかったこと：
 
-- ユーザが依存関係を追加する手段は、SearchDependencyフォームからの追加、package.jsonファイルで依存関係を追加するの2通りである（はず
+-   ユーザが依存関係を追加する手段は、SearchDependency フォームからの追加、package.json ファイルで依存関係を追加するの 2 通りである（はず
 
-- 依存関係の追加は、その追加するモジュールの名前とバージョンをpackage.jsonに追加することで「保存」される。
+-   依存関係の追加は、その追加するモジュールの名前とバージョンを package.json に追加することで「保存」される。
 
-- 実際のモジュールをインストールするわけではない（はず）
+-   実際のモジュールをインストールするわけではない（はず）
 
-- 既存の依存関係と比較をしないで、常に追加処理を行う。
-  最終的に`packageJson[type][name] = version || 'latest';`という方法で追加されるので、既存があっても上書きすることになる。
+-   既存の依存関係と比較をしないで、常に追加処理を行う。
+    最終的に`packageJson[type][name] = version || 'latest';`という方法で追加されるので、既存があっても上書きすることになる。
 
-  なので一方通行の処理である。考える方はらくちん。
+    なので一方通行の処理である。考える方はらくちん。
 
 となると、
 
-- package.jsonが更新されたら、それを検知してtypingsを取得するための機能が必要になる
-  これがそのまま動的typings取得機能となる。
+-   package.json が更新されたら、それを検知して typings を取得するための機能が必要になる
+    これがそのまま動的 typings 取得機能となる。
 
-- 
+-
 
 #### 実装
 
-依存関係を取得するのは現状EditorContainerで行っているが、
+依存関係を取得するのは現状 EditorContainer で行っているが、
 
-これを上位に移設して、EditorContainer以下は依存関係のオブジェクトを読み取るだけになる。
+これを上位に移設して、EditorContainer 以下は依存関係のオブジェクトを読み取るだけになる。
 
 上位は「追加」または「削除」のリクエストを受信して、
 
 依存関係を追加・削除を行ってから、結果を介コンポーネントへ返す仕様とする。
 
-- dependenciesのcontextを生成する
+-   dependencies の context を生成する
 
-- `Types.initializeDependencies`とかのアクションを追加して、依存関係をtemplate.typescript.files.packagejson[dependencies|devDepenencies]から取得し、fetchLibs.workerで取得する
+-   `Types.initializeDependencies`とかのアクションを追加して、依存関係を template.typescript.files.packagejson[dependencies|devDepenencies]から取得し、fetchLibs.worker で取得する
 
-- `getDependenciesFromPackageJson()`みたいな便利な関数を使えるようにしたい。
-
+-   `getDependenciesFromPackageJson()`みたいな便利な関数を使えるようにしたい。
 
 懸念：
 
-- TODO: 要確認）workerはcontextで利用できるのか？
-
+-   TODO: 要確認）worker は context で利用できるのか？
 
 #### 実装 `getDependenciesFromPackageJson`
 
 こいつはどこにあればいいんだ？
 
-アプリケーションで扱うFile[]は、files.ts --> FilesContext::initializeFile:File[]
+アプリケーションで扱う File[]は、files.ts --> FilesContext::initializeFile:File[]
 
 こいつを取得できるのが条件
 
@@ -636,4 +630,209 @@ export const setCode = (
 
 `hooks/usePackageJson.ts`
 
+## esbuild でマルチファイルをバンドルする方法
 
+codesandbox の draft
+
+https://codesandbox.io/s/esbuild-wasm-bundle-multil-files
+
+-   esbuild の基礎の復習
+-   esbuild api の学習
+-   仮想ファイルの内容をバンドルする方法の模索
+
+```bash
+false
+initializing...
+initialized
+[unpkgPathPlugins] onResolve:`filter: /(^index.js$)/`
+[unpkgPathPlugin] onResolve `filter: /.*/`
+{path: "react-dom/client", importer: "index.js", namespace: "a", resolveDir: "", kind: "import-statement"…}
+[unpkgPathPlugin] onResolve `filter: /.*/`
+{path: "react", importer: "index.js", namespace: "a", resolveDir: "", kind: "import-statement"…}
+[unpkgPathPlugin] onResolve `filter: /.*/`
+{path: "bulma/css/bulma.css", importer: "index.js", namespace: "a", resolveDir: "", kind: "import-statement"…}
+[unpkgPathPlugin] onLoad packages :https://unpkg.com/react-dom/client
+[unpkgPathPlugin] onLoad packages :https://unpkg.com/react
+[unpkgPathPlugin] onLoad packages :https://unpkg.com/bulma/css/bulma.css
+[unpkgPathPlugin] onResolve `filter: /^.+//`
+{path: "./cjs/react.development.js", importer: "https://unpkg.com/react", namespace: "a", resolveDir: "/react@18.2.0", kind: "require-call"…}
+[unpkgPathPlugin] onLoad packages :https://unpkg.com/react@18.2.0/cjs/react.development.js
+[unpkgPathPlugin] onResolve `filter: /.*/`
+{path: "react-dom", importer: "https://unpkg.com/react-dom/client", namespace: "a", resolveDir: "/react-dom@18.2.0", kind: "require-call"…}
+[unpkgPathPlugin] onLoad packages :https://unpkg.com/react-dom
+[unpkgPathPlugin] onResolve `filter: /^.+//`
+{path: "./cjs/react-dom.development.js", importer: "https://unpkg.com/react-dom", namespace: "a", resolveDir: "/react-dom@18.2.0", kind: "require-call"…}
+[unpkgPathPlugin] onLoad packages :https://unpkg.com/react-dom@18.2.0/cjs/react-dom.development.js
+[unpkgPathPlugin] onResolve `filter: /.*/`
+{path: "react", importer: "https://unpkg.com/react-dom@18.2.0/cjs/react-dom.development.js", namespace: "a", resolveDir: "/react-dom@18.2.0/cjs", kind: "require-call"…}
+[unpkgPathPlugin] onResolve `filter: /.*/`
+{path: "scheduler", importer: "https://unpkg.com/react-dom@18.2.0/cjs/react-dom.development.js", namespace: "a", resolveDir: "/react-dom@18.2.0/cjs", kind: "require-call"…}
+[unpkgPathPlugin] onLoad packages :https://unpkg.com/scheduler
+[unpkgPathPlugin] onResolve `filter: /^.+//`
+{path: "./cjs/scheduler.development.js", importer: "https://unpkg.com/scheduler", namespace: "a", resolveDir: "/scheduler@0.23.0", kind: "require-call"…}
+[unpkgPathPlugin] onLoad packages :https://unpkg.com/scheduler@0.23.0/cjs/scheduler.development.js
+{errors: Array(0), warnings: Array(0), outputFiles: Array(1), metafile: undefined, mangleCache: undefined}
+​
+```
+
+```TypeScript
+import * as esbuild from "esbuild-wasm";
+
+export const unpkgPathPlugin = (): esbuild.Plugin => {
+  return {
+    name: "unpkg-path-plugin",
+    setup(build: esbuild.PluginBuild) {
+
+      // 例：
+      build.onResolve(
+        //
+        // `index.js`というpathに出くわした場合...
+        //
+        { filter: /(^index\.js$)/ },
+        (args: esbuild.OnResolveArgs) => {
+
+          if (args.path === "index.js") {
+            return { path: args.path, namespace: "a" };
+          }
+        }
+      );
+
+      // Solves related path
+      build.onResolve({ filter: /^\.+\// }, (args: esbuild.OnResolveArgs) => {
+
+        return {
+          namespace: "a",
+          path: new URL(args.path, "https://unpkg.com" + args.resolveDir + "/")
+            .href
+        };
+      });
+
+      // Solves other path
+      build.onResolve({ filter: /.*/ }, (args: esbuild.OnResolveArgs) => {
+
+        return {
+          namespace: "a",
+          path: `https://unpkg.com/${args.path}`
+        };
+      });
+    }
+  };
+};
+```
+
+```TypeScript
+// ...
+
+export const fetchPlugins = (inputCode: string): esbuild.Plugin => {
+  return {
+    name: "unpkg-path-plugin",
+    setup(build: esbuild.PluginBuild) {
+      // Fetches modules on entry point file
+      build.onLoad({ filter: /(^index\.js$)/ }, () => {
+        return {
+          loader: "jsx",
+          contents: inputCode
+        };
+      });
+
+      // Check cached module
+      build.onLoad({ filter: /.*/ }, async (args: esbuild.OnLoadArgs) => {
+        // Anyway load cached data.
+        const cachedResult = await cacheDB.getItem<esbuild.OnLoadResult>(
+          args.path
+        );
+        if (!cachedResult) {
+          return;
+        }
+        return cachedResult;
+      });
+
+      // CSS Modules will be embeded to HTML as style tag
+      build.onLoad(
+        { filter: /\S+\.css$/ },
+        async (args: esbuild.OnLoadArgs) => {
+          // DEBUG:
+          console.log("[unpkgPathPlugin] onLoad packages :" + args.path);
+
+          let result: esbuild.OnLoadResult = {};
+          const { data, request } = await axios.get(args.path);
+
+          const escaped = data
+            .replace(/\n/g, "")
+            .replace(/"/g, '\\"')
+            .replace(/'/g, "\\'");
+          const content = `
+                    const style = document.createElement("style");
+                    style.innerText = '${escaped}';
+                    document.head.appendChild(style);
+                `;
+
+          result = {
+            loader: "jsx",
+            contents: content,
+            resolveDir: new URL("./", request.responseURL).pathname
+          };
+          cacheDB.setItem<esbuild.OnLoadResult>(args.path, result);
+          return result;
+        }
+      );
+
+      // `/.*/`: すべての文字列に一致する
+      build.onLoad({ filter: /.*/ }, async (args: esbuild.OnLoadArgs) => {
+        // DEBUG:
+        console.log("[unpkgPathPlugin] onLoad packages :" + args.path);
+
+        let result: esbuild.OnLoadResult = {};
+
+        const { data, request } = await axios.get(args.path);
+
+        result = {
+          loader: "jsx",
+          contents: data,
+          resolveDir: new URL("./", request.responseURL).pathname
+        };
+        cacheDB.setItem<esbuild.OnLoadResult>(args.path, result);
+        return result;
+      });
+    }
+  };
+};
+
+
+```
+
+-   esbuild が entry ポイントのファイルを走査し、`import/require`を見つける
+-   import/require で指定されている path を解決するために onResolve へ送信する
+-
+
+onResolveArgs:
+
+importer:
+
+> これは、解決されるこのインポートを含むモジュールのパスです。このパスは、名前空間が file の場合にのみファイルシステムパスであることが保証されることに注意してください。インポーター モジュールを含むディレクトリに対する相対パスを解決したい場合は、仮想モジュールでも機能するため、代わりに solveDir を使用する必要があります。
+
+resolveDir:
+
+> これは、インポート パスをファイル システム上の実際のパスに解決するときに使用するファイル システム ディレクトリです。モジュールが`file` namespace 内のモジュールの場合、この値はデフォルトでモジュール パスのディレクトリ部分になります。仮想モジュールの場合、この値はデフォルトで空ですが、`onLoad Callback`はオプションで仮想モジュールに解決ディレクトリを与えることもできます。その場合、そのファイル内の未解決のパスのコールバックを解決するために提供されます。
+
+onResolveResults:
+
+-   path:
+
+> インポートを特定のパスに解決するには、これを空ではない文字列に設定します。これが設定されている場合、このモジュールのこのインポート パスに対して onResolve callback は実行されなくなります。これが設定されていない場合、esbuild は現在のコールバックの後に登録された on-resolve コールバックを引き続き実行します。その後、パスがまだ解決されない場合、esbuild はデフォルトで、現在のモジュールの解決ディレクトリに相対的なパスを解決します。
+
+-   external:
+
+> このプロパティを true にするとそのモジュールはバンドルに含まれずに、代わりに実行時に import されることになる
+
+-   namespace:
+
+> 設定しないとデフォルトで`file`になる
+
+つまり filesystem が前提になるので、ブラウザでは常にデフォルト以外を設定しないといけない
+
+> ファイル システム パスではないパスに解決したい場合は、名前空間をファイルまたは空の文字列以外の値に設定する必要があります。これにより、パスがファイル システム上の何かを指すものとして扱われないように esbuild に指示されます。
+
+-   errors and warnings
+
+> path 解決中に発生したエラーをログに記録したいときに使う

@@ -12,7 +12,7 @@
  * **************************************************/
 import React, { createContext, useContext, useReducer, Dispatch } from 'react';
 import semver from 'semver';
-import { usePackageJson } from '../hooks/usePackageJson';
+import { sortObjectByKeys } from '../utils';
 
 export interface iDependency {
     // moduleName: version
@@ -22,7 +22,8 @@ export interface iDependency {
 export enum Types {
     AddDependency = 'ADD_DEPENDENCY',
     RemoveDependency = 'REMOVE_DEPENDENCY',
-    Update = 'UPDATE_DEPENDENCY',
+    UpdatePackageJson = 'UPDATE_PACKAGEJSON',   // package.jsonの変更を反映させるので正しくはUpdateAsPackageJson?
+
 }
 
 type ActionMap<M extends { [index: string]: any }> = {
@@ -50,7 +51,7 @@ type iDependencyActionsPayload = {
         moduleName: string;
         version: string;
     };
-    [Types.Update]: {
+    [Types.UpdatePackageJson]: {
         dependencies: iDependency;
     };
 };
@@ -91,11 +92,6 @@ function dependenciesReducer(
 
             const { moduleName, version } = action.payload;
 
-            console.log(
-                `Add ${action.payload.moduleName}@${action.payload.version}`
-            );
-
-            // TODO: semverを使って有効なバージョンを決定する
             const guessedVersion = semver.valid(version)
                 ? `${semver.major(version)}.${semver.minor(version)}`
                 : 'latest';
@@ -103,11 +99,7 @@ function dependenciesReducer(
             const updatedDeps = Object.assign({}, dependencies);
             updatedDeps[moduleName] = guessedVersion;
 
-            // DEBUG:
-            console.log('be like this:');
-            console.log(updatedDeps);
-
-            return updatedDeps;
+            return sortObjectByKeys(updatedDeps);
         }
         case Types.RemoveDependency: {
             const { moduleName, version } = action.payload;
@@ -125,21 +117,26 @@ function dependenciesReducer(
             // delete dependencies[moduleName];
             const updatedDeps = Object.assign({}, dependencies);
             delete updatedDeps[moduleName];
-            //
-            // TODO: sort list
-            //
-            return updatedDeps;
+
+            return sortObjectByKeys(updatedDeps);
         }
-        case Types.Update: {
-            // TODO: sort them
-            // TODO: compare with dependencies
-            // TODO: apply change
+        case Types.UpdatePackageJson: {
+            // package.jsonの変更はそのまま反映させる
+            const updatedDeps = sortObjectByKeys(action.payload.dependencies);
+            Object.keys(updatedDeps).forEach(key => {
+                
+                const guessedVersion = semver.valid(updatedDeps[key])
+                    ? `${semver.major(updatedDeps[key])}.${semver.minor(updatedDeps[key])}`
+                    : 'latest';
+                updatedDeps[key] = guessedVersion;
+            });
+            return updatedDeps;
         }
         default: {
             throw new Error('Unknown action ');
         }
     }
-}
+};
 
 const initialDependencies: iDependency = {};
 

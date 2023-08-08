@@ -6,6 +6,8 @@ export const isJsonValid = (json: string): boolean => {
     } catch (e) {
         result = false;
     } finally {
+        console.log(`[isJsonValid] result: ${result}`);
+        
         return result;
     }
 };
