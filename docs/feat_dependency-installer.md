@@ -18,6 +18,8 @@ https://github.com/codesandbox/codesandbox-client/blob/df8844a3cb183fa4f5d42f86e
 -   [依存関係管理](#依存関係管理)
 -   [TypeScript + React のテンプレートデータを作ってみる](#TypeScript-+-Reactのテンプレートデータを作ってみる)
 
+-   [TypeScript Compiler](#TypeScript-Compiler)
+
 ## TODOs
 
 -   TODO: [dependency-data](#dependency-data)
@@ -836,3 +838,212 @@ onResolveResults:
 -   errors and warnings
 
 > path 解決中に発生したエラーをログに記録したいときに使う
+
+
+## TypeScript-Compiler
+
+知りたいのは、
+
+- TypeScriptのコンパイルエラーをどうやって取得して、どうやってわかりやすく表示しているのか。
+
+- 複数ファイルを手動tscコンパイルできるのか。
+
+#### How to detect errors and display them
+
+#### エディタ編集中のエラー：
+
+https://github.com/microsoft/TypeScript-Website/blob/7641e4f0bb477b5d8ff7d78d421e441af0ba7370/packages/playground/src/sidebar/showErrors.ts#L6
+
+playgroundのsidebarの`Errors`へ表示される。
+
+`monaco.editor.getModelMarkers({ resource: model.uri })`でエラー内容を取得しているみたい
+
+#### コンパイル実行時のエラー：
+
+playgroundの`Logs`へ表示される。
+
+https://github.com/microsoft/TypeScript-Website/blob/7641e4f0bb477b5d8ff7d78d421e441af0ba7370/packages/playground/src/sidebar/runtime.ts#L113
+
+```TypeScript
+export const runWithCustomLogs = (closure: Promise<string>, i: Function) => {
+  const noLogs = document.getElementById("empty-message-container")
+  const logContainer = document.getElementById("log-container")!
+  const logToolsContainer = document.getElementById("log-tools")!
+  if (noLogs) {
+    noLogs.style.display = "none"
+    logContainer.style.display = "block"
+    logToolsContainer.style.display = "flex"
+  }
+
+  // sidebarのLogへ内容を出力する
+  rewireLoggingToElement(
+    () => document.getElementById("log")!,
+    () => document.getElementById("log-container")!,
+    closure,
+    true,
+    i
+  )
+}
+
+// Thanks SO: https://stackoverflow.com/questions/20256760/javascript-console-log-to-html/35449256#35449256
+
+function rewireLoggingToElement(
+  eleLocator: () => Element,
+  eleOverflowLocator: () => Element,
+  closure: Promise<string>,
+  autoScroll: boolean,
+  i: Function
+) {
+  // consoleとはconsole.logのconsole
+  // https://developer.mozilla.org/ja/docs/Web/API/console
+  const rawConsole = console
+
+  closure.then(js => {
+    const replace = {} as any
+    bindLoggingFunc(replace, rawConsole, "log", "LOG")
+    bindLoggingFunc(replace, rawConsole, "debug", "DBG")
+    bindLoggingFunc(replace, rawConsole, "warn", "WRN")
+    bindLoggingFunc(replace, rawConsole, "error", "ERR")
+    replace["clear"] = clearLogs
+    const console = Object.assign({}, rawConsole, replace)
+    try {
+
+      const safeJS = sanitizeJS(js)
+      //   evalで実行してみて
+      eval(safeJS)
+    } catch (error) {
+      console.error(i("play_run_js_fail"))
+      console.error(error)
+
+      if (error instanceof SyntaxError && /\bexport\b/u.test(error.message)) {
+        console.warn(
+          'Tip: Change the Module setting to "CommonJS" in TS Config settings to allow top-level exports to work in the Playground'
+        )
+      }
+    }
+  })
+
+  function bindLoggingFunc(obj: any, raw: any, name: string, id: string) {
+    obj[name] = function (...objs: any[]) {
+      const output = produceOutput(objs)
+      const eleLog = eleLocator()
+      const prefix = `[<span class="log-${name}">${id}</span>]: `
+      const eleContainerLog = eleOverflowLocator()
+      allLogs.push(`${prefix}${output}<br>`)
+      eleLog.innerHTML = allLogs.join("<hr />")
+      if (autoScroll && eleContainerLog) {
+        eleContainerLog.scrollTop = eleContainerLog.scrollHeight
+      }
+      raw[name](...objs)
+    }
+  }
+
+
+  function produceOutput(args: any[]) {
+    let result: string = args.reduce((output: any, arg: any, index) => {
+      const textRep = objectToText(arg)
+      const showComma = index !== args.length - 1
+      const comma = showComma ? "<span class='comma'>, </span>" : ""
+      return output + textRep + comma + " "
+    }, "")
+
+    Object.keys(replacers).forEach(k => {
+      result = result.replace(new RegExp((replacers as any)[k], "g"), k)
+    })
+
+    return result
+  }
+
+```
+
+つまり、
+
+- typescriptでコンパイルされたコードを取得する
+- consoleオブジェクトへの出力を読み取れるようにconsoleオブジェクトと読み取り関数を結びつける
+- コンパイルコードを（問題ないコードか検査してから）evalで実行してみる
+- try...catchで取得してエラーをconsole出力。同時に結びつけられた関数が出力内容を読み取る
+
+という感じらしい。
+
+https://github.com/microsoft/TypeScript-Website/blob/7641e4f0bb477b5d8ff7d78d421e441af0ba7370/packages/playground/src/index.ts#L16
+
+```TypeScript
+// playgrondの`Run`ボタン
+const runButton = document.getElementById("run-button")
+  if (runButton) {
+    runButton.onclick = () => {
+      const run = sandbox.getRunnableJS()
+      const runPlugin = plugins.find(p => p.id === "logs")!
+      activatePlugin(runPlugin, getCurrentPlugin(), sandbox, tabBar, container)
+
+        // runは実行結果（コンパイル結果のコード）かと
+      runWithCustomLogs(run, i)
+
+      const isJS = sandbox.config.filetype === "js"
+      ui.flashInfo(i(isJS ? "play_run_js" : "play_run_ts"))
+      return false
+    }
+  }
+
+```
+
+#### やらなきゃいかんこと
+
+- 編集中のエラーと実行時のエラーはどこに出力するのか決める
+- consoleオブジェクトの扱い方
+- monaco.editor.getModelMarkersなどmarker関連の扱い方
+- esbuildのバンドルとコンパイルをどうやって両立させるのか決める
+- なんだかコンパイルがうまくいかないのでTypeSCript-websiteの復習
+- 
+
+#### Regain about how TypeScript code compiler works in website
+
+TypeScript-Website
+
+https://github.com/microsoft/TypeScript-Website/blob/7641e4f0bb477b5d8ff7d78d421e441af0ba7370/packages/sandbox/src/index.ts#L301
+
+
+```TypeScript
+/** Gets the JS  of compiling your editor's code */
+  const getRunnableJS = async () => {
+    // This isn't quite _right_ in theory, we can downlevel JS -> JS
+    // but a browser is basically always esnext-y and setting allowJs and
+    // checkJs does not actually give the downlevel'd .js file in the output
+    // later down the line.
+    if (isJSLang) {
+      return getText()
+    }
+    const result = await getEmitResult()
+    const firstJS = result.outputFiles.find((o: any) => o.name.endsWith(".js") || o.name.endsWith(".jsx"))
+    return (firstJS && firstJS.text) || ""
+  }
+```
+```TypeScript
+  const getWorker = isJSLang
+    ? monaco.languages.typescript.getJavaScriptWorker
+    : monaco.languages.typescript.getTypeScriptWorker
+
+  const getWorkerProcess = async (): Promise<TypeScriptWorker> => {
+    const worker = await getWorker()
+    // @ts-ignore
+    return await worker(model.uri)
+  }
+
+  /** Gets the results of compiling your editor's code */
+  const getEmitResult = async () => {
+    const model = editor.getModel()!
+    const client = await getWorkerProcess()
+    return await client.getEmitOutput(model.uri.toString())
+  }
+```
+
+まとめると、
+
+```TypeScript
+const client: monaco.languages.typescript.TypeScriptWorker = await monaco.language.typescript.getTypeScriptWorker;
+const result: ts.EmitOutput = await client.getEmitOutput(model.uri.toString());
+```
+
+ただし今のところundefinedが返されると。
+
+以前はなぜうまくいったのだろうか。以前の履歴を追う。
