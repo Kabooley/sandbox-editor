@@ -1023,6 +1023,8 @@ https://github.com/microsoft/TypeScript-Website/blob/7641e4f0bb477b5d8ff7d78d421
     ? monaco.languages.typescript.getJavaScriptWorker
     : monaco.languages.typescript.getTypeScriptWorker
 
+    // この`TypeScriptWorker`はmonaco-editorのtypescriptのworkerのことではなく
+    // カスタムワーカの可能性。
   const getWorkerProcess = async (): Promise<TypeScriptWorker> => {
     const worker = await getWorker()
     // @ts-ignore
@@ -1047,3 +1049,31 @@ const result: ts.EmitOutput = await client.getEmitOutput(model.uri.toString());
 ただし今のところundefinedが返されると。
 
 以前はなぜうまくいったのだろうか。以前の履歴を追う。
+
+#### compileがうまくいかない件の原因追及
+
+- 検証：compile対象コードの`defaultCode`が原因である。
+    否。単純コードにしても結果は変わらず。
+
+- 検証：custome workerが実は必要である。
+    [検証：customworker](#検証：customworker)
+
+#### 検証：customworker
+
+monaco-editorのTypeScriptカスタムワーカについて。
+
+https://github.com/microsoft/monaco-typescript/pull/65
+
+typescript workerのラッパーとかなんとか。
+
+https://github.com/microsoft/TypeScript-Website/tree/7641e4f0bb477b5d8ff7d78d421e441af0ba7370/packages/playground-worker
+
+カスタムワーカの型情報 tsWorker.ts
+
+https://github.com/microsoft/TypeScript-Website/blob/7641e4f0bb477b5d8ff7d78d421e441af0ba7370/packages/sandbox/src/tsWorker.ts#L4
+
+カスタムワーカを生成するにはワーカファクトリを使わないといけない？
+
+https://github.com/microsoft/monaco-typescript/pull/65#issuecomment-683926707
+
+とにかく上記の情報をまとめること。
