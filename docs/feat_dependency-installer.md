@@ -20,14 +20,18 @@ https://github.com/codesandbox/codesandbox-client/blob/df8844a3cb183fa4f5d42f86e
 
 ## TODOs
 
+TODO: ノートのまとめ。散らかった情報の集約。後から見て役に立つ情報という視点からまとめること。
+
 -   TODO: [dependency-data](#dependency-data)
 -   TODO: [Split Pane section](#Split-Pane-section)
 -   TODO: [実装：overmind](#実装：overmind)
--   TODO: [](#)
+-   TODO: [TypeScript compile](#TypeScript-compile)
 
 -   別件：意味のない git commit をなかったことにしたいときにどうすればいいのか
 
 -   [別件] [esbuild でマルチファイルをバンドルする方法](#esbuildでマルチファイルをバンドルする方法)
+
+
 
 ## View of SearchDependency
 
@@ -836,3 +840,157 @@ onResolveResults:
 -   errors and warnings
 
 > path 解決中に発生したエラーをログに記録したいときに使う
+
+#### esbuild.buildoptions
+
+参考
+
+https://github.com/evanw/esbuild/issues/1952
+
+#### loader
+
+https://esbuild.github.io/api/#loader
+
+たとえば typescript + react なら、
+
+`tsx`, `ts`, `js`, `jsx`, 他アセットの拡張子などを扱う。
+
+予め扱うファイルの種類を想定できれば適切にバンドルできるけど、
+
+想定外のファイルを扱うことにした場合、バンドル出来ないということかしら？
+
+#### 予め仮想ファイルの tree オブジェクトを渡して解決しておくプラグイン検証
+
+https://github.com/evanw/esbuild/issues/1952#issuecomment-1020006960
+
+検証中。
+
+
+## TypeScript compile
+
+どっかにまとめたノートを転記すること。
+
+このリポジトリの`sample`だと、TypeScript workerが渡したコードをコンパイルして渡してくれる。
+
+一応設定などを記録しておく。
+
+#### webpack.config.js
+
+```TypeScript
+const path = require('path');
+const HtmlWebPackPlugin = require('html-webpack-plugin');
+const ReactRefreshWebpackPlugin = require('@pmmmwh/react-refresh-webpack-plugin');
+
+const isDevelopment = process.env.NODE_ENV !== 'production';
+
+module.exports = {
+    mode: 'development',
+    entry: {
+        index: './src/index.tsx',
+
+        'editor.worker': 'monaco-editor/esm/vs/editor/editor.worker.js',
+        'json.worker': 'monaco-editor/esm/vs/language/json/json.worker',
+        'css.worker': 'monaco-editor/esm/vs/language/css/css.worker',
+        'html.worker': 'monaco-editor/esm/vs/language/html/html.worker',
+        'ts.worker': 'monaco-editor/esm/vs/language/typescript/ts.worker',
+    },
+    devServer: {
+        static: './dist',
+        hot: true,
+        port: 8080,
+        allowedHosts: 'auto',
+        // DEBUG:
+        // Only for development mode
+        headers: {
+            'Access-Control-Allow-Origin': '*', // unpkg.com
+            // 'Access-Control-Allow-Origin': 'unpkg.com',		// unpkg.com
+            'Access-Control-Allow-Headers': '*', // GET
+            'Access-Control-Allow-Methods': '*',
+        },
+    },
+    resolve: {
+        extensions: ['.*', '.js', '.jsx', '.tsx', '.ts'],
+    },
+    output: {
+        globalObject: 'self',
+        filename: '[name].bundle.js',
+        path: path.resolve(__dirname, 'dist'),
+    },
+    module: {
+        rules: [
+            {
+                test: /\.(js|jsx|tsx|ts)$/,
+                exclude: /node_modules/,
+                use: [
+                    {
+                        loader: require.resolve('babel-loader'),
+                        options: {
+                            presets: [
+                                '@babel/preset-env',
+                                '@babel/preset-typescript',
+                                '@babel/preset-react',
+                            ],
+                            plugins: [
+                                isDevelopment &&
+                                    require.resolve('react-refresh/babel'),
+                            ].filter(Boolean),
+                        },
+                    },
+                ],
+            },
+            {
+                test: /\.(sa|sc|c)ss$/,
+                use: ['style-loader', 'css-loader', 'sass-loader'],
+            },
+            {
+                test: /\.ttf$/,
+                use: ['file-loader'],
+            },
+            {
+                test: /\.(png|svg|jpg|jpeg|gif)$/i,
+                type: 'asset/resource',
+            },
+        ],
+    },
+    plugins: [
+        new HtmlWebPackPlugin({
+            template: 'src/index.html',
+        }),
+        isDevelopment && new ReactRefreshWebpackPlugin(),
+    ].filter(Boolean),
+};
+
+```
+
+しいて言えば`devServer`の設定の違いかしら。
+
+#### tsconfig.json
+
+```JSON
+{
+    "compilerOptions": {
+        "sourceMap": true,
+        "module": "ES2020",
+        "moduleResolution": "node",
+        "strict": true,
+        "target": "ES6",
+        "outDir": "./dist",
+        "lib": [
+            "dom",
+            "es5",
+            "es6",
+            "ES2016",
+            "es2015.collection",
+            "es2015.promise",
+            "WebWorker"
+        ],
+        "types": [],
+        "baseUrl": "./node_modules",
+        "jsx": "preserve",
+        "esModuleInterop": true,
+        "typeRoots": ["node_modules/@types"]
+    },
+    "include": ["./src/**/*"],
+    "exclude": ["node_modules"]
+}
+```
