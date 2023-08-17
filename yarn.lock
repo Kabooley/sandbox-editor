@@ -1300,6 +1300,18 @@
   dependencies:
     "@types/node" "*"
 
+"@typescript/ata@^0.9.4":
+  version "0.9.4"
+  resolved "https://registry.yarnpkg.com/@typescript/ata/-/ata-0.9.4.tgz#64475566cce093a1ea171558de1b98cd01f67b0f"
+  integrity sha512-PaJ16WouPV/SaA+c0tnOKIqYq24+m93ipl/e0Dkxuianer+ibc5b0/6ZgfCFF8J7QEp57dySMSP9nWOFaCfJnw==
+
+"@typescript/vfs@^1.5.0":
+  version "1.5.0"
+  resolved "https://registry.yarnpkg.com/@typescript/vfs/-/vfs-1.5.0.tgz#ed942922724f9ace8c07c80b006c47e5e3833218"
+  integrity sha512-AJS307bPgbsZZ9ggCT3wwpg3VbTKMFNHfaY/uF0ahSkYYrPF2dSSKDNIDIQAHm9qJqbLvCsSJH7yN4Vs/CsMMg==
+  dependencies:
+    debug "^4.1.1"
+
 "@webassemblyjs/ast@1.11.6", "@webassemblyjs/ast@^1.11.5":
   version "1.11.6"
   resolved "https://registry.yarnpkg.com/@webassemblyjs/ast/-/ast-1.11.6.tgz#db046555d3c413f8966ca50a95176a0e2c642e24"
