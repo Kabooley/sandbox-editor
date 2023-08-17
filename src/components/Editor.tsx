@@ -47,6 +47,8 @@ export const Editor: React.FC<iProps> = ({ onTranspile }) => {
     const divEl = useRef<HTMLDivElement>(null);
     const editor = useRef<monaco.editor.IStandaloneCodeEditor>();
     const model = useRef<monaco.editor.ITextModel>();
+    const disposable = useRef<monaco.IDisposable[]>([]);
+
     // let editor: monaco.editor.IStandaloneCodeEditor;
     // let model: monaco.editor.ITextModel;
     useEffect(() => {
@@ -59,6 +61,8 @@ export const Editor: React.FC<iProps> = ({ onTranspile }) => {
                 new monaco.Uri().with({ path: defaultPath })
             );
             editor.current.setModel(model.current);
+
+            disposable.current.push(editor.current.onDidChangeModelContent(onDidChangeContent));
 
             monaco.languages.typescript
                 .getTypeScriptWorker()
@@ -92,7 +96,7 @@ export const Editor: React.FC<iProps> = ({ onTranspile }) => {
                 })
                 .then((firstJs: ts.OutputFile | undefined) => {
                     setCompiled((firstJs && firstJs.text) || '');
-                    onTranspile((firstJs && firstJs.text) || '');
+                    // onTranspile((firstJs && firstJs.text) || '');
                 })
                 .catch((e) => console.error(e));
         }
@@ -134,9 +138,27 @@ export const Editor: React.FC<iProps> = ({ onTranspile }) => {
             })
             .then((firstJs: ts.OutputFile | undefined) => {
                 setCompiled((firstJs && firstJs.text) || '');
-                onTranspile((firstJs && firstJs.text) || '');
+                // onTranspile((firstJs && firstJs.text) || '');
             })
             .catch((e) => console.error(e));
+    };
+
+    const onDidChangeContent = (e: monaco.editor.IModelContentChangedEvent) => {
+        const model = editor.current?.getModel();
+        if(model) {
+            console.log(model.getValue());
+            handleMarkers();
+        }
+    };
+
+    const handleMarkers = () => {
+        const model = editor.current?.getModel();
+        if(model) {
+            const marker = monaco.editor.getModelMarkers({ resource: model.uri });
+            if(!marker.length) { console.log('No errors'); }
+            console.log("marker:");
+            console.log(marker);
+        }
     };
 
     return (

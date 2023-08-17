@@ -5,6 +5,8 @@
 -   [How TypeScript Playground transpiles TypeScript code](#How-TypeScript-Playground-transpiles-TypeScript-code)
 -   [How to transpile multiple files](#How-to-transpile-multiple-files)
 -   [Display Errors](#Display-Errors)
+- [esbuild content-type TypeScript](#esbuild-content-type-TypeScript)
+- [ファイル全体の型情報を基にコンパイルさせる](#ファイル全体の型情報を基にコンパイルさせる)
 
 ## TODOs
 
@@ -86,6 +88,155 @@ https://github.com/microsoft/TypeScript-Website/blob/7641e4f0bb477b5d8ff7d78d421
 playground の sidebar の`Errors`へ表示される。
 
 `monaco.editor.getModelMarkers({ resource: model.uri })`でエラー内容を取得しているみたい
+
+#### 実装：エディタ編集中のエラー
+
+```TypeScript
+// onDidChangeModelContentの時に呼出してみると...
+    const handleMarkers = () => {
+        const model = editor.current?.getModel();
+        if(model) {
+            const marker = monaco.editor.getModelMarkers({ resource: model.uri });
+            if(!marker.length) { console.log('No errors'); }
+            console.log("marker:");
+            console.log(marker);
+        }
+    };
+```
+
+次の結果が得られた。
+
+```JavaScript
+[
+    {
+        "resource": {
+            "$mid": 1,
+            "fsPath": "\\src\\index.tsx",
+            "_sep": 1,
+            "external": "file:///src/index.tsx",
+            "path": "/src/index.tsx",
+            "scheme": "file"
+        },
+        "owner": "typescript",
+        "code": "2792",
+        "severity": 8,
+        "message": "Cannot find module 'react-dom/client'. Did you mean to set the 'moduleResolution' option to 'node', or to add aliases to the 'paths' option?",
+        "startLineNumber": 1,
+        "startColumn": 28,
+        "endLineNumber": 1,
+        "endColumn": 46,
+        "relatedInformation": [],
+        "tags": []
+    },
+    {
+        "resource": {
+            "$mid": 1,
+            "fsPath": "\\src\\index.tsx",
+            "_sep": 1,
+            "external": "file:///src/index.tsx",
+            "path": "/src/index.tsx",
+            "scheme": "file"
+        },
+        "owner": "typescript",
+        "code": "2792",
+        "severity": 8,
+        "message": "Cannot find module 'react'. Did you mean to set the 'moduleResolution' option to 'node', or to add aliases to the 'paths' option?",
+        "startLineNumber": 2,
+        "startColumn": 19,
+        "endLineNumber": 2,
+        "endColumn": 26,
+        "relatedInformation": [],
+        "tags": []
+    },
+    {
+        "resource": {
+            "$mid": 1,
+            "fsPath": "\\src\\index.tsx",
+            "_sep": 1,
+            "external": "file:///src/index.tsx",
+            "path": "/src/index.tsx",
+            "scheme": "file"
+        },
+        "owner": "typescript",
+        "code": "2503",
+        "severity": 8,
+        "message": "Cannot find namespace 'JSX'.",
+        "startLineNumber": 5,
+        "startColumn": 17,
+        "endLineNumber": 5,
+        "endColumn": 20,
+        "relatedInformation": [],
+        "tags": []
+    },
+    {
+        "resource": {
+            "$mid": 1,
+            "fsPath": "\\src\\index.tsx",
+            "_sep": 1,
+            "external": "file:///src/index.tsx",
+            "path": "/src/index.tsx",
+            "scheme": "file"
+        },
+        "owner": "typescript",
+        "code": "17004",
+        "severity": 8,
+        "message": "Cannot use JSX unless the '--jsx' flag is provided.",
+        "startLineNumber": 7,
+        "startColumn": 9,
+        "endLineNumber": 7,
+        "endColumn": 36,
+        "relatedInformation": [],
+        "tags": []
+    },
+    {
+        "resource": {
+            "$mid": 1,
+            "fsPath": "\\src\\index.tsx",
+            "_sep": 1,
+            "external": "file:///src/index.tsx",
+            "path": "/src/index.tsx",
+            "scheme": "file"
+        },
+        "owner": "typescript",
+        "code": "17004",
+        "severity": 8,
+        "message": "Cannot use JSX unless the '--jsx' flag is provided.",
+        "startLineNumber": 8,
+        "startColumn": 11,
+        "endLineNumber": 8,
+        "endColumn": 17,
+        "relatedInformation": [],
+        "tags": []
+    },
+    {
+        "resource": {
+            "$mid": 1,
+            "fsPath": "\\src\\index.tsx",
+            "_sep": 1,
+            "external": "file:///src/index.tsx",
+            "path": "/src/index.tsx",
+            "scheme": "file"
+        },
+        "owner": "typescript",
+        "code": "17004",
+        "severity": 8,
+        "message": "Cannot use JSX unless the '--jsx' flag is provided.",
+        "startLineNumber": 14,
+        "startColumn": 13,
+        "endLineNumber": 14,
+        "endColumn": 20,
+        "relatedInformation": [],
+        "tags": []
+    }
+]
+```
+
+siverity: https://microsoft.github.io/monaco-editor/docs.html#enums/MarkerSeverity.html
+
+マーカーの種類っぽい。
+
+
+
 
 #### コンパイル実行時のエラー：
 
@@ -259,3 +410,52 @@ https://github.com/microsoft/TypeScript-Website/blob/7641e4f0bb477b5d8ff7d78d421
 https://github.com/microsoft/monaco-typescript/pull/65#issuecomment-683926707
 
 とにかく上記の情報をまとめること。
+
+
+## esbuild content-type TypeScript
+
+https://esbuild.github.io/content-types/#typescript
+
+#### まとめ
+
+- esbuildではTypeScriptの型チェックを行わないので、esbuildの外で型チェックを行わなくてはならない。
+
+- esbuildは複数のTypeScriptで書かれたモジュールがあったとしても、それらを各々独立してコンパイルするためimportされた内容が型情報なのか値なのか判断できない。
+
+つまり、ファイル間型参照はesbuildにとって無意味である。
+
+esbuildでTypeScriptはトランスパイル・バンドルできるけれど、型情報は無視してそれぞれのファイルは独立してトランスパイルするからTypeScriptの意味がなくなるのである。
+
+結局実行時にエラーが出る。
+
+なので、
+
+esbuildへ渡す前に、
+
+全体の型情報を元にトランスパイルさせて、
+
+それからesbuildへ渡してバンドルしてもらう
+
+という流れが正解になるはず...
+
+「全体の型情報」はどうやってtranspilerへわからせればいいんだ？
+
+
+
+
+#### 概要
+
+> このローダーは、.ts、.tsx、.mts、および .cts ファイルに対してデフォルトで有効になっています。つまり、esbuild には TypeScript 構文の解析と型注釈の破棄のサポートが組み込まれています。ただし、esbuild は型チェックを行わないため、型をチェックするには esbuild と並行して tsc -noEmit を実行する必要があります。これは esbuild 自体が行うものではありません。 次のような TypeScript の型宣言は解析されて無視されます (すべてを網羅したものではありません)。
+
+Caveats:
+
+#### ファイルは各々独立してコンパイルされる
+
+> 単一のモジュールをトランスパイルする場合でも、TypeScript コンパイラーは実際にはインポートされたファイルを解析するため、インポートされた名前が型であるか値であるかを判断できます。
+
+> ただし、esbuild や Babel (および TypeScript コンパイラーの transpileModule API) などのツールは、各ファイルを個別にコンパイルするため、インポートされた名前が型であるか値であるかを判断できません。 このため、esbuild で TypeScript を使用する場合は、isolateModules TypeScript 構成オプションを有効にする必要があります。このオプションを使用すると、各ファイルがファイル間の型参照を追跡せずに個別にコンパイルされる esbuild のような環境で、コンパイルミスを引き起こす可能性のある機能を使用できなくなります。たとえば、export {T} from './types' を使用して、別のモジュールから型を再エクスポートできなくなります (代わりに、export type {T} from './types' を使用する必要があります)。 #
+
+tsconfig: `isolateModules`
+
+https://www.typescriptlang.org/tsconfig#isolatedModules
+
