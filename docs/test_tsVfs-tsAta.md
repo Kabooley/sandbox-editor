@@ -2,15 +2,60 @@
 
 ## このブランチについて
 
-本来の src: `src_temporary-forbidden`
+全ての依存関係を解決して全てのファイルを前提にコンパイルできるのか検証する。
 
-monaco-editor の typescript.worker を使ってコードをコンパイルする手段の検証：`typescript-worker-compiler`
+-   本来の src: `src_temporary-forbidden`
+-   monaco-editor の typescript.worker を使ってコードをコンパイルする手段の検証：`typescript-worker-compiler`
+-   今回のテストのための src: `src`
 
-今回のテストのための src: `src`
+## わかったこと
+
+-   `@typescript/ata`は読み取らせたコードから自動で依存関係を検知して npm パッケージモジュールをインポートしてくれるけれど、ローカルファイル（`import moduleA from './moduleA';`とか)は無視してくれる。
+
+-   monaco-editor にローカルファイルを認識させるには、それらローカルファイルのモデルを作成する、かつ`addExtraLib`にローカルファイルを追加するの 2 つの条件が必要である。
+
+-   monaco-editor の設定として以下が必要である。
+
+```TypeScript
+/**
+ * Sync all the models to the worker eagerly.
+ * This enables intelliSense for all files without needing an `addExtraLib` call.
+ */
+monaco.languages.typescript.typescriptDefaults.setEagerModelSync(true);
+monaco.languages.typescript.javascriptDefaults.setEagerModelSync(true);
+
+/**
+ * Configure the typescript compiler to detect JSX and load type definitions
+ */
+const compilerOptions: monaco.languages.typescript.CompilerOptions = {
+    allowJs: true,
+    allowSyntheticDefaultImports: true,
+    alwaysStrict: true,
+    esModuleInterop: true,
+    forceConsistentCasingInFileNames: true,
+    isolatedModules: true,
+    jsx: monaco.languages.typescript.JsxEmit.ReactJSX,
+    module: monaco.languages.typescript.ModuleKind.ESNext,
+    moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
+    noEmit: true,
+    resolveJsonModule: true,
+    strict: true,
+    target: monaco.languages.typescript.ScriptTarget.ESNext,
+};
+
+monaco.languages.typescript.typescriptDefaults.setCompilerOptions(
+    compilerOptions
+);
+monaco.languages.typescript.javascriptDefaults.setCompilerOptions(
+    compilerOptions
+);
+```
+
+-   monaco-editor は typescript コンパイルを自動で行ってくれるっぽいので、tsconfig 土曜コンパイル設定`monaco.languages.typescript.CompilerOptions`を必要に応じて適切に設定する必要がある。
 
 ## TODOs
 
--   複数ファイルを扱うアプリケーションとして、そのファイルをインポートすると ata はどうするのか？
+-   [webpack: `Compile with Problems`](#webpack:-`Compile-with-Problems`)
 
 ## install dependency
 
@@ -357,11 +402,11 @@ export const Editor: React.FC<iProps> = () => {
 };
 ```
 
-使ってみてわかったこと:
+#### 使ってみてわかったこと
 
 -   `ata()`へ渡したコードが変更された、かつ依存関係に変更があった（import 文が追加されたとか）時にその依存関係を自動的に取得してくれる
 -   取得した依存関係は`finished`の引数で取得できる
--   すでに実装済の typings.worker より、自動で依存関係の検知・追加などをしてくれる分こっちの方が優れている。（そして自作じゃないからボロがない）
+-   すでに実装済の typings.worker より、自動で依存関係の検知・追加などをしてくれる分こっちの方が優れている。（そして自作じゃないからボロがない!!）
 -   便利、完全である。
 
 ## `@typescript/vfs`
@@ -457,6 +502,66 @@ const env = createVirtualTypeScriptEnvironment(system, [], ts, compilerOptions, 
 
 まずはこいつを使うらしい。
 
-## 問題
+#### 検証
 
--   webpack が compile warning を出す。
+さっぱりわからんからとにかく使い倒す
+
+`vfsenv.getSourceFile(getFilenameFromPath('index.tsx'))`
+
+出力結果：
+
+```TypeScript
+ambientModuleNames: []
+amdDependencies: []
+bindDiagnostics: []
+bindSuggestionDiagnostics: undefined
+checkJsDirective: undefined
+classifiableNames: Set(3) {'React', 'ReactDOM', 'App'}
+commentDirectives: undefined
+end: 332
+endFlowNode: {flags: 512, antecedent: {…}, node: NodeObject}
+endOfFileToken: TokenObject {pos: 332, end: 332, flags: 0, modifierFlagsCache: 0, transformFlags: 0, …}
+externalModuleIndicator: NodeObject {pos: 0, end: 26, flags: 0, modifierFlagsCache: 0, transformFlags: 0, …}
+fileName: "index.tsx"
+flags: 0
+hasNoDefaultLib: false
+identifierCount: 17
+identifiers: Map(13) {'React' => 'React', 'react' => 'react', 'ReactDOM' => 'ReactDOM', 'react-dom/client' => 'react-dom/client', 'App' => 'App', …}
+impliedNodeFormat: undefined
+imports: (4) [NodeObject, NodeObject, NodeObject, NodeObject]
+isDeclarationFile: false
+kind: 311
+languageVariant: 1
+languageVersion: 99
+libReferenceDirectives: []
+lineMap: undefined
+locals: Map(5) {'React' => SymbolObject, 'ReactDOM' => SymbolObject, 'App' => SymbolObject, 'rootElement' => SymbolObject, 'root' => SymbolObject}
+modifierFlagsCache: 0
+moduleAugmentations: []
+nextContainer: undefined
+nodeCount: 53
+originalFileName: "index.tsx"
+packageJsonLocations: undefined
+packageJsonScope: undefined
+parent: undefined
+parseDiagnostics: []
+path: "/index.tsx"
+pos: 0
+pragmas: Map(0) {size: 0}
+referencedFiles: []
+resolvedModules: {get: ƒ, set: ƒ, delete: ƒ, has: ƒ, forEach: ƒ, …}
+resolvedPath: "/index.tsx"
+resolvedTypeReferenceDirectiveNames: undefined
+scriptKind: 4
+scriptSnapshot: StringScriptSnapshot {text: 'import React from "react";\n      import ReactDOM f…     <App />\n        </React.StrictMode>\n      );'}
+setExternalModuleIndicator: (file) => {…}
+statements: (6) [NodeObject, NodeObject, NodeObject, NodeObject, NodeObject, NodeObject, pos: 0, end: 332, hasTrailingComma: false, transformFlags: 4457475]
+symbol: SymbolObject {id: 0, mergeId: 0, flags: 512, escapedName: '"index"', declarations: Array(1), …}
+symbolCount: 8
+text: "import React from \"react\";\n      import ReactDOM from \"react-dom/client\";\n      import App from \"./App\";\n      \n      const rootElement = document.getElementById(\"root\")!;\n      const root = ReactDOM.createRoot(rootElement);\n      \n      root.render(\n        <React.StrictMode>\n          <App />\n        </React.StrictMode>\n      );"
+transformFlags: 4457475
+typeReferenceDirectives: []
+version: "3"
+```
+
+## webpack: `Compile with Problems`
