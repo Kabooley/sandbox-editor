@@ -1,10 +1,15 @@
 /*****************************************
- * 選択ファイルの同期の実装：選択ファイルが切り替わったら、
- * state.currentFilePathとstate.currentCodeを選択中ファイルのものに切り替える。
- *
- *
- * fileが切り替わったことを知る手段：files.find(f => f.isSelected())
- *
+ * 何をするクラスなの？
+ * MonacoEdotor.tsxと他の機能の間の連携機能をもたらすクラス。
+ * 
+ * - MonacoEditorの現在のモデルのonDidChangeModelContentから値を取得してbundleワーカへ渡す
+ * - onDidChangeModelContentのたびに値をFilesContextへdispatch()する
+ * 
+ * 
+ * TODO:
+ * - extraLibs: Mapはここで保持するべきなのか？contextに移すべきか？
+ * - @typescript/ataを導入の検討。
+ * - fetchLibsWorkerは@typescripit/ataへ置き換える。すくなくともここでやらなくてようなるかと。
  * ***************************************/
 import React from 'react';
 import * as monaco from 'monaco-editor';
@@ -25,8 +30,6 @@ import { OrderTypes, iFetchResponse } from '../worker/types';
 // import MonacoEditor from './Monaco/MonacoEditor';
 import MonacoEditor from './Monaco/MonacoEditor';
 import { getFilenameFromPath, isJsonValid, sortObjectByKeys } from '../utils';
-import debounce from 'lodash/debounce';
-import isEqual from 'lodash/isEqual';
 
 interface iProps {
     files: File[];
@@ -72,7 +75,6 @@ class EditorContainer extends React.Component<iProps, iState> {
         // currentDependencies: {},
     };
     _bundleWorker: Worker | undefined;
-    _fetchLibsWorker: Worker | undefined;
 
     constructor(props: iProps) {
         super(props);
@@ -83,9 +85,6 @@ class EditorContainer extends React.Component<iProps, iState> {
         this._onChangeSelectedTab = this._onChangeSelectedTab.bind(this);
         this._onBundled = this._onBundled.bind(this);
         this._onDidChangeModel = this._onDidChangeModel.bind(this);
-        this._onMessageOfTypings = this._onMessageOfTypings.bind(this);
-        this._addTypings = this._addTypings.bind(this);
-        this._getDependenciesFromPackageJson = this._getDependenciesFromPackageJson.bind(this);
     }
 
     componentDidMount() {
@@ -101,29 +100,16 @@ class EditorContainer extends React.Component<iProps, iState> {
                 currentCode: selectedFile.getValue(),
             });
 
-        const dependencies = this._getDependenciesFromPackageJson(files);
-
         if (window.Worker) {
             this._bundleWorker = new Worker(
                 new URL('/src/worker/bundle.worker.ts', import.meta.url),
                 { type: 'module' }
-            );
-            this._fetchLibsWorker = new Worker(
-                new URL('/src/worker/fetchLibs.worker.ts', import.meta.url)
-                // {type: 'module' }
             );
             this._bundleWorker.addEventListener(
                 'message',
                 this._onBundled,
                 false
             );
-            this._fetchLibsWorker.addEventListener(
-                'message',
-                this._onMessageOfTypings,
-                false
-            );
-
-            this._fetchTyping(dependencies);
         }
     }
 
@@ -144,32 +130,6 @@ class EditorContainer extends React.Component<iProps, iState> {
                     currentCode: selectedFile.getValue(),
                 });
         }
-        // In case current file is package.json
-        // 
-        // まだ無限ループ
-        const packagejson = files.find(f => /^package\.json$/.test(f.getPath()) )?.getValue();
-
-        if(/^package\.json$/.test(this.state.currentFilePath) && isJsonValid(packagejson!)) {
-            const packageJsonCode = JSON.parse(packagejson!);
-            const latestDependencies = sortObjectByKeys({...packageJsonCode.dependencies, ...packageJsonCode.devDependencies});
-            const prevDependencies = sortObjectByKeys(dependencies);
-
-            // if(!isEqual(latestDependencies, prevDependencies)) {
-
-            //     // DEBUG:
-            //     console.log("[EditorContainer][componentDidUpdate] dispatch latest package.json dependencies");
-
-            //     dispatchDependencies({
-            //         type: dependenciesContextTypes.UpdatePackageJson,
-            //         payload: {
-            //             dependencies: latestDependencies
-            //         }
-            //     });
-            // }
-
-            console.log(latestDependencies);
-            console.log(prevDependencies);
-        }
     };
 
 
@@ -181,27 +141,21 @@ class EditorContainer extends React.Component<iProps, iState> {
                 false
             );
         this._bundleWorker && this._bundleWorker.terminate();
-        this._fetchLibsWorker &&
-            this._fetchLibsWorker.removeEventListener(
-                'message',
-                this._onMessageOfTypings,
-                false
-            );
-        this._fetchLibsWorker && this._fetchLibsWorker.terminate();
     }
 
-    // Mainly runs when editor value has changed.
+    /**
+     * Dispatches code to FilesContext to update file's value.
+     * 
+     * @param {string} code - current model code onDidChangeModelContent.
+     * @param {string} path - File path of current model.
+     * 
+     * */ 
     _onEditorContentChange(code: string, path: string) {
-        // DEBUG:
-        console.log('[EditorContainer] _onEditorcontentChange:');
-        console.log(this.state.currentCode);
-        console.log(code);
 
         this.setState({ currentCode: code });
         this.props.dispatchFiles({
             type: filesContextTypes.Change,
             payload: {
-                // targetFilePath: this.state.currentFilePath,
                 targetFilePath: path,
                 changeProp: {
                     newValue: code,
@@ -211,6 +165,7 @@ class EditorContainer extends React.Component<iProps, iState> {
     }
 
     // NOTE: Temporary method.
+    // send current model code to bundle worker.
     _onSubmit() {
         this._bundleWorker &&
             this._bundleWorker.postMessage({
@@ -231,113 +186,16 @@ class EditorContainer extends React.Component<iProps, iState> {
                     error: err,
                 },
             });
-    }
-
-    // Callback for 'message' event of fetchLibs.worker
-    _onMessageOfTypings(e: MessageEvent<iFetchResponse>) {
-        const { name, version, typings, err } = e.data;
-        if (err) throw err;
-
-        // DEBUG:
-        console.log('[EditorContainer][_onMessageOfTypings] typings:');
-        console.log(typings);
-
-        typings && this._addTypings(typings);
-    }
-
-    // Register typing data to monaco-editor library.
-    _addTypings = (typings: { [key: string]: string }) => {
-        Object.keys(typings).forEach((path) => {
-            const extraLib = extraLibs.get(path);
-
-            if (extraLib) {
-                extraLib.js.dispose();
-                extraLib.ts.dispose();
-            }
-
-            // Monaco Uri parsing contains a bug which escapes characters unwantedly.
-            // This causes package-names such as `@expo/vector-icons` to not work.
-            // https://github.com/Microsoft/monaco-editor/issues/1375
-            let uri = monaco.Uri.from({ scheme: 'file', path }).toString();
-            if (path.includes('@')) {
-                uri = uri.replace('%40', '@');
-            }
-
-            const js =
-                monaco.languages.typescript.javascriptDefaults.addExtraLib(
-                    typings[path],
-                    uri
-                );
-            const ts =
-                monaco.languages.typescript.typescriptDefaults.addExtraLib(
-                    typings[path],
-                    uri
-                );
-
-            extraLibs.set(path, { js, ts });
-        });
     };
 
-    // Request fetchLibs.worker to fetch typing data.
-    _fetchTyping(dependencies: { [key: string]: string }) {
-        Object.keys(dependencies).forEach((key) => {
-            // DEBUG:
-            console.log(
-                `[EditorContainer][_fetchTyping] sent dependency: ${key}@${dependencies[key]}`
-            );
-
-            this._fetchLibsWorker &&
-                this._fetchLibsWorker.postMessage({
-                    order: 'fetch-libs',
-                    name: key,
-                    version: dependencies[key],
-                });
-        });
-    }
-
-    // Save previous model value
-    /**
-     * Detect if it's package.json
-     * 
-     * 
-     * */ 
-    _onDidChangeModel(oldModelPath: string, newModelPath: string) {
-        // this.props.dispatchFiles({
-        //     type: filesContextTypes.Change,
-        //     payload: {
-        //         targetFilePath: path,
-        //         changeProp: {
-        //             newValue: value,
-        //         },
-        //     },
-        // });
-
-        // Set parser if current module is package.json
-        if(/^package\.json$/.test(newModelPath)) {
-            // DEBUG: 
-            console.log("[EditorContainer][onDidChangeModle] now model is package.json.");
-            // この時点のdependenciesを記録しておくとか？
-        }
-        if(/^package\.json$/.test(oldModelPath)) {
-            // DEBUG: 
-            console.log("[EditorContainer][onDidChangeModle] now model is NOT package.json.");
-            // この時点のdependenciesを記録しておくとか？
-        }
-    }
+    _onDidChangeModel(oldModelPath: string, newModelPath: string) {};
 
     _onChangeSelectedTab(selected: string) {
         this.props.dispatchFiles({
             type: filesContextTypes.ChangeSelectedFile,
             payload: { selectedFilePath: selected },
         });
-    }
-
-    _getDependenciesFromPackageJson(files: File[]) {
-        const packagejson = files.find(f => /^package\.json$/.test(f.getPath()) )?.getValue();
-        if(!isJsonValid(packagejson!)) { return {}; }
-        const { dependencies, devDependencies } = JSON.parse(packagejson!);
-        return {...dependencies, ...devDependencies};
-    }
+    };
 
     render() {
         return (

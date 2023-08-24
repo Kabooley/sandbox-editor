@@ -1,8 +1,9 @@
 /***********************************************************
- * Wrapper of monaco-editor
- *
- * NOTE: monaco-editor settings ref:
- * https://github.com/expo/snack/blob/main/website/src/client/components/Editor/MonacoEditor.tsx
+ * 
+ * Props:
+ * - files: addExtraLib、createModelするため常に全てのファイルが必要
+ * - path: 現在開いているファイルのpath。このpathを基にsetModel()する。
+ * 
  * *********************************************************/
 import React from 'react';
 import * as monaco from 'monaco-editor';
@@ -32,10 +33,6 @@ self.MonacoEnvironment = {
         return './editor.worker.bundle.js';
     },
 };
-
-// いまのとろこ独自テーマを設ける予定はない...
-// monaco.editor.defineTheme('light', light);
-// monaco.editor.defineTheme('dark', dark);
 
 /**
  * Disable typescript's diagnostics for JavaScript files.
@@ -154,7 +151,6 @@ const editorStates = new Map<
  *
  * */
 export default class MonacoEditor extends React.Component<iProps, iState> {
-    _typingsWorker: Worker | undefined;
     _refEditorNode = React.createRef<HTMLDivElement>();
     _refEditor: Monaco.editor.IStandaloneCodeEditor | null = null;
     _disposables: monaco.IDisposable[] = [];
@@ -177,9 +173,6 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
      * TODO: this.props.pathが空文字列の場合もあるのでその対応
      * */
     componentDidMount() {
-        this._typingsWorker = new Worker('', { type: 'module' });
-        this._typingsWorker?.addEventListener('message', () => {});
-
         const { files, path, onEditorContentChange, ...options } = this.props;
 
         // Generate Editor instance.
@@ -188,8 +181,6 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
             options
         );
         this._refEditor = editor;
-
-        // DEBUG:
 
         this._disposables = [editor];
         // Subscribe onChange handler for current model content.
@@ -264,7 +255,6 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
             );
         this._disposables.forEach((d) => d.dispose());
         monaco.editor.getModels().forEach((m) => m.dispose());
-        this._typingsWorker?.terminate();
     }
 
     _initializeFile = (file: File) => {

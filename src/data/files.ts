@@ -1,37 +1,31 @@
-export interface iFile {
-    path: string;
-    language: string;
-    value: string;
-    isFolder: boolean;
-}
+import type { iFile } from './types';
+import { getFileLanguage } from '../utils';
 
 export const files: iFile[] = [
-    {
-        path: 'public',
-        language: '',
-        value: '',
-        isFolder: true,
-    },
-    {
-        path: 'public/index.html',
-        language: 'html',
-        value: `<!DOCTYPE html>\r\n<html>\r\n<head>\r\n<meta charset="utf-8" />\r\n<title>React TypeScript</title>\r\n</head>\r\n<body>\r\n<div id="root"></div>\r\n</body>\r\n</html>`,
-        isFolder: false,
-    },
-    {
-        path: 'src',
-        language: '',
-        value: '',
-        isFolder: true,
-    },
-    {
-        path: 'src/App.ts',
-        language: 'typescript',
-        value: `import React from 'react';
-      import "./styles.css";
+  {
+    path: 'public',
+    language: '',
+    value: '',
+    isFolder: true
+  },
+  {
+    path: 'public/index.html',
+    language: 'html',
+    value: `<!DOCTYPE html>\r\n<html>\r\n<head>\r\n<meta charset="utf-8" />\r\n<title>React TypeScript</title>\r\n</head>\r\n<body>\r\n<div id="root"></div>\r\n</body>\r\n</html>`,
+    isFolder: false
+  },
+  {
+    path: 'src',
+    language: '',
+    value: '',
+    isFolder: true
+  },
+  {
+      path: 'src/App.ts',
+      language: 'typescript',
+      value: `import "./styles.css";
 
-      // React.JSX.Element annotation is necessary so that compiler know this is jsx.
-      export default function App(): React.JSX.Element {
+      export default function App() {
         return (
           <div className="App">
             <h1>Hello CodeSandbox</h1>
@@ -40,12 +34,12 @@ export const files: iFile[] = [
         );
       }
       `,
-        isFolder: false,
-    },
-    {
-        path: 'src/index.tsx',
-        language: 'typescript',
-        value: `import React from "react";
+      isFolder: false
+  },
+  {
+      path: 'src/index.tsx',
+      language: 'typescript',
+      value: `import React from "react";
       import ReactDOM from "react-dom/client";
       import App from "./App";
       
@@ -57,22 +51,22 @@ export const files: iFile[] = [
           <App />
         </React.StrictMode>
       );`,
-        isFolder: false,
-    },
-    {
-        path: 'src/styles.css',
-        language: 'css',
-        value: `.App {
+      isFolder: false
+  },
+  {
+      path: 'src/styles.css',
+      language: 'css',
+      value: `.App {
         font-family: sans-serif;
         text-align: center;
       }
       `,
-        isFolder: false,
-    },
-    {
-        path: 'package.json',
-        language: 'json',
-        value: `{
+      isFolder: false
+  },
+  {
+    path: 'package.json',
+    language: 'json',
+    value: `{
       "name": "react-typescript",
       "version": "1.0.0",
       "description": "React and TypeScript example starter project",
@@ -106,12 +100,12 @@ export const files: iFile[] = [
         "not op_mini all"
       ]
     }`,
-        isFolder: false,
-    },
-    {
-        path: 'tsconfig.json',
-        language: 'json',
-        value: `{
+    isFolder: false
+  },
+  {
+    path: 'tsconfig.json',
+    language: 'json',
+    value: `{
       "include": [
           "./src/**/*"
       ],
@@ -125,6 +119,66 @@ export const files: iFile[] = [
           "jsx": "react-jsx"
       }
   }`,
-        isFolder: false,
-    },
+    isFolder: false
+  }
 ];
+
+export class File {
+  constructor(
+      private _path: string,
+      private _value: string,
+      private _language: string,
+      private _isFolder: boolean,
+
+      // NOTE: experimental
+      private _selected: boolean = false
+  ){};
+
+  _isPathValid(path: string): boolean {
+      // TODO: make sure path is valid
+      return true;
+  };
+
+  setPath(path: string) {
+      // TODO: make sure path is not include non exist folder
+      // if(isFilenameValid(path)){
+      if(this._isPathValid(path)){
+          this._path = path;
+          const language = getFileLanguage(path);
+          this._language = language !== undefined ? language : "";
+      }
+  };
+
+  setValue(value: string) {
+      this._value = value;
+  };
+
+  getPath(): string {
+      return this._path;
+  };
+
+  getValue(): string {
+      return this._value;
+  };
+
+  isFolder(): boolean {
+      return this._isFolder;
+  };
+
+  // temporary
+  getLanguage(): string {
+    return this._language;
+  };
+
+  setSelected(): void {
+    this._selected = true;
+  };
+
+  unselected(): void {
+    this._selected = false;
+  };
+  
+  isSelected(): boolean {
+    return this._selected;
+  };
+};

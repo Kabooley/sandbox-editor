@@ -4,13 +4,15 @@ import React, {
     useState,
     useCallback,
     useMemo,
+    useContext,
 } from 'react';
 import * as monaco from 'monaco-editor';
 import ts from 'typescript';
-import * as ATA from '@typescript/ata';
-import * as tsvfs from '@typescript/vfs';
+// import * as ATA from '@typescript/ata';
+// import * as tsvfs from '@typescript/vfs';
 import type { iFile } from '../data/files';
 import { getFilenameFromPath, getModelByPath } from '../utils';
+import { TypingLibsContext } from '../context/TypingLibsContext';
 
 // @ts-ignore
 self.MonacoEnvironment = {
@@ -51,10 +53,10 @@ const compilerOptions: monaco.languages.typescript.CompilerOptions = {
     jsx: monaco.languages.typescript.JsxEmit.ReactJSX,
     module: monaco.languages.typescript.ModuleKind.ESNext,
     moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
-    noEmit: true,
     resolveJsonModule: true,
     strict: true,
     target: monaco.languages.typescript.ScriptTarget.ESNext,
+    // noEmit: true,        // To avoid `emitSkipped` be true when TypeScriptWorker..client.getEmitOutput
 };
 
 monaco.languages.typescript.typescriptDefaults.setCompilerOptions(
@@ -66,7 +68,7 @@ monaco.languages.typescript.javascriptDefaults.setCompilerOptions(
 
 interface iProps {
     files: iFile[];
-}
+};
 
 const isJSLang = false;
 
@@ -80,65 +82,7 @@ const isJSLang = false;
 
 // DO NOT "TypeScript". Always lower case
 const defaultLanguage = 'typescript';
-// const defaultCode = `import { createRoot } from 'react-dom/client';\r\nimport React from 'react';\r\nimport 'bulma/css/bulma.css';\r\n\r\nconst App = (): JSX.Element => {\r\n    return (\r\n        <div className=\"container\">\r\n          <span>REACT</span>\r\n        </div>\r\n    );\r\n};\r\n\r\nconst root = createRoot(document.getElementById('root'));\r\nroot.render(<App />);`;
-// const defaultPath = 'src/index.tsx';
-
-const extraLibs = new Map<
-    string,
-    { js: monaco.IDisposable; ts: monaco.IDisposable }
->();
-
-const ataConfig: ATA.ATABootstrapConfig = {
-    projectName: 'My ATA Project',
-    typescript: ts,
-    logger: console,
-    delegate: {
-        receivedFile: (code: string, path: string) => {
-            // Add code to your runtime at the path...
-            console.log('[ata][recievedFile] path:');
-            console.log(path);
-        },
-        started: () => {
-            console.log('ATA start');
-        },
-        progress: (downloaded: number, total: number) => {
-            console.log(`Got ${downloaded} out of ${total}`);
-        },
-        finished: (vfs) => {
-            console.log('ATA done', vfs);
-            for (const [key, value] of vfs.entries()) {
-                const cachedLib = extraLibs.get(key);
-                if (cachedLib) {
-                    cachedLib.js.dispose();
-                    cachedLib.ts.dispose();
-                }
-                // Monaco Uri parsing contains a bug which escapes characters unwantedly.
-                // This causes package-names such as `@expo/vector-icons` to not work.
-                // https://github.com/Microsoft/monaco-editor/issues/1375
-                let uri = monaco.Uri.from({
-                    scheme: 'file',
-                    path: key,
-                }).toString();
-                if (key.includes('@')) {
-                    uri = uri.replace('%40', '@');
-                }
-
-                const js =
-                    monaco.languages.typescript.javascriptDefaults.addExtraLib(
-                        value,
-                        uri
-                    );
-                const ts =
-                    monaco.languages.typescript.typescriptDefaults.addExtraLib(
-                        value,
-                        uri
-                    );
-
-                extraLibs.set(key, { js, ts });
-            }
-        },
-    },
-};
+const defaultPath = 'src/index.tsx';
 
 /***
  *
@@ -151,54 +95,38 @@ export const Editor: React.FC<iProps> = ({ files }) => {
     );
     const divEl = useRef<HTMLDivElement>(null);
     const editor = useRef<monaco.editor.IStandaloneCodeEditor>();
-    // const model = useRef<monaco.editor.ITextModel>();
     const disposable = useRef<monaco.IDisposable[]>([]);
-    const ata = useCallback(ATA.setupTypeAcquisition(ataConfig), []);
-    const vfsenv = useMemo(() => {
-        const customTransformers = {
-            /* わからんからから */
-        };
-        const vfs = new Map<string, string>();
-        const system = tsvfs.createSystem(vfs);
-        return tsvfs.createVirtualTypeScriptEnvironment(
-            system,
-            [],
-            ts,
-            compilerOptions,
-            customTransformers
-        );
-    }, []);
+    const addTypings = useContext(TypingLibsContext);
 
     useEffect(() => {
         console.log('on did mount');
         if (divEl.current) {
-            const selectedFile = files.find((f) => f.path === 'src/index.tsx');
+            const selectedFile = files.find((f) => f.path === defaultPath);
             editor.current = monaco.editor.create(divEl.current);
-            // model.current = monaco.editor.createModel(
-            //     selectedFile!.value,
-            //     defaultLanguage,
-            //     new monaco.Uri().with({ path: selectedFile!.path })
-            // );
-            // editor.current.setModel(model.current);
 
             disposable.current.push(
                 editor.current.onDidChangeModelContent(onDidChangeContent)
             );
 
+            // DEBUG:
+            console.log('[Editor] addTypings');
+            console.log(addTypings);
+
             openFile(selectedFile!);
             files.forEach((f) => {
                 if (f.isFolder) return;
                 initializeFile(f);
-                addVfsAsLib(f);
+                addTypings(
+                    f.value,
+                    monaco.Uri.from({ scheme: 'file', path: f.path }).toString()
+                );
             });
-            generateVFS(files);
             sendTsCompiler();
-            ata(editor.current.getModel()!.getValue());
         }
 
         return () => {
             // DEBUG:
-            console.log('on will unmount');
+            console.log('[Editor][Will unmount]');
 
             monaco.editor.getModels().forEach((m) => m.dispose());
             editor.current && editor.current.dispose();
@@ -207,14 +135,7 @@ export const Editor: React.FC<iProps> = ({ files }) => {
         };
     }, []);
 
-    useEffect(() => {
-        console.log('[Editor][Did update]');
-
-        console.log(
-            monaco.languages.typescript.typescriptDefaults.getExtraLibs()
-        );
-        console.log(monaco.editor.getModels());
-    });
+    useEffect(() => {});
 
     const onClick = async () => {
         // DEBUG:
@@ -225,9 +146,8 @@ export const Editor: React.FC<iProps> = ({ files }) => {
     const onDidChangeContent = (e: monaco.editor.IModelContentChangedEvent) => {
         const model = editor.current?.getModel();
         if (model) {
-            ata(model.getValue());
+            addTypings(model.getValue(), model.uri.toString());
             handleMarkers();
-            console.log(vfsenv.getSourceFile(getFilenameFromPath('index.tsx')));
         }
     };
 
@@ -283,23 +203,6 @@ export const Editor: React.FC<iProps> = ({ files }) => {
             .catch((e) => console.error(e));
     };
 
-    const generateVFS = (files: iFile[]) => {
-        // Send files to tsvfs
-        files.forEach((f) => {
-            if (!f.isFolder) {
-                vfsenv.createFile(
-                    (
-                        monaco.Uri.from({
-                            scheme: 'file',
-                            path: getFilenameFromPath(f.path),
-                        }) as monaco.Uri
-                    ).toString(),
-                    f.value
-                );
-            }
-        });
-    };
-
     // monaco-editor model generate.
     const initializeFile = (file: iFile) => {
         let model = getModelByPath(file.path);
@@ -338,35 +241,6 @@ export const Editor: React.FC<iProps> = ({ files }) => {
             editor.current.setModel(model);
             // ...
         }
-    };
-
-    const addVfsAsLib = (file: iFile) => {
-        const cachedLib = extraLibs.get(file.path);
-        if (cachedLib) {
-            cachedLib.js.dispose();
-            cachedLib.ts.dispose();
-        }
-        // Monaco Uri parsing contains a bug which escapes characters unwantedly.
-        // This causes package-names such as `@expo/vector-icons` to not work.
-        // https://github.com/Microsoft/monaco-editor/issues/1375
-        let uri = monaco.Uri.from({
-            scheme: 'file',
-            path: file.path,
-        }).toString();
-        if (file.path.includes('@')) {
-            uri = uri.replace('%40', '@');
-        }
-
-        const js = monaco.languages.typescript.javascriptDefaults.addExtraLib(
-            file.value,
-            uri
-        );
-        const ts = monaco.languages.typescript.typescriptDefaults.addExtraLib(
-            file.value,
-            uri
-        );
-
-        extraLibs.set(file.path, { js, ts });
     };
 
     return (
