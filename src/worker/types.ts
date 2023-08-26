@@ -16,7 +16,7 @@ interface iResponse {
     err: Error | null;
 }
 
-// --- BUNDLE --- 
+// --- BUNDLE ---
 
 export interface iBuildResult extends iResponse {
     bundledCode: string;
@@ -30,7 +30,8 @@ export interface iBuildResult extends iResponse {
  * @property {Error | null} err - Error occured during bundling.
  * */
 export interface iOrderBundle extends iRequest {
-    rawCode: string;
+    entryPoint: string;
+    tree: Record<string, string>;
 }
 
 // Message through bundle.worker.ts to main thread
@@ -44,7 +45,7 @@ export interface iFetchRequest extends iRequest {
     version: string;
 }
 
-export interface iFetchResponse extends TypingsResult, iResponse {};
+export interface iFetchResponse extends TypingsResult, iResponse {}
 
 // export interface iFetchedOutput {
 //     [modulePath: string]: string;

@@ -9,6 +9,7 @@ import Pane from './PaneSection';
 import { FilesProvider } from '../context/FilesContext';
 import { BundledCodeProvider } from '../context/BundleContext';
 import { DependenciesProvider } from '../context/DependecyContext';
+import { TypingLibsProvider } from '../context/TypingLibsContext';
 
 /***
  * FilesProvider provides `files` and its action `dispatch`.
@@ -24,11 +25,13 @@ const Layout = (): JSX.Element => {
                 <SplitPane>
                     <FilesProvider>
                         <BundledCodeProvider>
-                            <DependenciesProvider>
-                                <Pane />
-                                <EditorSection />
-                                <PreviewSection />
-                            </DependenciesProvider>
+                            <TypingLibsProvider>
+                                <DependenciesProvider>
+                                    <Pane />
+                                    <EditorSection />
+                                    <PreviewSection />
+                                </DependenciesProvider>
+                            </TypingLibsProvider>
                         </BundledCodeProvider>
                     </FilesProvider>
                 </SplitPane>

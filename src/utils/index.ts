@@ -7,3 +7,4 @@ export { removeFirstSlash } from './removeFirstSlash';
 export { isJsonString } from './isJsonString';
 export { isJsonValid } from './isJsonValid';
 export { sortObjectByKeys } from './sortObjectByKeys';
+export { generateTreeForBundler } from './generateTreeForBundler';
