@@ -917,10 +917,11 @@ const ATAProvider = () => {
 
 ```
 
-
 ## 実装：マルチファイルのバンドル
 
 `src/Bundle/plugins/virtualTreePlugin.ts`
+
+この機能の追加を持って`feat_dependency-installer`ブランチへマージした。
 
 ```TypeScript
 /************************************************************************
@@ -1266,6 +1267,7 @@ const bundler = async (
     }
 };
 ```
+
 ```TypeScript
     /**
      * Dispatches code to FilesContext to update file's value.
