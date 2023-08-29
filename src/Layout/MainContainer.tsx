@@ -1,8 +1,11 @@
 import React from 'react';
-import { PropsWithChildren } from "react";
 
-const MainContainer = (props: PropsWithChildren): JSX.Element => {
-  return <div className="main-container">{props.children}</div>;
+interface iProps {
+  children: any;
+}
+
+const MainContainer = ({ children }: iProps): React.JSX.Element => {
+  return <div className="main-container">{children}</div>;
 };
 
 export default MainContainer;

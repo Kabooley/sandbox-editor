@@ -18,7 +18,7 @@ import { Types as bundledContextTypes } from '../context/BundleContext';
 import { Types as filesContextTypes } from '../context/FilesContext';
 import { OrderTypes, iFetchResponse } from '../worker/types';
 import MonacoEditor from './Monaco/MonacoEditor';
-import { debounce } from 'lodash';
+import debounce from 'lodash.debounce';
 import type * as lodash from 'lodash';
 import { generateTreeForBundler, getFilenameFromPath } from '../utils';
 
@@ -27,11 +27,11 @@ interface iProps {
     addTypings: iTypingLibsContext;
     dispatchFiles: React.Dispatch<iFilesActions>;
     dispatchBundledCode: React.Dispatch<iBundledCodeActions>;
-};
+}
 
 interface iState {
     currentFilePath: string;
-};
+}
 
 const editorConstructOptions: monaco.editor.IStandaloneEditorConstructionOptions =
     {
@@ -76,7 +76,7 @@ class EditorContainer extends React.Component<iProps, iState> {
         const selectedFile = files.find((f) => f.isSelected());
         selectedFile &&
             this.setState({
-                currentFilePath: selectedFile.getPath()
+                currentFilePath: selectedFile.getPath(),
             });
 
         // Register all files to monaco addExtraLibs
@@ -109,7 +109,7 @@ class EditorContainer extends React.Component<iProps, iState> {
         if (prevState.currentFilePath !== selectedFile?.getPath()) {
             selectedFile &&
                 this.setState({
-                    currentFilePath: selectedFile.getPath()
+                    currentFilePath: selectedFile.getPath(),
                 });
         }
     }
@@ -147,7 +147,7 @@ class EditorContainer extends React.Component<iProps, iState> {
 
     /***
      * Send all files to bundle.worker to bundle them.
-     * */ 
+     * */
     _onBundle() {
         // DEBUG:
         console.log('[EditorContainer][on bundle]');

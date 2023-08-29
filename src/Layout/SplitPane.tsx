@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { PropsWithChildren } from "react";
 
+interface iProps {
+    children: any;
+}
 
-const SplitPane = (props: PropsWithChildren): JSX.Element => {
-
-  return <div className="split-pane">{props.children}</div>;
+const SplitPane = ({ children }: iProps): JSX.Element => {
+    return <div className="split-pane">{children}</div>;
 };
 
 export default SplitPane;

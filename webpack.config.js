@@ -8,7 +8,7 @@ module.exports = {
     mode: 'development',
     entry: {
         index: './src/index.tsx',
-        // 'bundle.worker': './src/worker/bundle.worker.ts',
+        'bundle.worker': './src/worker/bundle.worker.ts',
         // 'fetchLibs.worker': './src/worker/fetchLibs.worker.ts',
 
         'editor.worker': 'monaco-editor/esm/vs/editor/editor.worker.js',
@@ -29,6 +29,9 @@ module.exports = {
             // 'Access-Control-Allow-Origin': 'unpkg.com',		// unpkg.com
             'Access-Control-Allow-Headers': '*', // GET
             'Access-Control-Allow-Methods': '*',
+        },
+        client: {
+            overlay: false,
         },
     },
     resolve: {

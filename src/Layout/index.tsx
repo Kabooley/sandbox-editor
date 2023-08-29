@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import EditorSection from './EditorSection';
 import PreviewSection from './PreviewSection';
 import Header from './Header';
