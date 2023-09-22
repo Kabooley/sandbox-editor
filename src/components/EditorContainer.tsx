@@ -179,6 +179,8 @@ class EditorContainer extends React.Component<iProps, iState> {
     _onDidChangeModel(oldModelPath: string, newModelPath: string) {}
 
     _onChangeSelectedTab(selected: string) {
+
+        console.log(`[EditorContainer] on change selected tab: ${selected}`)
         this.props.dispatchFiles({
             type: filesContextTypes.ChangeSelectedFile,
             payload: { selectedFilePath: selected },

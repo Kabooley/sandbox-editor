@@ -4,8 +4,8 @@
     border-right-color: $color-border;
     border-left-color: $color-border;
 
-    /* ひとまず */
     height: 48px;
+    min-height: 48px;
 }
 
 .main-container {
@@ -15,10 +15,20 @@
     height: 100%;
 }
 
+// .navigation-section {
+//     height: 100%;
+//     padding: 0.8rem;
+//     border-right: 1px solid $color-border;
+//     color: $color-font;
+//     font-size: $default-font-size;
+//     background-color: $color-bg-dark;
+// }
+
 .navigation-section {
-    // height: 100vh;
+    min-width: 4.8rem;
+    width: 4.8rem;
     height: 100%;
-    padding: 0.8rem; /* 8px */
+    padding: 0.8rem;
     border-right: 1px solid $color-border;
     color: $color-font;
     font-size: $default-font-size;
@@ -30,6 +40,12 @@
     height: auto;
     z-index: 9;
     width: 100%;
+}
+
+.pane {
+    height: 100%;
+    border-right: 1px solid $color-border;
+    font-size: $pane-font-size;
 }
 
 .editor-section {
@@ -72,5 +88,4 @@
     bottom: 0;
     left: 0;
     opacity: 0;
-  }
-  
+}
