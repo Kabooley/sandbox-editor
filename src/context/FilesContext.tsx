@@ -6,15 +6,10 @@
  * 型付けにおいて大いに参考になったサイト：
  * https://dev.to/elisealcala/react-context-with-usereducer-and-typescript-4obm
  *
- *
- * TODO: selected file情報を持つべきか否かの検討
- *
- *
- *
  * */
 import React, { createContext, useContext, useReducer, Dispatch } from 'react';
 import { files, File } from '../data/files';
-import { getFileLanguage } from '../utils';
+import { getFileLanguage, findMax } from '../utils';
 
 // --- Types ---
 
@@ -27,6 +22,11 @@ export enum Types {
 
     // NOTE: Experimental
     ChangeSelectedFile = 'CHANGE_SELECTED_FILE',
+    /****
+     * FileExplorerからの操作
+     **/
+    Open = 'OPEN_FILE',
+    Close = 'CLOSE_FILE',
 }
 
 type ActionMap<M extends { [index: string]: any }> = {
@@ -56,6 +56,7 @@ type iFilesActionPayload = {
         changeProp: {
             newPath?: string;
             newValue?: string;
+            tabIndex?: number;
         };
     };
     [Types.ChangeMultiple]: {
@@ -63,10 +64,17 @@ type iFilesActionPayload = {
         changeProp: {
             newPath?: string;
             newValue?: string;
+            tabIndex?: number;
         };
     }[];
     [Types.ChangeSelectedFile]: {
         selectedFilePath: string;
+    };
+    [Types.Open]: {
+        path: string;
+    };
+    [Types.Close]: {
+        path: string;
     };
 };
 
@@ -133,11 +141,18 @@ function filesReducer(files: File[], action: iFilesActions) {
             const { targetFilePath, changeProp } = action.payload;
             const updatedFiles = files.map((f) => {
                 if (f.getPath() === targetFilePath) {
+                    const clone: File = Object.assign(
+                        Object.create(Object.getPrototypeOf(f)),
+                        f
+                    );
                     changeProp.newPath !== undefined &&
-                        f.setPath(changeProp.newPath);
+                        clone.setPath(changeProp.newPath);
                     changeProp.newValue !== undefined &&
-                        f.setValue(changeProp.newValue);
-                    return f;
+                        clone.setValue(changeProp.newValue);
+                    if (changeProp.tabIndex !== undefined) {
+                        clone.setTabIndex(changeProp.tabIndex);
+                    }
+                    return clone;
                 } else return f;
             });
 
@@ -147,17 +162,27 @@ function filesReducer(files: File[], action: iFilesActions) {
         }
         // Change multiple files property.
         case 'CHANGE_MULTIPLE_FILES': {
+            // DEBUG:
+            console.log('[CHANGE_MULTIPLE_FILES]');
+
             const requests = action.payload;
             const updatedFiles = files.map((f) => {
                 const request = requests.find(
                     (r) => f.getPath() === r.targetFilePath
                 );
                 if (request !== undefined) {
+                    const clone: File = Object.assign(
+                        Object.create(Object.getPrototypeOf(f)),
+                        f
+                    );
                     request.changeProp.newPath !== undefined &&
-                        f.setPath(request.changeProp.newPath);
+                        clone.setPath(request.changeProp.newPath);
                     request.changeProp.newValue !== undefined &&
-                        f.setValue(request.changeProp.newValue);
-                    return f;
+                        clone.setValue(request.changeProp.newValue);
+                    if (request.changeProp.tabIndex !== undefined) {
+                        clone.setTabIndex(request.changeProp.tabIndex);
+                    }
+                    return clone;
                 } else return f;
             });
 
@@ -168,11 +193,131 @@ function filesReducer(files: File[], action: iFilesActions) {
         case 'CHANGE_SELECTED_FILE': {
             const { selectedFilePath } = action.payload;
             const updatedFiles = files.map((f) => {
+                const clone: File = Object.assign(
+                    Object.create(Object.getPrototypeOf(f)),
+                    f
+                );
                 f.getPath() === selectedFilePath
-                    ? f.setSelected()
-                    : f.unselected();
-                return f;
+                    ? clone.setSelected()
+                    : clone.unSelected();
+                return clone;
             });
+
+            // DEBUG:
+            console.log('[CHANEGE_SELECTED_FILE] updatedFiles:');
+            console.log(updatedFiles);
+            console.log(selectedFilePath);
+
+            return [...updatedFiles];
+        }
+        /***
+         * OPEN FILE:
+         *
+         * - Set Opening flag as true
+         * - Give TabIndex if it's null.
+         * - Set selected to be true.
+         *
+         * TabIndex will be same as number of current tabs.
+         *
+         * */
+        case 'OPEN_FILE': {
+            const { path } = action.payload;
+
+            const target = files.find((f) => f.getPath() === path);
+            const currentSelectedFilePath = files
+                .find((f) => f.isSelected())!
+                .getPath();
+
+            // Guard if it's folder or opening already.
+            if (target?.isFolder() || target?.isOpening()) {
+                return files;
+            }
+
+            console.log(`[OPEN_FILE] ${path}, ${currentSelectedFilePath}`);
+
+            const updatedFiles = files.map((f) => {
+                // Get file open and selected.
+                if (f.getPath() === path) {
+                    const clone: File = Object.assign(
+                        Object.create(Object.getPrototypeOf(f)),
+                        f
+                    );
+                    clone.setOpening(true);
+                    clone.setSelected();
+                    if (!clone.getTabIndex()) {
+                        const tabIndexes = files
+                            .filter((f) => f.getTabIndex !== null)
+                            .map((f) => f.getTabIndex());
+                        const currentTabTail = findMax(tabIndexes) + 1;
+                        clone.setTabIndex(currentTabTail);
+                    }
+                    return clone;
+                }
+                // Get selected file to be unselected.
+                else if (
+                    currentSelectedFilePath &&
+                    f.getPath() === currentSelectedFilePath
+                ) {
+                    const clone: File = Object.assign(
+                        Object.create(Object.getPrototypeOf(f)),
+                        f
+                    );
+                    clone.unSelected();
+                    return clone;
+                } else return f;
+            });
+
+            return [...updatedFiles];
+        }
+        /**
+         * Close file:
+         * - `isSelected: true`のファイルをクローズしたときはいずれかの`isOpening:true`のファイルを選ぶ
+         * */
+        case 'CLOSE_FILE': {
+            const { path } = action.payload;
+
+            // Guard if it's folder or closing already.
+            const target = files.find((f) => f.getPath() === path);
+            if (target?.isFolder() || !target?.isOpening()) {
+                return files;
+            }
+
+            console.log(`[CLOSE_FILE] ${path}`);
+
+            // Was target file `isSelected` true?
+            let nextSelected: File | undefined;
+            if (target.isSelected()) {
+                nextSelected = files.find(
+                    (f) => f.isOpening() && !f.isSelected()
+                );
+            }
+
+            const updatedFiles = files.map((f) => {
+                // Close target file.
+                if (f.getPath() === path) {
+                    const clone: File = Object.assign(
+                        Object.create(Object.getPrototypeOf(f)),
+                        f
+                    );
+                    clone.setOpening(false);
+                    clone.setTabIndex(null);
+                    clone.unSelected();
+                    return clone;
+                }
+                // Select another file if target file was selected file.
+                else if (
+                    nextSelected &&
+                    f.getPath() === nextSelected.getPath()
+                ) {
+                    const clone: File = Object.assign(
+                        Object.create(Object.getPrototypeOf(f)),
+                        f
+                    );
+                    clone.setSelected();
+                    return clone;
+                } else return f;
+            });
+
             return [...updatedFiles];
         }
         default: {
@@ -181,15 +326,23 @@ function filesReducer(files: File[], action: iFilesActions) {
     }
 }
 
+/***
+ * Initialize State:
+ *
+ * - Set file selected prop to true.
+ * - Give tab index to selected file.
+ *
+ * */
+
 const initialFiles: File[] = files.map(
     (f) => new File(f.path, f.value, f.language, f.isFolder)
 );
-
-// NOTE: 初期選択ファイルをここで指定する。
-const defaultSelectedFilePath = 'src/index.tsx';
-initialFiles
-    .find((f) => f.getPath() === defaultSelectedFilePath)
-    ?.setSelected();
+const defaultSelectedFilePath = 'src/App.tsx';
+const defaultFile = initialFiles.find(
+    (f) => f.getPath() === defaultSelectedFilePath
+);
+defaultFile?.setSelected();
+defaultFile?.setOpening(true);
 
 // https://stackoverflow.com/a/57253387/22007575
 export const FilesProvider = ({ children }: { children: React.ReactNode }) => {
@@ -213,5 +366,3 @@ export function useFiles() {
 export function useFilesDispatch() {
     return useContext(FilesDispatchContext);
 }
-
-

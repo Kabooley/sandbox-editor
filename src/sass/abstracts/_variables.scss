@@ -1,4 +1,3 @@
-
 $color-white: #fff;
 $color-black: #000;
 
@@ -8,10 +7,13 @@ $color-font: #999;
 // headerやfileexplorerなどの領域を区切るborderの色
 $color-border: rgb(52, 52, 52);
 
-
 // FONT
 $default-font-size: 1.6rem;
 
+// PANE
+$pane-font-size: 1.4rem;
+$pane-min-width: 19rem;
+$pane-max-width: 40rem;
 
 // COLORS
 // $color-primary: #55c57a;
@@ -30,7 +32,6 @@ $default-font-size: 1.6rem;
 // $color-grey-dark: #777;
 // $color-grey-dark-2: #999;
 // $color-grey-dark-3: #333;
-
 
 // // GRID
 // $grid-width: 114rem;

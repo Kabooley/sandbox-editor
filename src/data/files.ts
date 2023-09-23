@@ -2,12 +2,12 @@ import type { iFile } from './types';
 import { getFileLanguage } from '../utils';
 
 export const files: iFile[] = [
-    {
-        path: 'public',
-        language: '',
-        value: '',
-        isFolder: true,
-    },
+    // {
+    //     path: 'public',
+    //     language: '',
+    //     value: '',
+    //     isFolder: true,
+    // },
     {
         path: 'public/index.html',
         language: 'html',
@@ -24,12 +24,12 @@ export const files: iFile[] = [
 </html>`,
         isFolder: false,
     },
-    {
-        path: 'src',
-        language: '',
-        value: '',
-        isFolder: true,
-    },
+    // {
+    //     path: 'src',
+    //     language: '',
+    //     value: '',
+    //     isFolder: true,
+    // },
     {
         path: 'src/App.tsx',
         language: 'typescript',
@@ -136,7 +136,31 @@ if(rootElement) {
   }`,
         isFolder: false,
     },
+    // to fix disappearing tree column functions when column width is shorter than file name.
+    {
+        path: 'soMuchLongDirectoryName/superUltraHyperTooLongBaddaaasssssFile.txt',
+        language: 'txt',
+        value: `so much text might be here...`,
+        isFolder: false,
+    },
 ];
+
+/*********************************************
+ * File
+ *
+ * @constructor
+ * @param {string} _path - files path.
+ * @param {string} _value - file value.
+ * @param {string} _language - Code language using in file.
+ * @param {string} _isFolder - Type of this file. file or folder.
+ * @param {string} _selected - Opening on Editor.
+ * @param {string} _opening - This file is One of the opening tab if true. NOT means on Editor.
+ *
+ *
+ * @param {number | null} _tabIndex - Order number of tab
+ *
+ * TODO: Doesn't need to bind methods?
+ * ******************************************/
 
 export class File {
     constructor(
@@ -144,9 +168,9 @@ export class File {
         private _value: string,
         private _language: string,
         private _isFolder: boolean,
-
-        // NOTE: experimental
-        private _selected: boolean = false
+        private _selected: boolean = false,
+        private _opening: boolean = false,
+        private _tabIndex: number | null = null
     ) {}
 
     _isPathValid(path: string): boolean {
@@ -189,11 +213,27 @@ export class File {
         this._selected = true;
     }
 
-    unselected(): void {
+    unSelected(): void {
         this._selected = false;
     }
 
     isSelected(): boolean {
         return this._selected;
+    }
+
+    isOpening(): boolean {
+        return this._opening;
+    }
+
+    setOpening(flag: boolean): void {
+        this._opening = flag;
+    }
+
+    getTabIndex(): number | null {
+        return this._tabIndex;
+    }
+
+    setTabIndex(i: number | null): void {
+        this._tabIndex = i;
     }
 }

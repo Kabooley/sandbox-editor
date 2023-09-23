@@ -8,3 +8,5 @@ export { isJsonString } from './isJsonString';
 export { isJsonValid } from './isJsonValid';
 export { sortObjectByKeys } from './sortObjectByKeys';
 export { generateTreeForBundler } from './generateTreeForBundler';
+export { findMax } from './findMax';
+export { moveInArray } from './moveInArray';

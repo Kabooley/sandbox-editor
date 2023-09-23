@@ -1,0 +1,29 @@
+.navigation-contents {
+    display: flex;
+    flex-flow: column;
+    -webkit-box-align: center;
+    align-items: center;
+
+    &__content {
+        width: 4rem;
+        height: 3.2rem;
+        color: rgb(153, 153, 153);
+        border-radius: 2px;
+        cursor: pointer;
+        background-color: transparent;
+
+        &:not(:last-child) {
+            margin-bottom: 16rem;
+        }
+
+        & > img {
+            width: 4rem;
+            height: 3.2rem;
+            fill: rgb(153, 153, 153);
+        }
+
+        &:hover {
+            background: rgb(100, 100, 100);
+        }
+    }
+}

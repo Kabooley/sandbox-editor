@@ -4,6 +4,16 @@
 
 - [公式：advanced-guides](#公式：advanced-guides)
 
+## How to type React childern
+
+結論：`any`
+
+https://github.com/microsoft/TypeScript/issues/6471#issuecomment-171456118
+
+typescriptコミュニティメンバー曰く、
+
+React childrenはReact特化のめんどくさい代物だからanyでいいとのこと。
+
 ## Reactコンポーネントじゃないモジュールは状態を持つことはできるのか
 
 結論:できる。

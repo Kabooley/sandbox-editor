@@ -1,10 +1,17 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { ResizableBox } from 'react-resizable';
 import type { ResizeCallbackData } from 'react-resizable';
+import { useWindowSize } from '../hooks';
 import EditorContext from '../context/EditorContext';
 
+// cssと異なる値にしないこと
+const defaultWidth = 600;
+const minimumWidth = 100;
+
 const EditorSection = (): JSX.Element => {
-    const [editorSectionWidth, setEditorSectionWidth] = useState<number>(500);
+    const [editorSectionWidth, setEditorSectionWidth] =
+        useState<number>(defaultWidth);
+    const { innerWidth } = useWindowSize();
 
     const onEditorSecResize: (
         e: React.SyntheticEvent,
@@ -17,7 +24,8 @@ const EditorSection = (): JSX.Element => {
         <ResizableBox
             width={editorSectionWidth}
             height={Infinity}
-            minConstraints={[200, Infinity]}
+            minConstraints={[minimumWidth, Infinity]}
+            maxConstraints={[innerWidth * 0.8, Infinity]}
             onResize={onEditorSecResize}
             resizeHandles={['e']}
             handle={(h, ref) => (
