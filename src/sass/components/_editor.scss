@@ -9,7 +9,7 @@
 
     // This will make scrollbar appear only when hover.
     &:hover {
-        overflow-x: scroll;
+        overflow-x: scroll; 
     }
     &::-webkit-scrollbar {
         width: 4px;

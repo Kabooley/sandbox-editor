@@ -1,9 +1,9 @@
 /***********************************************************
- * 
+ *
  * Props:
  * - files: addExtraLib、createModelするため常に全てのファイルが必要
  * - path: 現在開いているファイルのpath。このpathを基にsetModel()する。
- * 
+ *
  * *********************************************************/
 import React from 'react';
 import * as monaco from 'monaco-editor';
@@ -141,7 +141,6 @@ const editorStates = new Map<
     monaco.editor.ICodeEditorViewState | undefined | null
 >();
 
-
 export default class MonacoEditor extends React.Component<iProps, iState> {
     _refEditorNode = React.createRef<HTMLDivElement>();
     _refEditor: Monaco.editor.IStandaloneCodeEditor | null = null;
@@ -151,6 +150,8 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
         super(props);
         this._handleEditFile = this._handleEditFile.bind(this);
         this._handleChangeModel = this._handleChangeModel.bind(this);
+        this._handleChangeMarkers =
+            this._handleChangeMarkers.bind(this);
     }
 
     /***
@@ -181,6 +182,9 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
         );
         this._disposables.push(
             editor.onDidChangeModel(this._handleChangeModel)
+        );
+        this._disposables.push(
+            monaco.editor.onDidChangeMarkers(this._handleChangeMarkers)
         );
 
         // Set current path's model to editor.
@@ -343,6 +347,17 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
     _handleResize = () => {
         return this._refEditor && this._refEditor.layout();
     };
+
+    _handleChangeMarkers() {
+        const model = this._refEditor && this._refEditor.getModel();
+        if (model === null) return;
+        const uri = model.uri;
+        const markers = monaco.editor.getModelMarkers({ resource: uri });
+
+        // DEBUG:
+        console.log(`[MonacoEditor][_handleChangeMarkers] ${uri}`);
+        console.log(markers);
+    }
 
     render() {
         return (

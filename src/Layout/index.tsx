@@ -6,6 +6,7 @@ import MainContainer from './MainContainer';
 import NavigationSection from './NavigationSection';
 import SplitPane from './SplitPane';
 import PaneSection from './PaneSection';
+import FooterSection from './FooterSection';
 import { FilesProvider } from '../context/FilesContext';
 import { BundledCodeProvider } from '../context/BundleContext';
 import { DependenciesProvider } from '../context/DependecyContext';
@@ -38,6 +39,7 @@ const Layout = (): JSX.Element => {
                         </FilesProvider>
                     </SplitPane>
                 </MainContainer>
+                <FooterSection />
             </LayoutStateProvider>
         </>
     );
