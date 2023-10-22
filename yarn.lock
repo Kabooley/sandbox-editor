@@ -1216,6 +1216,14 @@
     "@types/estree" "*"
     "@types/json-schema" "*"
 
+"@types/eslint@^8.44.6":
+  version "8.44.6"
+  resolved "https://registry.yarnpkg.com/@types/eslint/-/eslint-8.44.6.tgz#60e564551966dd255f4c01c459f0b4fb87068603"
+  integrity sha512-P6bY56TVmX8y9J87jHNgQh43h6VVU+6H7oN7hgvivV81K2XY8qJZ5vqPy/HdUoVIelii2kChYVzQanlswPWVFw==
+  dependencies:
+    "@types/estree" "*"
+    "@types/json-schema" "*"
+
 "@types/estree@*", "@types/estree@^1.0.0":
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/@types/estree/-/estree-1.0.1.tgz#aa22750962f3bf0e79d753d3cc067f010c95f194"

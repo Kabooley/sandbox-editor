@@ -11,8 +11,11 @@ import * as eslint from 'eslint';
  *
  * node ver16だからかも
  * https://github.com/eslint/eslint/issues/14986
+ * 
+ * https://github.com/typescript-eslint/typescript-eslint/issues/2153
+ * 
  * */
-import { Legacy } from '@eslint/eslintrc/universal';
+import * as eslintrc from '@eslint/eslintrc';
 
 type GlobalConf =
     | boolean
