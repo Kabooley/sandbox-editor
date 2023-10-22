@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { ResizableBox } from 'react-resizable';
 import type { ResizeCallbackData } from 'react-resizable';
 import { useLayoutState } from '../context/LayoutContext';
+import type { ViewContexts } from '../context/LayoutContext';
 import Explorer from './Explorer';
+import DependencyList from './DependencyList';
 
 /***
  * NOTE: Must be the same value as defined in the css definition file.
@@ -16,7 +18,7 @@ const maximumWidth = 400;
 
 const PaneSection = (): JSX.Element => {
     const [paneWidth, setPaneWidth] = useState<number>(defaultWidth);
-    const { openExplorer } = useLayoutState();
+    const { currentContext } = useLayoutState();
 
     const onPaneResize: (
         e: React.SyntheticEvent,
@@ -25,7 +27,26 @@ const PaneSection = (): JSX.Element => {
         setPaneWidth(size.width);
     };
 
-    if (openExplorer) {
+    const renderContext = (context: ViewContexts) => {
+        switch (context) {
+            case 'explorer': {
+                return <Explorer />;
+            }
+            case 'dependencies': {
+                return <DependencyList />;
+            }
+            case 'none': {
+                return null;
+            }
+            default: {
+                throw new Error('Unexpexted context has been received.');
+            }
+        }
+    };
+
+    if (currentContext === 'none') {
+        return <></>;
+    } else {
         return (
             <ResizableBox
                 width={paneWidth}
@@ -42,12 +63,10 @@ const PaneSection = (): JSX.Element => {
                 )}
             >
                 <div className="pane" style={{ width: paneWidth }}>
-                    <Explorer />
+                    {renderContext(currentContext)}
                 </div>
             </ResizableBox>
         );
-    } else {
-        return <></>;
     }
 };
 

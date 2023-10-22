@@ -1,11 +1,13 @@
 import React from 'react';
+import SideBar from './SideBar';
+import StatusBar from './StatusBar';
 
 const FooterContainer = () => {
     return (
-        <div className="footer-container">
-            status shell cursor spacesPerTab characterCode
-            currentOpeningFilesLanguage formatter
-        </div>
+        <>
+            <SideBar />
+            <StatusBar />
+        </>
     );
 };
 

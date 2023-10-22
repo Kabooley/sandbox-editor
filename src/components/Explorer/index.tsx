@@ -1,7 +1,6 @@
 import React from 'react';
 import FileExplorer from './FileExplorer';
 import OpenEditor from './OpenEditors';
-import DummyOfPaneSection from '../DummyOfPaneSection';
 import { useFiles, useFilesDispatch } from '../../context/FilesContext';
 import { generateTreeNodeData } from './generateTree';
 
@@ -13,10 +12,16 @@ const Explorer = () => {
     return (
         <>
             <span>EXPLORER</span>
-            <OpenEditor files={files} filesDispatch={filesDispatch} tree={treeData} />
-            <FileExplorer files={files} filesDispatch={filesDispatch} tree={treeData} />
-            <DummyOfPaneSection title={'outline'} />
-            <DummyOfPaneSection title={'timeline'} />
+            <OpenEditor
+                files={files}
+                filesDispatch={filesDispatch}
+                tree={treeData}
+            />
+            <FileExplorer
+                files={files}
+                filesDispatch={filesDispatch}
+                tree={treeData}
+            />
         </>
     );
 };
