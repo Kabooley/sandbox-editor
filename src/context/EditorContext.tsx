@@ -8,7 +8,11 @@ import { useBundledCodeDispatch } from './BundleContext';
 import EditorContainer from '../components/EditorContainer';
 import { TypingLibsContext } from './TypingLibsContext';
 
-const EditorContext = () => {
+interface iProps {
+    width: number;
+}
+
+const EditorContext = ({ width }: iProps) => {
     const files = useFiles();
     const addTypings = React.useContext(TypingLibsContext);
     const dispatchFiles = useFilesDispatch();
@@ -21,6 +25,7 @@ const EditorContext = () => {
             addTypings={addTypings}
             dispatchFiles={dispatchFiles}
             dispatchBundledCode={dispatchBundledCode}
+            width={width}
         />
     );
 };

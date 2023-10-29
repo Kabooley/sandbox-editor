@@ -13,7 +13,7 @@ import { getFileLanguage, findMax } from '../utils';
 
 // --- Types ---
 
-export enum Types {
+enum Types {
     Delete = 'DELETE_FILE',
     DeleteMultiple = 'DELETE_MULTIPLE_FILES',
     Add = 'ADD_FILE',
@@ -78,17 +78,15 @@ type iFilesActionPayload = {
     };
 };
 
-export type iFilesActions =
+type iFilesActions =
     ActionMap<iFilesActionPayload>[keyof ActionMap<iFilesActionPayload>];
 
 // --- Definitions ---
 
 // To use context in class component,
 // these created contexts are needed to be exported.
-export const FilesContext = createContext<File[]>([]);
-export const FilesDispatchContext = createContext<Dispatch<iFilesActions>>(
-    () => null
-);
+const FilesContext = createContext<File[]>([]);
+const FilesDispatchContext = createContext<Dispatch<iFilesActions>>(() => null);
 
 function filesReducer(files: File[], action: iFilesActions) {
     // DEBUG:
@@ -345,7 +343,7 @@ defaultFile?.setSelected();
 defaultFile?.setOpening(true);
 
 // https://stackoverflow.com/a/57253387/22007575
-export const FilesProvider = ({ children }: { children: React.ReactNode }) => {
+const FilesProvider = ({ children }: { children: React.ReactNode }) => {
     const [files, dispatch] = useReducer(filesReducer, initialFiles);
 
     return (
@@ -359,10 +357,21 @@ export const FilesProvider = ({ children }: { children: React.ReactNode }) => {
 
 // --- Hooks ---
 
-export function useFiles() {
+function useFiles() {
     return useContext(FilesContext);
 }
 
-export function useFilesDispatch() {
+function useFilesDispatch() {
     return useContext(FilesDispatchContext);
 }
+
+export {
+    useFiles,
+    useFilesDispatch,
+    FilesProvider,
+    FilesContext,
+    FilesDispatchContext,
+    // Types
+    Types,
+    iFilesActions,
+};

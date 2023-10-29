@@ -39,7 +39,7 @@ const EditorSection = (): JSX.Element => {
                 className="editor-section"
                 style={{ width: editorSectionWidth }}
             >
-                <EditorContext />
+                <EditorContext width={editorSectionWidth} />
             </div>
         </ResizableBox>
     );
