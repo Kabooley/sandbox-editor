@@ -21,7 +21,6 @@ const minimumWidth = 190;
 const maximumWidth = 400;
 
 const PaneSection = (): JSX.Element => {
-    // const [paneWidth, setPaneWidth] = useState<number>(defaultWidth);
     const { currentContext, paneWidth } = useLayoutState();
     const dispatch = useLayoutDispatch();
 
@@ -35,7 +34,7 @@ const PaneSection = (): JSX.Element => {
             payload: {
                 width: size.width,
             },
-        }); 
+        });
     };
 
     const renderContext = (context: ViewContexts) => {

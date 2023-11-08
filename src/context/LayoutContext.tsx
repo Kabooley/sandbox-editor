@@ -1,14 +1,12 @@
 /***
  *　Decides state of app Layout.
  *
- * TODO:
- * - previewの表示・非表示機能のせいで条件分岐とwidthの管理が複雑になった。もっと簡単にできないか。
- * - previewを閉じているときにeditor-sectionをresize可能にするべきかどうかの検討
- **/
+ * */
 import React, { createContext, useContext, useReducer, Dispatch } from 'react';
-import { textSpanContainsTextSpan } from 'typescript';
 
 // --- Types ---
+
+type ViewContexts = 'explorer' | 'dependencies' | 'none';
 
 interface iState {
     // Flag of display or hide Pane section
@@ -20,13 +18,13 @@ interface iState {
     isPreviewDisplay: boolean;
     // width of div.editor-section
     editorWidth: number;
-    // width of div.pane
+    // width of div.pane. This will 0 when pane is close
     paneWidth: number;
-    // width of div.preview-section
-    previewWidth: number;
+    // width of div.pane when it will close
+    paneWidthOnClose: number;
+    // width of div.preview-section when it will close
+    previewWidthOnClose: number;
 }
-
-type ViewContexts = 'explorer' | 'dependencies' | 'none';
 
 enum Types {
     DisablePointerEventsOnIframe = 'DISABLE_POINTER_EVENTS_ON_IFRAME',
@@ -68,39 +66,44 @@ type iLayoutActions =
 
 // --- Definitions ---
 
-// https://stackoverflow.com/a/3437825/22007575
 const getWindowWidth = () => {
-    return window.screen.width;
+    return window.innerWidth;
 };
 
-const initialLayoutState = {
+const initialLayout = {
     editorLayout: {
         // NOTE: EditorSection.tsxにも同データがある。異なることがないように。
         defaultWidth: 600,
         minimumWidth: 100,
+        maximumWidth: window.screen.width * 0.7,
     },
     paneLayout: {
         // NOTE: Pane.tsxにも同データがある。異なることがないように。
         defaultWidth: 240,
         minimunWidth: 190,
-        maximumWidth: 400,
+        maximumWidth: window.screen.width * 0.26,
+    },
+    // TODO: cssの値と整合性とるように。cssの方は`4.8rem`である。
+    navigation: {
+        width: 48,
     },
 };
 
+const navigationWidth = initialLayout.navigation.width;
+
 const LayoutContext = createContext<iState>({
-    // openExplorer: true,
     pointerEventsOnPreviewIframe: true,
     currentContext: 'explorer',
     isPreviewDisplay: true,
-    editorWidth: initialLayoutState.editorLayout.defaultWidth,
-    paneWidth: initialLayoutState.paneLayout.defaultWidth,
-    previewWidth:
+    editorWidth: initialLayout.editorLayout.defaultWidth,
+    paneWidth: initialLayout.paneLayout.defaultWidth,
+    paneWidthOnClose: initialLayout.paneLayout.defaultWidth,
+    previewWidthOnClose:
         getWindowWidth() -
-        48 -
-        initialLayoutState.editorLayout.defaultWidth -
-        initialLayoutState.paneLayout.defaultWidth,
+        initialLayout.editorLayout.defaultWidth -
+        initialLayout.paneLayout.defaultWidth -
+        navigationWidth,
 });
-
 const LayoutDispatchContext = createContext<Dispatch<iLayoutActions>>(
     () => null
 );
@@ -119,80 +122,150 @@ function layoutReducer(state: iState, action: iLayoutActions) {
                 pointerEventsOnPreviewIframe: true,
             };
         }
+        /***
+         *
+         * */
         case Types.ChangeContext: {
             const { context } = action.payload;
-            // Close pane:
-            if (state.currentContext === context) {
+            // On close pane:
+            if (context === state.currentContext) {
+                const _paneWidth = state.paneWidth;
+                // Expand editorWidth to fit screen excluding Navigation if preview is closing.
                 if (!state.isPreviewDisplay) {
                     return {
                         ...state,
-                        editorWidth: getWindowWidth() - 48,
                         currentContext: 'none',
+                        paneWidthOnClose: _paneWidth,
+                        paneWidth: 0,
+                        editorWidth: getWindowWidth() - navigationWidth,
                     };
                 }
-                return {
-                    ...state,
-                    currentContext: 'none',
-                };
+                // Share pane width with editorWidth and preview width if preview is not closing.
+                else {
+                    return {
+                        ...state,
+                        currentContext: 'none',
+                        paneWidthOnClose: _paneWidth,
+                        paneWidth: 0,
+                    };
+                }
             }
-            // Open pane
-            else if (
-                state.currentContext === 'none' &&
-                !state.isPreviewDisplay
-            ) {
-                return {
-                    ...state,
-                    editorWidth: state.editorWidth - state.paneWidth,
-                    currentContext: context,
-                };
+            // On open pane or just change context:
+            if (state.currentContext === 'none') {
+                // In case preview is closing:
+                // pane occupies width with state.paneWidthOnClose, Navigation is navigationWidth, editorWidth is rest when preview is closing.
+                if (!state.isPreviewDisplay) {
+                    return {
+                        ...state,
+                        currentContext: context,
+                        paneWidth: state.paneWidthOnClose,
+                        editorWidth:
+                            getWindowWidth() -
+                            navigationWidth -
+                            state.paneWidthOnClose,
+                    };
+                }
+                // In case preview is opening:
+                else {
+                    let _editorWidth = state.editorWidth;
+                    // In order not to let editorWidth over its maximumWidth limit.
+                    if (
+                        _editorWidth > initialLayout.editorLayout.maximumWidth
+                    ) {
+                        _editorWidth = initialLayout.editorLayout.maximumWidth;
+                    }
+                    return {
+                        ...state,
+                        currentContext: context,
+                        paneWidth: state.paneWidthOnClose,
+                        editorWidth: _editorWidth,
+                    };
+                }
             }
-            // Just change context
-            else {
-                return {
-                    ...state,
-                    currentContext: context,
-                };
-            }
+            // Just change context except "none"
+            return {
+                ...state,
+                currentContext: context,
+            };
         }
+        /***
+         *
+         * */
         case Types.TogglePreview: {
             // DEBUG:
-            console.log(
-                `[LayoutContext] toggle preview: set ${!state.isPreviewDisplay}`
-            );
+            console.log('[LayoutContext] toggle preview:');
 
-            // Close preview
+            // on close preview:
             if (state.isPreviewDisplay) {
-                const paneWidth =
-                    state.currentContext === 'none' ? 0 : state.paneWidth;
-                const editorWidth = getWindowWidth() - 48 - paneWidth;
-                const previewWidth =
-                    getWindowWidth() - 48 - paneWidth - state.editorWidth;
-                // DEBUG:
-                console.log(`[LayoutContext] editorWidth: ${editorWidth}`);
-                console.log(`[LayoutContext] previewWidth: ${previewWidth}`);
-
-                return {
-                    ...state,
-                    previewWidth: previewWidth,
-                    editorWidth: editorWidth,
-                    isPreviewDisplay: false,
-                };
+                const _previewWidthOnClose =
+                    getWindowWidth() -
+                    navigationWidth -
+                    state.paneWidth -
+                    state.editorWidth;
+                if (state.currentContext === 'none') {
+                    // In case pane is closing
+                    // Editor expand to fill screen excluding navigation.
+                    return {
+                        ...state,
+                        isPreviewDisplay: false,
+                        previewWidthOnClose: _previewWidthOnClose,
+                        editorWidth: getWindowWidth() - navigationWidth,
+                    };
+                } else {
+                    // In case pane is opening
+                    // Editor expand to fill part of preview-section.
+                    return {
+                        ...state,
+                        isPreviewDisplay: false,
+                        previewWidthOnClose: _previewWidthOnClose,
+                        editorWidth:
+                            getWindowWidth() -
+                            navigationWidth -
+                            state.paneWidth,
+                    };
+                }
             }
-            // Reopen preview
+            // On open preview:
             else {
-                const editorWidth = state.editorWidth - state.previewWidth;
-                return {
-                    ...state,
-                    editorWidth: editorWidth,
-                    isPreviewDisplay: true,
-                };
+                if (state.currentContext === 'none') {
+                    // In case pane is closing
+                    // EditorSection width shrink to length of the preview and navigation removed.
+                    const _editorWidth =
+                        getWindowWidth() -
+                        navigationWidth -
+                        state.previewWidthOnClose;
+                    return {
+                        ...state,
+                        isPreviewDisplay: true,
+                        editorWidth: _editorWidth,
+                    };
+                } else {
+                    // In case pane is opening.
+                    // EditorSection width shrink to length of the preview and pane, navigation removed.
+                    let _editorWidth =
+                        getWindowWidth() -
+                        navigationWidth -
+                        state.paneWidth -
+                        state.previewWidthOnClose;
+                    // In order not to let editor width be less tan its minimum size.
+                    if (
+                        _editorWidth < initialLayout.editorLayout.minimumWidth
+                    ) {
+                        _editorWidth = initialLayout.editorLayout.minimumWidth;
+                    }
+                    return {
+                        ...state,
+                        isPreviewDisplay: true,
+                        editorWidth: _editorWidth,
+                    };
+                }
             }
         }
+        /****
+         *
+         ***/
         case Types.UpdateEditorWidth: {
             const { width } = action.payload;
-
-            // TODO: previewを閉じているときは明示的にresize不可にするべきか確認
-
             return {
                 ...state,
                 editorWidth: width,
@@ -200,21 +273,19 @@ function layoutReducer(state: iState, action: iLayoutActions) {
         }
         case Types.UpdatePaneWidth: {
             const { width } = action.payload;
-
-            let editorWidth = state.editorWidth;
-            // Update editorWidth in case preview is closing.
-            // NOTE: これって必要か？cssでどうにかならないか？editor-sectionはwidthは定められるからcssではどうにもできないかも
+            // Fit editor-section width fill width except navigation in case preview is closing
+            let _editorWidth = state.editorWidth;
             if (!state.isPreviewDisplay) {
-                editorWidth = getWindowWidth() - width - 48;
+                _editorWidth = getWindowWidth() - navigationWidth - width;
             }
             return {
                 ...state,
-                editorWidth: editorWidth,
                 paneWidth: width,
+                editorWidth: _editorWidth,
             };
         }
         default: {
-            throw Error('Unknown action: ' + (action.type as any));
+            throw Error('Unknown action: ' + action.type);
         }
     }
 }
@@ -223,13 +294,14 @@ const initialState: iState = {
     pointerEventsOnPreviewIframe: true,
     currentContext: 'explorer',
     isPreviewDisplay: true,
-    editorWidth: initialLayoutState.editorLayout.defaultWidth,
-    paneWidth: initialLayoutState.paneLayout.defaultWidth,
-    previewWidth:
+    editorWidth: initialLayout.editorLayout.defaultWidth,
+    paneWidth: initialLayout.paneLayout.defaultWidth,
+    paneWidthOnClose: initialLayout.paneLayout.defaultWidth,
+    previewWidthOnClose:
         getWindowWidth() -
-        48 -
-        initialLayoutState.editorLayout.defaultWidth -
-        initialLayoutState.paneLayout.defaultWidth,
+        initialLayout.editorLayout.defaultWidth -
+        initialLayout.paneLayout.defaultWidth -
+        navigationWidth,
 };
 
 // https://stackoverflow.com/a/57253387/22007575
