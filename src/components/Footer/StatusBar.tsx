@@ -1,6 +1,21 @@
 import React from 'react';
+import { ToggleSwitch } from '../../common';
+import { useLayoutDispatch, useLayoutState } from '../../context/LayoutContext';
+import { Types as LayoutContextActionType } from '../../context/LayoutContext';
 
+// https://github.com/expo/snack/blob/main/website/src/client/components/EditorFooter.tsx
+// https://github.com/expo/snack/blob/main/website/src/client/components/shared/ToggleSwitch.tsx#L14
 const StatusBar = () => {
+    const { isPreviewDisplay } = useLayoutState();
+    const dispatch = useLayoutDispatch();
+
+    const onTogglePreview = (event: React.ChangeEvent<HTMLInputElement>) => {
+        dispatch({
+            type: LayoutContextActionType.TogglePreview,
+            payload: {},
+        });
+    };
+
     return (
         <div className="status-bar">
             <div className="status-bar-item">
@@ -33,11 +48,22 @@ const StatusBar = () => {
                         className="status-bar-item__editor-status"
                         title="Toggle preview"
                     >
-                        <label className="toggle-switch">
+                        {/* <label className="toggle-switch">
                             <span>Preview</span>
                             <span className="toggle-switch__slider"></span>
                             <input type="checkbox" />
-                        </label>
+                        </label> */}
+                        <ToggleSwitch
+                            checked={isPreviewDisplay}
+                            onChange={onTogglePreview}
+                            label={'Preview'}
+                            classNames={{
+                                container: 'toggle-switch',
+                                label: '',
+                                switch: 'toggle-switch__slider',
+                                input: '',
+                            }}
+                        />
                     </div>
                 </div>
             </div>
