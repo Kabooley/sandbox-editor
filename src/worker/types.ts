@@ -1,4 +1,4 @@
-import type { TypingsResult } from './fetchLibs.worker';
+// import type { TypingsResult } from './fetchLibs.worker';
 
 export enum OrderTypes {
     Bundle = 'bundle',
@@ -45,7 +45,7 @@ export interface iFetchRequest extends iRequest {
     version: string;
 }
 
-export interface iFetchResponse extends TypingsResult, iResponse {}
+// export interface iFetchResponse extends TypingsResult, iResponse {}
 
 // export interface iFetchedOutput {
 //     [modulePath: string]: string;

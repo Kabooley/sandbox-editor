@@ -8,8 +8,8 @@ module.exports = {
     mode: 'development',
     entry: {
         index: './src/index.tsx',
+        asshole: './src/worker/fetchLibsARRR.worker.ts',
         'bundle.worker': './src/worker/bundle.worker.ts',
-        // 'fetchLibs.worker': './src/worker/fetchLibs.worker.ts',
 
         'editor.worker': 'monaco-editor/esm/vs/editor/editor.worker.js',
         'json.worker': 'monaco-editor/esm/vs/language/json/json.worker',
@@ -38,7 +38,8 @@ module.exports = {
         extensions: ['.*', '.js', '.jsx', '.tsx', '.ts'],
     },
     output: {
-        globalObject: 'self',
+        // globalObject: 'self',
+        globalObject: 'this',
         filename: '[name].bundle.js',
         path: path.resolve(__dirname, 'dist'),
     },

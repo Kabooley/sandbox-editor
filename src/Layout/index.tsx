@@ -9,7 +9,7 @@ import PaneSection from './PaneSection';
 import FooterSection from './FooterSection';
 import { FilesProvider } from '../context/FilesContext';
 import { BundledCodeProvider } from '../context/BundleContext';
-import { DependenciesProvider } from '../context/DependecyContext';
+// import { DependenciesProvider } from '../context/DependecyContext';
 import { TypingLibsProvider } from '../context/TypingLibsContext';
 import { LayoutStateProvider } from '../context/LayoutContext';
 
@@ -29,11 +29,11 @@ const Layout = (): JSX.Element => {
                         <FilesProvider>
                             <BundledCodeProvider>
                                 <TypingLibsProvider>
-                                    <DependenciesProvider>
-                                        <PaneSection />
-                                        <EditorSection />
-                                        <PreviewSection />
-                                    </DependenciesProvider>
+                                    {/* <DependenciesProvider> */}
+                                    <PaneSection />
+                                    <EditorSection />
+                                    <PreviewSection />
+                                    {/* </DependenciesProvider> */}
                                 </TypingLibsProvider>
                             </BundledCodeProvider>
                         </FilesProvider>

@@ -54,17 +54,17 @@ export function virtualTreePlugin(
             build.onResolve(
                 { filter: /^\.+\// },
                 (args: esbuild.OnResolveArgs) => {
-                    // DEBUG:
-                    console.log('[virtualTreePlugin][onResolve /^.+//]');
-                    console.log(args.path);
+                    // // DEBUG:
+                    // console.log('[virtualTreePlugin][onResolve /^.+//]');
+                    // console.log(args.path);
 
                     // In case resolving related path in library module
                     if (args.namespace === 'npm') {
-                        // DEBUG:
-                        console.log(
-                            '[resolveVirtualFile][onresolve /^.+//] npm'
-                        );
-                        console.log(args);
+                        // // DEBUG:
+                        // console.log(
+                        //     '[resolveVirtualFile][onresolve /^.+//] npm'
+                        // );
+                        // console.log(args);
 
                         return {
                             namespace: 'npm',
@@ -89,9 +89,9 @@ export function virtualTreePlugin(
 
                 // In case path is library.
                 else if (reLibrary.test(args.path)) {
-                    // DEBUG:
-                    console.log('[virtualTreePlugin][onresolve /.*/] npm');
-                    console.log(args);
+                    // // DEBUG:
+                    // console.log('[virtualTreePlugin][onresolve /.*/] npm');
+                    // console.log(args);
 
                     return {
                         path: `https://unpkg.com/${args.path}`,
@@ -101,11 +101,11 @@ export function virtualTreePlugin(
 
                 // In case path is virtual tree
                 else {
-                    // DEBUG:
-                    console.log(
-                        '[virtualTreePlugin][onresolve /.*/] import-statement'
-                    );
-                    console.log(args);
+                    // // DEBUG:
+                    // console.log(
+                    //     '[virtualTreePlugin][onresolve /.*/] import-statement'
+                    // );
+                    // console.log(args);
 
                     const dirname = Path.dirname(args.importer);
                     const path = Path.join(dirname, args.path);
@@ -202,17 +202,17 @@ export function virtualTreePlugin(
 
             build.onLoad({ filter: /.*/ }, async (args: esbuild.OnLoadArgs) => {
                 if (args.namespace === 'npm') {
-                    // DEBUG:
-                    console.log('[virtualTreePlugin][onload /.*/] npm');
-                    console.log(args);
+                    // // DEBUG:
+                    // console.log('[virtualTreePlugin][onload /.*/] npm');
+                    // console.log(args);
 
                     const cachedModule =
                         await chacheDB.getItem<esbuild.OnLoadResult>(args.path);
 
                     if (cachedModule) {
-                        // DEBUG:
-                        console.log('[virtualTreePlugin] cached');
-                        console.log(cachedModule);
+                        // // DEBUG:
+                        // console.log('[virtualTreePlugin] cached');
+                        // console.log(cachedModule);
                         return cachedModule;
                     }
 

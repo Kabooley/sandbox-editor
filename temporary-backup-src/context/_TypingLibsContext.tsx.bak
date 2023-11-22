@@ -1,13 +1,7 @@
-/******************************************************************
- * TODOs:
- *
- * - TODO: workerをここで管理する
- *
- *
- * ****************************************************************/
 import * as monaco from 'monaco-editor';
 import React, { createContext, useCallback, useEffect, useRef } from 'react';
-import type { iRequest, iResponse } from '../worker/fetchLibsARRR.worker';
+import ts from 'typescript';
+import * as ATA from '@typescript/ata';
 
 export type iTypingLibsContext = (code: string, path?: string) => void;
 
@@ -45,64 +39,31 @@ export const TypingLibsProvider = ({ children }: iProps) => {
     const typingLibs = useRef<iTypingLibs>(
         new Map<string, { js: monaco.IDisposable; ts: monaco.IDisposable }>()
     );
-    const agent = useRef<Worker>();
 
-    useEffect(() => {
-        // DEBUG:
-        console.log('[TypingLibsContext] did mount');
-        console.log(`[TypingLibsContext] worker: ${agent.current}`);
-
-        if (window.Worker && agent.current === undefined) {
-            // DEBUG:
-            console.log('[TypingLibsContext] Generate worker');
-
-            agent.current = new Worker(
-                new URL('/src/worker/fetchLibsARRR.worker.ts', import.meta.url),
-                { type: 'module' }
-            );
-            agent.current.addEventListener('message', handleWorkerMessage);
-
-            // DEBUG:
-            console.log(agent.current);
-
-            // DEBUG: ひとまず動作確認のため
-            const dummyDependencies = [
-                { name: 'react', version: '18.2.0' },
-                { name: 'react-dom/client', version: '18.2.0' },
-            ];
-            dummyDependencies.forEach((d) => {
-                console.log(
-                    `[TypingLibsContext] Requesting ${d.name}@${d.version}...`
-                );
-                console.log(agent.current);
-
-                agent.current!.postMessage({
-                    order: 'RESOLVE_DEPENDENCY',
-                    payload: {
-                        moduleName: d.name,
-                        version: d.version,
-                    },
-                } as iRequest);
-            });
-        }
-
-        return () => {
-            // DEBUG:
-            console.log('[TypingLibsContext] clean up...');
-
-            if (window.Worker && agent.current) {
-                // DEBUG:
-                console.log('[TypingLibsContext] Termintate worker');
-
-                agent.current.removeEventListener(
-                    'message',
-                    handleWorkerMessage
-                );
-                agent.current.terminate();
-                agent.current = undefined;
-            }
-        };
-    }, []);
+    const ata = useCallback(
+        ATA.setupTypeAcquisition({
+            projectName: 'My ATA Project',
+            typescript: ts,
+            logger: console,
+            delegate: {
+                receivedFile: (code: string, path: string) => {
+                    addExtraLibs(code, path);
+                },
+                started: () => {
+                    console.log('ATA start');
+                },
+                progress: (downloaded: number, total: number) => {
+                    console.log(`Got ${downloaded} out of ${total}`);
+                },
+                finished: (vfs) => {
+                    console.log('ata finished');
+                    console.log(vfs);
+                    debugPrintExtraLibs();
+                },
+            },
+        }),
+        []
+    );
 
     /***
      *
@@ -117,24 +78,18 @@ export const TypingLibsProvider = ({ children }: iProps) => {
                 // save latest files value
                 addExtraLibs(code, path);
             }
+            ata(code);
         },
         []
     );
 
-    // Callback of onmessage event with agent worker.
-    const handleWorkerMessage = (e: MessageEvent<iResponse>) => {
-        const { error } = e.data;
-        if (error) {
-            console.error(error);
-            // ひとまず
-            return;
-        }
-        const { depsMap } = e.data.payload;
-
-        // DEBUG:
-        console.log('[TypingLibsContext] Got dependencies:');
-        console.log(depsMap);
-    };
+    useEffect(() => {
+        return () => {
+            console.log('[TypingLibsContext]on will unmount.');
+            // TODO: release ata.
+            // TODO: release addTypings.
+        };
+    }, []);
 
     const addExtraLibs = (code: string, path: string) => {
         console.log('ATA recievedFile:');
@@ -165,11 +120,11 @@ export const TypingLibsProvider = ({ children }: iProps) => {
         typingLibs.current.set(path, { js, ts });
     };
 
-    // // DEBUG:
-    // const debugPrintExtraLibs = () => {
-    //     console.log('[TypingLibsContext] extraLibs');
-    //     console.log([...typingLibs.current.entries()]);
-    // };
+    // DEBUG:
+    const debugPrintExtraLibs = () => {
+        console.log('[TypingLibsContext] extraLibs');
+        console.log([...typingLibs.current.entries()]);
+    };
 
     return (
         <TypingLibsContext.Provider value={addTypings}>

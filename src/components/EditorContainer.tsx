@@ -15,7 +15,10 @@ import type { iTypingLibsContext } from '../context/TypingLibsContext';
 import type { iOrderBundle } from '../worker/types';
 import { Types as bundledContextTypes } from '../context/BundleContext';
 import { Types as filesContextTypes } from '../context/FilesContext';
-import { OrderTypes, iFetchResponse } from '../worker/types';
+import {
+    OrderTypes,
+    // iFetchResponse
+} from '../worker/types';
 import MonacoEditor from './Monaco/MonacoEditor';
 import debounce from 'lodash.debounce';
 // NOTE: 以下の全部取得は避けた方がいいかも。lodashは巨大なライブラリである
@@ -56,6 +59,8 @@ class EditorContainer extends React.Component<iProps, iState> {
         (code: string, path?: string) => void
     >;
     _debouncedBundle: lodash.DebouncedFunc<() => void>;
+
+    _fetchLibsWorker: Worker | undefined;
 
     constructor(props: iProps) {
         super(props);
@@ -117,6 +122,7 @@ class EditorContainer extends React.Component<iProps, iState> {
     }
 
     componentWillUnmount() {
+        // TODO: workerフィールドにはundefinedを渡した方がいいかも
         this._bundleWorker &&
             this._bundleWorker.removeEventListener(
                 'message',

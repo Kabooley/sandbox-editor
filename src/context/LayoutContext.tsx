@@ -93,7 +93,7 @@ const navigationWidth = initialLayout.navigation.width;
 
 const LayoutContext = createContext<iState>({
     pointerEventsOnPreviewIframe: true,
-    currentContext: 'explorer',
+    currentContext: 'dependencies',
     isPreviewDisplay: true,
     editorWidth: initialLayout.editorLayout.defaultWidth,
     paneWidth: initialLayout.paneLayout.defaultWidth,
@@ -292,7 +292,7 @@ function layoutReducer(state: iState, action: iLayoutActions) {
 
 const initialState: iState = {
     pointerEventsOnPreviewIframe: true,
-    currentContext: 'explorer',
+    currentContext: 'dependencies',
     isPreviewDisplay: true,
     editorWidth: initialLayout.editorLayout.defaultWidth,
     paneWidth: initialLayout.paneLayout.defaultWidth,

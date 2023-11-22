@@ -51,9 +51,9 @@ const bundler = async (
 
         if (result === undefined) throw new Error();
 
-        // DEBUG:
-        console.log('[bundle.worker] result:');
-        console.log(result);
+        // // DEBUG:
+        // console.log('[bundle.worker] result:');
+        // console.log(result);
 
         return {
             bundledCode: result.outputFiles![0].text,
@@ -76,8 +76,8 @@ const bundler = async (
 self.onmessage = (e: MessageEvent<iOrderBundle>): void => {
     if (e.data.order !== 'bundle') return;
 
-    // DEBUG:
-    console.log('[bundle.worker.ts] start bundle process...');
+    // // DEBUG:
+    // console.log('[bundle.worker.ts] start bundle process...');
 
     const { entryPoint, tree } = e.data;
 
@@ -86,8 +86,8 @@ self.onmessage = (e: MessageEvent<iOrderBundle>): void => {
             .then((result: iBuildResult) => {
                 if (result.err instanceof Error) throw result.err;
 
-                // DEBUG:
-                console.log('[budle.worker.ts] sending bundled code');
+                // // DEBUG:
+                // console.log('[budle.worker.ts] sending bundled code');
 
                 // NOTE: Follow iOrderBundleResult type
                 // which defined in `./types.ts`.
@@ -97,9 +97,6 @@ self.onmessage = (e: MessageEvent<iOrderBundle>): void => {
                 });
             })
             .catch((e) => {
-                // DEBUG:
-                console.log('[budle.worker.ts] sending Error');
-
                 self.postMessage({
                     bundledCode: '',
                     err: e,
@@ -107,3 +104,12 @@ self.onmessage = (e: MessageEvent<iOrderBundle>): void => {
             });
     }
 };
+
+// workerが正常に生成されているのかの確認
+// `self`は`DedicatedWebWorkerGlobalScope`になっていないとならない
+// もしも`self`が`Window`である場合、それは破棄されなくてはならない
+// ReactはStrictModeだとuseEffectを2度実行するのでuseEffectでworkerを生成すると2度生成することになる
+// この内globalがwindowになる方を破棄するはず
+// console.log('[bundle.worker.ts]...');
+// console.log(self);
+// console.log(self.importScripts);
