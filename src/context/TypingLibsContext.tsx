@@ -1,13 +1,10 @@
 /******************************************************************
- * TODOs:
  *
- * - TODO: workerをここで管理する
- *
- *
+ * TODO: Dependencies listと連動させること。つまりこのcontextをreducer月にスケールアップしてdependencieslistからdispatchを受け取ること
  * ****************************************************************/
 import * as monaco from 'monaco-editor';
 import React, { createContext, useCallback, useEffect, useRef } from 'react';
-import type { iRequest, iResponse } from '../worker/fetchLibsARRR.worker';
+import type { iRequestFetchLibs, iResponseFetchLibs } from '../worker/types';
 
 export type iTypingLibsContext = (code: string, path?: string) => void;
 
@@ -57,7 +54,7 @@ export const TypingLibsProvider = ({ children }: iProps) => {
             console.log('[TypingLibsContext] Generate worker');
 
             agent.current = new Worker(
-                new URL('/src/worker/fetchLibsARRR.worker.ts', import.meta.url),
+                new URL('/src/worker/fetchLibs.worker.ts', import.meta.url),
                 { type: 'module' }
             );
             agent.current.addEventListener('message', handleWorkerMessage);
@@ -69,6 +66,10 @@ export const TypingLibsProvider = ({ children }: iProps) => {
             const dummyDependencies = [
                 { name: 'react', version: '18.2.0' },
                 { name: 'react-dom/client', version: '18.2.0' },
+                { name: 'react-refresh', version: '0.11.0' },
+                { name: '@types/react', version: 'latest' },
+                { name: '@types/react-dom', version: 'latest' },
+                { name: 'typescript', version: '5.0.2' },
             ];
             dummyDependencies.forEach((d) => {
                 console.log(
@@ -82,7 +83,7 @@ export const TypingLibsProvider = ({ children }: iProps) => {
                         moduleName: d.name,
                         version: d.version,
                     },
-                } as iRequest);
+                } as iRequestFetchLibs);
             });
         }
 
@@ -122,7 +123,7 @@ export const TypingLibsProvider = ({ children }: iProps) => {
     );
 
     // Callback of onmessage event with agent worker.
-    const handleWorkerMessage = (e: MessageEvent<iResponse>) => {
+    const handleWorkerMessage = (e: MessageEvent<iResponseFetchLibs>) => {
         const { error } = e.data;
         if (error) {
             console.error(error);
@@ -133,11 +134,18 @@ export const TypingLibsProvider = ({ children }: iProps) => {
 
         // DEBUG:
         console.log('[TypingLibsContext] Got dependencies:');
-        console.log(depsMap);
+
+        // key: /node_modules/typescript/lib/lib.webworker.iterable.d.ts
+        // value: its file's code
+        depsMap.forEach((value, key, _map) => {
+            addExtraLibs(value, key);
+        });
     };
 
     const addExtraLibs = (code: string, path: string) => {
-        console.log('ATA recievedFile:');
+        // DEBUG:
+        console.log(`[TypingLibsContext] Add extra Library: ${path}`);
+
         const cachedLib = typingLibs.current.get(path);
         if (cachedLib) {
             cachedLib.js.dispose();
@@ -164,12 +172,6 @@ export const TypingLibsProvider = ({ children }: iProps) => {
         );
         typingLibs.current.set(path, { js, ts });
     };
-
-    // // DEBUG:
-    // const debugPrintExtraLibs = () => {
-    //     console.log('[TypingLibsContext] extraLibs');
-    //     console.log([...typingLibs.current.entries()]);
-    // };
 
     return (
         <TypingLibsContext.Provider value={addTypings}>

@@ -1,15 +1,9 @@
-/************************************************
+/*****************************************************
+ * Fetches requested npm package module from jsdelvr
  *
- *
- * NOTE: depth 1以降はどのモジュールもversionが`latest`になる
- * TODO: このファイルが原因であるのか定かでないけれど、`window`ってなに？というエラーが出ている
- * TODO: メインスレッドと通信できない(また？)
- *
- *
- * https://stackoverflow.com/questions/55849240/window-is-not-defined-after-a-build-with-webpack
- * https://github.com/webpack/webpack/issues/6642
- * https://webpack.js.org/configuration/output/#outputglobalobject
- * **********************************************/
+ * NOTE: importするライブラリに注意。
+ * `window`グローバルスコープを含まないライブラリであること。
+ *****************************************************/
 
 import { valid } from 'semver';
 import {
@@ -19,31 +13,29 @@ import {
     getNPMVersionsForModule,
 } from './fetcher';
 import { mapModuleNameToModule } from './edgeCases';
-import { createStore, set as setItem, get as getItem, clear } from 'idb-keyval';
+import { createStore, set as setItem, get as getItem } from 'idb-keyval';
+import {
+    iTreeMeta,
+    iConfig,
+    iRequestFetchLibs,
+    iResponseFetchLibs,
+} from './types';
 
-// DEBUG:
-import { logArrayData } from '../utils';
+// NOTE: 原因はこいつでした！！！！！！！
+// import { logArrayData } from '../utils';
 
+// Temporary
+// log each elements in a column from array data.
+const logArrayData = (arr: any[]) => {
+    for (let i = 0; i < arr.length; i++) {
+        console.log(arr[i]);
+    }
+};
 
-// TODO: typescriptをimportするのはここであるべきか？
-// import ts from 'typescript';
+// TODO: typescriptをimportするのはここであるべきか？importScripts()は使わなくていいか？
+import ts from 'typescript';
+// NOTE: 以下の通りメソッドだけimportすると後々`ts`ってエラーになる。
 // import { preProcessFile } from 'typescript';
-
-// なんかtypescriptを直接インポートするとwindowってなに？ってエラーが出る
-// そのためネットから取得する
-// (同じ理由でtypeof import("typescript")もできない？)
-declare const ts: any;
-if (typeof self.importScripts === 'function') {
-    self.importScripts(
-        'https://cdn.jsdelivr.net/npm/typescript@5.2.2/lib/typescript.min.js'
-    );
-    console.log('[fetchLibs.worker] typescript Downloaded');
-} else {
-    console.log(
-        `[fetchLibs.worker] IDK why but self is not apprapriate global`
-    );
-    console.log(self);
-}
 
 // --- types ---
 
@@ -79,49 +71,6 @@ interface PreProcessedFileInfo {
     isLibFile: boolean;
 }
 
-type iOrder = 'RESOLVE_DEPENDENCY';
-
-interface iRequest {
-    order: iOrder;
-    payload: {
-        moduleName: string;
-        version: string;
-    };
-}
-
-interface iResponse {
-    order: iOrder;
-    payload: {
-        depsMap: Map<string, string>;
-    };
-    error?: Error;
-}
-
-interface Logger {
-    log: (...args: any[]) => void;
-    error: (...args: any[]) => void;
-    groupCollapsed: (...args: any[]) => void;
-    groupEnd: (...args: any[]) => void;
-}
-
-// 正直いらないかも。ATAのconfigをひとまず模倣しただけ。この方法は便利そうですけどね。
-interface iConfig {
-    // typescript: typeof import('typescript');
-    logger?: Logger;
-    // delegate: {
-    //   start: () => void;
-    //   finished: () => void;
-    // };
-}
-
-// Tree object that contained in response from fetching package module.
-interface iTreeMeta {
-    default: string;
-    files: Array<{ name: string }>;
-    moduleName: string;
-    version: string;
-}
-
 type iTree =
     | iTreeMeta
     | { error: Error; message: string }
@@ -146,9 +95,6 @@ const store = createStore(
     'fetched-type-modules-cache-v1-db',
     'fetched-type-modules-cache-v1-store'
 );
-
-// DEBUG:
-const clearStore = async () => await clear(store);
 
 // --- Methods ---
 
@@ -223,7 +169,9 @@ const getFileTreeForModule = async (
 
 // --- helpers ---
 
-// Check if parameter string includes any whitespaces.
+/***
+ * Check if parameter string includes any whitespaces.
+ * */
 const isIncludingWhiteSpaces = (str: string) => {
     return /\s/g.test(str);
 };
@@ -262,7 +210,6 @@ const excludeInvalidModuleName = (moduleName: string) => {
  * 厳密なバージョン指定でないと受け付けない。つまり、`X.Y.Z`
  * */
 const validateModuleVersion = (version: string) => {
-    // semver.valid() method.
     return valid(version);
 };
 
@@ -305,18 +252,18 @@ function getDTName(s: string) {
 /***
  * Parse passed code and returns list of imported module name and version set.
  *
- * @ param {import("typescript")} ts - TypeScript library.~
+ * @param {import("typescript")} ts - TypeScript library.
  * @param {string} code - Code that will be parsed what modules are imported in this code.
  * @return {Array<{module: string, version: string}>} - `code`から読み取ったimportモジュールのうち、
  * `.d.ts`拡張子ファイルでないもの、TypeScriptライブラリでないものをリスト化して返す。
  * */
 const retrieveImportedModulesByParse = (
-    // ts: typeof import('typescript'),
+    ts: typeof import('typescript'),
     code: string
 ) => {
     // ts: typescript
-    // const meta = ts.preProcessFile(code);
-    const meta = ts.preProcessFile(code) as PreProcessedFileInfo;
+    const meta = ts.preProcessFile(code);
+    // const meta = ts.preProcessFile(code) as PreProcessedFileInfo;
     // Ensure we don't try download TypeScript lib references
     // @ts-ignore - private but likely to never change
     const libMap: Map<string, string> = ts.libMap || new Map();
@@ -408,10 +355,6 @@ const fetchTypeAgent = (
         );
 
         // Return if it's already downloaded.
-        // if (moduleMap.has(moduleName)) {
-        //   console.log(`[fetching ${fetchingModuleTitle}] Module ${moduleName} is already downloaded.`);
-        //   return;
-        // }
         const isAlreadyExists = await getItem(moduleName, store);
         if (isAlreadyExists) {
             console.log(
@@ -526,10 +469,8 @@ const fetchTypeAgent = (
                     // 例えば進行状況とかログに出したいとか。
 
                     // Retrieve all imported module names
-                    //
-                    // TODO: この時点でdepsToGetと同じ内容になっているのか確認
                     const modules = retrieveImportedModulesByParse(
-                        // config.typescript,
+                        config.typescript,
                         dtsFileCode
                     );
                     // Recurse through deps
@@ -586,15 +527,15 @@ const fetchTypeAgent = (
 };
 
 // Incase this was worker.
-// self.addEventListener('message', (e: MessageEvent<iRequest>) => {
-self.onmessage = (e: MessageEvent<iRequest>) => {
+// self.addEventListener('message', (e: MessageEvent<iRequestFetchLibs>) => {
+self.onmessage = (e: MessageEvent<iRequestFetchLibs>) => {
     const { payload, order } = e.data;
     if (order !== 'RESOLVE_DEPENDENCY') return;
     const { moduleName, version } = payload;
 
-    // TODO: configを呼び出し側から渡すようにするべきかの検討
+    // TODO: configは必要か検討
     const config = {
-        // typescript: ts,
+        typescript: ts,
         logger: console,
     };
 
@@ -613,10 +554,10 @@ self.onmessage = (e: MessageEvent<iRequest>) => {
                     payload: {
                         depsMap: r.vfs,
                     },
-                } as iResponse);
+                } as iResponseFetchLibs);
             }
         )
-        .catch((e) => {
+        .catch((e: Error) => {
             const emptyMap = new Map<string, string>();
             self.postMessage({
                 order: 'RESOLVE_DEPENDENCY',
@@ -624,19 +565,8 @@ self.onmessage = (e: MessageEvent<iRequest>) => {
                     depsMap: emptyMap,
                 },
                 error: e,
-            } as iResponse);
+            } as iResponseFetchLibs);
         });
-};
-
-export {
-    fetchTypeAgent,
-    // types
-    iRequest,
-    iResponse,
-    iConfig,
-    iTreeMeta,
-    // DEBUG:
-    clearStore,
 };
 
 // NOTE: `window is not defined` エラーの件：
@@ -647,4 +577,3 @@ export {
 // この内globalがwindowになる方を破棄するはず
 console.log('[fetchLibs.worker.ts]...');
 console.log(self);
-console.log(self.importScripts);

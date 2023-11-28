@@ -3,17 +3,22 @@
 export enum OrderTypes {
     Bundle = 'bundle',
     JsxHighlight = 'jsxhighlight',
-    FetchLibs = 'fetch-libs',
+    FetchLibs = 'RESOLVE_DEPENDENCY',
 }
 
-type iOrder = 'order' | 'bundle' | 'jsxhighlight' | 'eslint' | 'fetch-libs';
+type iOrder =
+    | 'order'
+    | 'bundle'
+    | 'jsxhighlight'
+    | 'eslint'
+    | 'RESOLVE_DEPENDENCY';
 
 interface iRequest {
     order: iOrder;
 }
 
 interface iResponse {
-    err: Error | null;
+    error: Error | null;
 }
 
 // --- BUNDLE ---
@@ -52,3 +57,45 @@ export interface iFetchRequest extends iRequest {
 // }
 
 // export interface iResultFetchTypings extends iResponse, TypingsResult {};
+
+// ---- fetchLibs.worker.ts  ---
+
+export interface iRequestFetchLibs extends iRequest {
+    order: 'RESOLVE_DEPENDENCY';
+    payload: {
+        moduleName: string;
+        version: string;
+    };
+}
+
+export interface iResponseFetchLibs extends iResponse {
+    order: 'RESOLVE_DEPENDENCY';
+    payload: {
+        depsMap: Map<string, string>;
+    };
+}
+
+interface Logger {
+    log: (...args: any[]) => void;
+    error: (...args: any[]) => void;
+    groupCollapsed: (...args: any[]) => void;
+    groupEnd: (...args: any[]) => void;
+}
+
+// 正直いらないかも。ATAのconfigをひとまず模倣しただけ。この方法は便利そうですけどね。
+export interface iConfig {
+    typescript: typeof import('typescript');
+    logger?: Logger;
+    // delegate: {
+    //   start: () => void;
+    //   finished: () => void;
+    // };
+}
+
+// Tree object that contained in response from fetching package module.
+export interface iTreeMeta {
+    default: string;
+    files: Array<{ name: string }>;
+    moduleName: string;
+    version: string;
+}
