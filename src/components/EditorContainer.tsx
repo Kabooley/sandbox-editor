@@ -7,7 +7,6 @@
  * ***************************************/
 import React from 'react';
 import * as monaco from 'monaco-editor';
-import Tabs from './Tabs';
 import type { iOrderBundleResult } from '../worker/types';
 import type { File } from '../data/files';
 import type { iFilesActions } from '../context/FilesContext';
@@ -16,17 +15,23 @@ import type { iTypingLibsContext } from '../context/TypingLibsContext';
 import type { iOrderBundle } from '../worker/types';
 import { Types as bundledContextTypes } from '../context/BundleContext';
 import { Types as filesContextTypes } from '../context/FilesContext';
-import { OrderTypes, iFetchResponse } from '../worker/types';
+import {
+    OrderTypes,
+    // iFetchResponse
+} from '../worker/types';
 import MonacoEditor from './Monaco/MonacoEditor';
 import debounce from 'lodash.debounce';
+// NOTE: 以下の全部取得は避けた方がいいかも。lodashは巨大なライブラリである
 import type * as lodash from 'lodash';
 import { generateTreeForBundler, getFilenameFromPath } from '../utils';
+import ScrollableTabs from './ScrollableTabs';
 
 interface iProps {
     files: File[];
     addTypings: iTypingLibsContext;
     dispatchFiles: React.Dispatch<iFilesActions>;
     dispatchBundledCode: React.Dispatch<iBundledCodeActions>;
+    width: number;
 }
 
 interface iState {
@@ -54,6 +59,8 @@ class EditorContainer extends React.Component<iProps, iState> {
         (code: string, path?: string) => void
     >;
     _debouncedBundle: lodash.DebouncedFunc<() => void>;
+
+    _fetchLibsWorker: Worker | undefined;
 
     constructor(props: iProps) {
         super(props);
@@ -115,6 +122,7 @@ class EditorContainer extends React.Component<iProps, iState> {
     }
 
     componentWillUnmount() {
+        // TODO: workerフィールドにはundefinedを渡した方がいいかも
         this._bundleWorker &&
             this._bundleWorker.removeEventListener(
                 'message',
@@ -179,8 +187,7 @@ class EditorContainer extends React.Component<iProps, iState> {
     _onDidChangeModel(oldModelPath: string, newModelPath: string) {}
 
     _onChangeSelectedTab(selected: string) {
-
-        console.log(`[EditorContainer] on change selected tab: ${selected}`)
+        console.log(`[EditorContainer] on change selected tab: ${selected}`);
         this.props.dispatchFiles({
             type: filesContextTypes.ChangeSelectedFile,
             payload: { selectedFilePath: selected },
@@ -194,12 +201,28 @@ class EditorContainer extends React.Component<iProps, iState> {
         this.props.addTypings(code, path);
     }
 
+    // https://stackoverflow.com/a/1129270/22007575
+    getFilesOpening(files: File[]) {
+        return files
+            .filter((f) => f.isOpening())
+            .sort((a: File, b: File): number => {
+                if (a.getTabIndex()! < b.getTabIndex()!) {
+                    return -1;
+                }
+                if (a.getTabIndex()! > b.getTabIndex()!) {
+                    return 1;
+                }
+                return 0;
+            });
+    }
     render() {
         return (
             <div className="editor-container">
-                <Tabs
+                <ScrollableTabs
                     path={this.state.currentFilePath}
                     onChangeSelectedTab={this._onChangeSelectedTab}
+                    width={this.props.width}
+                    filesOpening={this.getFilesOpening(this.props.files)}
                 />
                 <MonacoEditor
                     files={this.props.files}

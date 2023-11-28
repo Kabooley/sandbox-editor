@@ -1,0 +1,167 @@
+/* どちらかというとcodesandboxに寄せる */
+
+// TODO: _variableへ移動して
+$--height-footer-section: 22px;
+
+.footer-section {
+    background-color: rgb(52, 52, 52);
+    color: rgb(255, 255, 255);
+    position: fixed;
+    z-index: 10;
+    display: flex;
+    flex-direction: row;
+    bottom: 0px;
+    right: 0px;
+    left: 0px;
+    width: 100%;
+    height: $--height-footer-section;
+    // 原因は不明だがz-index指定したら何かcss定義おかしくね？のエラーでた。は？
+    align-items: center;
+    border-top: 1px solid rgb(52, 52, 52);
+
+    -webkit-box-pack: justify;
+    justify-content: space-between;
+    -webkit-box-align: center;
+    align-items: center;
+}
+
+.side-bar {
+    -webkit-box-align: stretch;
+    display: flex;
+    align-items: stretch;
+    flex: 1 1 0%;
+    min-width: 300px;
+    overflow: hidden;
+
+    .toggle-prompt {
+        border: 0px;
+        outline: 0px;
+        margin: 0px;
+        appearance: none;
+        background-color: transparent;
+        display: inline-block;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        padding: 0.25em 0.5em 0.25em 3em;
+        min-width: 200px;
+        width: 100%;
+        text-align: left;
+
+        color: white;
+
+        &:hover {
+            background-color: #565656;
+        }
+    }
+}
+
+.prompt {
+    position: absolute;
+    display: none;
+    transition: all 0.3s ease-out;
+
+    &.show {
+        display: block;
+        height: 14rem;
+        bottom: $--height-footer-section;
+        left: 0;
+        // ひとまず
+        background-color: red;
+        width: 100%;
+    }
+}
+
+.status-bar {
+    box-sizing: border-box;
+    cursor: default;
+    width: calc(100% - 306px);
+    height: 22px;
+    font-size: 12px;
+
+    & > :first-child {
+        margin-left: 3px;
+        margin-right: 3px;
+    }
+
+    &-item {
+        display: inline-block;
+        line-height: 22px;
+        height: 100%;
+        vertical-align: top;
+        padding-right: 7px;
+        float: right;
+
+        & > div {
+            display: inline-block;
+        }
+
+        &__editor-status {
+            cursor: pointer;
+            display: inline-block;
+            height: 100%;
+            padding: 0 5px;
+            color: inherit;
+
+            &:not(:first-child) {
+                margin-left: 5px;
+            }
+
+            &:hover {
+                background-color: #565656;
+            }
+
+            // add specific item styles
+            & button[title='prettier-format'] {
+                border: 0;
+                outline: 0;
+                margin: 0;
+                background-color: transparent;
+                color: inherit;
+            }
+        }
+    }
+}
+
+// toggle switch
+
+$--color-primary: #0954a5;
+$--color-border: #3a3f42;
+$--color-background: #0c0d0e;
+
+.toggle-switch {
+    -webkit-box-align: center;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    white-space: nowrap;
+
+    & > input {
+        display: none;
+    }
+
+    & > span {
+        padding-right: 8px;
+    }
+
+    &__slider {
+        display: inline-block;
+        vertical-align: -4px;
+        width: 36px;
+        height: 20px;
+        border-radius: 12px;
+        border: 1px solid $--color-border;
+        background-color: $--color-background;
+
+        &:before {
+            content: '';
+            display: inline-block;
+            height: 14px;
+            width: 14px;
+            border-radius: 7px;
+            margin: 2px;
+            transition: all 0.2s ease 0s;
+            transform: translateX(16px);
+            background-color: $--color-primary;
+        }
+    }
+}

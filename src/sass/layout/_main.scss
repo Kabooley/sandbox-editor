@@ -1,3 +1,15 @@
+/************************************
+WATCH:
+    These variables below are only for codesandbox environment
+    this is because codesandbox environment cannot 
+    read scss variable definitions from each seperated scss files.
+*************************************/
+$default-font-size: 1.6rem;
+$color-border: rgb(52, 52, 52);
+$pane-font-size: 1.4rem;
+$color-font: #999;
+$color-bg-dark: rgb(21, 21, 21);
+
 .header-section {
     border-bottom: 1px solid $color-border;
     border-top-color: $color-border;
@@ -46,6 +58,35 @@
     height: 100%;
     border-right: 1px solid $color-border;
     font-size: $pane-font-size;
+    overflow-y: scroll;
+
+    /************************************
+        scrollbarの幅は、div.paneの幅から
+        下記のwidth幅をとる。
+        そのためpaneの子要素の幅は、
+        このdiv.pane幅 - scrollbar幅となる
+
+    **************************************/
+    &::-webkit-scrollbar {
+        width: 10px;
+    }
+    &::-webkit-scrollbar-track {
+        background-color: transparent;
+        opacity: 0.4;
+    }
+    // スライダ
+    &::-webkit-scrollbar-thumb {
+        // TODO: 色指定:tabsのスライダと同じ色に
+        background-color: rgba(121, 121, 121, 0.6);
+    }
+    // ホバーしたとき
+    &::-webkit-scrollbar-thumb:hover {
+        opacity: 1;
+    }
+    // つかんだ時
+    &::-webkit-scrollbar-thumb:active {
+        opacity: 1;
+    }
 }
 
 .editor-section {

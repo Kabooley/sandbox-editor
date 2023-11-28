@@ -10,3 +10,5 @@ export { sortObjectByKeys } from './sortObjectByKeys';
 export { generateTreeForBundler } from './generateTreeForBundler';
 export { findMax } from './findMax';
 export { moveInArray } from './moveInArray';
+// DEBUG:
+export { logArrayData } from "./logArrayData";
