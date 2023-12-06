@@ -1,4 +1,4 @@
-import type { iConfig, iTreeMeta } from './fetchLibsARRR.worker';
+import type { iConfig, iTreeMeta } from './types';
 
 // Fetch all versions data of `moduleName`
 export const getNPMVersionsForModule = async (moduleName: string) => {
@@ -52,6 +52,10 @@ export const getFileForModuleByFilePath = async (
     }
 };
 
+/**
+ * @returns {Promise<T|Error>} - Returns Promise of response.json() or error.
+ *
+ * */
 const fetcher = <T>(
     url: string,
     init?: RequestInit | undefined

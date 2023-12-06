@@ -6,7 +6,9 @@ import React from 'react';
 import { useFiles, useFilesDispatch } from './FilesContext';
 import { useBundledCodeDispatch } from './BundleContext';
 import EditorContainer from '../components/EditorContainer';
-import { TypingLibsContext } from './TypingLibsContext';
+
+// TODO: 結局adExtraLibsを提供しないといけない？もしくはEditorContainerは独自にaddExtraLibsをやるか...どちらか選ぶ感じ。
+// import { TypingLibsContext } from './TypingLibsContext';
 
 interface iProps {
     width: number;
@@ -14,7 +16,7 @@ interface iProps {
 
 const EditorContext = ({ width }: iProps) => {
     const files = useFiles();
-    const addTypings = React.useContext(TypingLibsContext);
+    // const addTypings = React.useContext(TypingLibsContext);
     const dispatchFiles = useFilesDispatch();
     const dispatchBundledCode = useBundledCodeDispatch();
     // DEBUG:
@@ -22,7 +24,7 @@ const EditorContext = ({ width }: iProps) => {
     return (
         <EditorContainer
             files={files.filter((f) => !f.isFolder())}
-            addTypings={addTypings}
+            // addTypings={addTypings}
             dispatchFiles={dispatchFiles}
             dispatchBundledCode={dispatchBundledCode}
             width={width}

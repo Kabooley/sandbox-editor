@@ -13,8 +13,60 @@
 
 ## summary
 
+- [機能](#機能)
+
 -   [直面した問題](#直面した問題)
 -   [解決に至った方法](#解決に至った方法)
+- [cache機能](#cache機能)
+- [debug](#debug)
+- [変更内容](#変更内容)
+
+## 機能
+
+- `fetchLibs.worker.ts`: 依存関係typesファイルの取得
+- `TypingLibsContext.tsx`: `fetchLibs.worker.ts`のインスタンスと通信して依存関係を管理するコンテキスト
+- `requestFetchTyings`: コンテキストが子コンポーネントに提供する関数で、呼び出し側が依存関係をワーカーにリクエストできる関数
+- `dependencies`: 現在取得している依存関係のリストで、`TypingLibsContext.tsx`がstate管理している。コンテキストとして子コンポーネントに提供している
+
+
+## 依存関係を削除する機能
+
+`DependencyList`からユーザ操作によって依存関係一覧から依存関係を削除できるようにして、削除された依存関係をmonacoの登録ライブラリ他から削除できるようにする
+
+問題：
+
+`react`を削除するとした場合に、あとから`react`の依存関係全てを捜索することが可能なのか？
+
+`react@17.2.0`をリクエストしたら...
+
+```bash
+Add extra Library: /node_modules/@types/react/package.json
+Add extra Library: /node_modules/@types/react/experimental.d.ts
+Add extra Library: /node_modules/@types/react/global.d.ts
+Add extra Library: /node_modules/@types/react/index.d.ts
+Add extra Library: /node_modules/@types/react/jsx-dev-runtime.d.ts
+Add extra Library: /node_modules/@types/react/jsx-runtime.d.ts
+Add extra Library: /node_modules/@types/react/next.d.ts
+Add extra Library: /node_modules/@types/react/ts5.0/experimental.d.ts
+Add extra Library: /node_modules/@types/react/ts5.0/global.d.ts
+Add extra Library: /node_modules/@types/react/ts5.0/index.d.ts
+Add extra Library: /node_modules/@types/react/ts5.0/jsx-dev-runtime.d.ts
+Add extra Library: /node_modules/@types/react/ts5.0/jsx-runtime.d.ts
+Add extra Library: /node_modules/@types/react/ts5.0/next.d.ts
+Add extra Library: /node_modules/csstype/package.json
+Add extra Library: /node_modules/csstype/index.d.ts
+Add extra Library: /node_modules/@types/prop-types/package.json
+Add extra Library: /node_modules/@types/prop-types/index.d.ts
+Add extra Library: /node_modules/@types/scheduler/package.json
+Add extra Library: /node_modules/@types/scheduler/index.d.ts
+Add extra Library: /node_modules/@types/scheduler/tracing.d.ts
+```
+
+
+以上のような依存関係が取得できる。
+
+`@types/react`がついている奴はわかりやすいからいいけれど、`csstype`とか`react`関連ライブラリであるということはあとから知ることができない。
+
 
 ## 直面した問題
 
@@ -169,3 +221,54 @@ fetchLibs_worker_ts_....ts
 ここの内容が`fetchLIbs_worker_ts..`の依存関係である。
 
 依存関係がおかしいと思ったらここの内容を調べてみよう。
+
+
+## cache機能
+
+TypingLibsContext3.tsx
+
+
+
+3か所くらい設けることになるか？
+
+- TypingLibsContextのstate.dependencies: DependencyListからリクエストされたらstate.dependenciesをまず捜索してインストール済でないか確認する。fetch後はworkerから帰ってきたmoduleNameとversionの組み合わせでsetDependeciesされる
+
+
+#### 前提
+
+TODO: `fetchLibs.worker.ts`へリクエストしたときのversionと実際にダウンロードすることになるversionの違いが発生するかもしれなくて、workerのレスポンスは実際にダウンロードすることになるversionを返したい。リクエストの時にlatestがアリとしているならだけど
+
+
+## debug
+
+#### 2か所でmonacoのaddExtraLibsを動かすと両者の取得したライブラリはそれぞれ独立してしまうか？
+
+結論：どこで取得しても共通である。
+
+EditorContainer.tsxとTypingLibsContext.tsxの両方のdidUpdateComponentのタイミングで`getExtraLibs`を実行したところそれぞれが取得したライブラリが両方で取得できていることが分かった。
+
+
+#### TypingLibsContext3.tsxを稼働させるためにMonacoContainer.tsxはaddExtraLibsを独自に行う必要がある件
+
+TypingLibsContextは現状2つの値を提供するだけ。
+
+`requstFetchTypings`と`dependencies`である。
+
+これ以上コンテキストをやたらと増やしたくないという事情を優先するとしたら、次の通りaddExtraLibsは2か所で活動することになる。
+
+- TypingLiibsContextではライブラリを登録する
+- MonacoContainerでは仮想ファイルを登録する
+
+monacoのaddExtraLibsは別々に稼働させても問題ないのか確認すること
+
+参考: https://microsoft.github.io/monaco-editor/typedoc/interfaces/languages.typescript.LanguageServiceDefaults.html#getExtraLibs
+
+## 変更内容
+
+- `monaco.languages.[type|java]script.[type|java]scriptDefault.addExtraLibs`はTypingLibsContext.tsxだけで呼出し、その呼出す関数を`addTypings`というコンテキスト経由で取得できる関数を提供することで好きな場所で呼出可能としていたが、これをやめて2か所で呼び出すことにした。
+
+    `TypingLibsContext.tsx`: jsdelvr経由でnpm パッケージモジュールを取得する
+    `EditorContainer.tsx`: 仮想ファイルの内容を登録する
+
+    両モジュールはそれぞれ独立して`addExtraLIbs`を呼び出すが、内部的にはそのスコープは共通みたいなので問題なし
+    ([2か所でmonacoのaddExtraLibsを動かすと両者の取得したライブラリはそれぞれ独立してしまうか？](#2か所でmonacoのaddExtraLibsを動かすと両者の取得したライブラリはそれぞれ独立してしまうか？))

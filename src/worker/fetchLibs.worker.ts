@@ -1,8 +1,11 @@
 /*****************************************************
  * Fetches requested npm package module from jsdelvr
  *
- * NOTE: importするライブラリに注意。
- * `window`グローバルスコープを含まないライブラリであること。
+ * - resolver呼出時の引数version番号は解決プロセス中に正確なバージョン番号`correctVersion`に更新されて返されます。
+ * 
+ * 
+ * - NOTE: importしたいモジュールが`window`グローバルスコープを必要としないかどうか予めチェックすること
+ * - NOTE: `import { preProcessFile } from 'typescript'`をすると`ts`ってなにというエラーが発生するので結局すべてtypescriptをimportしている
  *****************************************************/
 
 import { valid } from 'semver';
@@ -20,11 +23,10 @@ import {
     iRequestFetchLibs,
     iResponseFetchLibs,
 } from './types';
+import ts from 'typescript';
 
-// NOTE: 原因はこいつでした！！！！！！！
-// import { logArrayData } from '../utils';
 
-// Temporary
+// DEBUG:
 // log each elements in a column from array data.
 const logArrayData = (arr: any[]) => {
     for (let i = 0; i < arr.length; i++) {
@@ -32,10 +34,6 @@ const logArrayData = (arr: any[]) => {
     }
 };
 
-// TODO: typescriptをimportするのはここであるべきか？importScripts()は使わなくていいか？
-import ts from 'typescript';
-// NOTE: 以下の通りメソッドだけimportすると後々`ts`ってエラーになる。
-// import { preProcessFile } from 'typescript';
 
 // --- types ---
 
@@ -107,7 +105,8 @@ const store = createStore(
  * @param {string} version - Version of npm module package.
  * @returns {Promise<{moduleName: string; version: string; default: string; files: Array<{name: string;}>;} | {error: Error; message: string;}>} - Object that contains file list of package or fetching error.
  *
- * This will fix version if `version` is incorrect if possible.
+ * This will fix version when `version` is incorrect if possible.
+ * `response` contains its modules's correct version.
  * */
 
 const getFileTreeForModule = async (
@@ -164,6 +163,11 @@ const getFileTreeForModule = async (
             message: `${response.message} Please make sure module name or version is correct.`,
         };
     }
+
+    // DEBUG:
+    console.log('[fetchLibs.worker] getFileTreeForModule response:');
+    console.log(response);
+
     return response;
 };
 
@@ -301,8 +305,8 @@ const retrieveImportedModulesByParse = (
  * @param {iConfig} config - Config for this agent.
  * @param {string} moduleName - Module name to be resolved.
  * @param {string} version - Module's version to be resolved.
- * @returns {Promise<{vfs: Map<string, string>; moduleName: string; version: string;}>} - Resolved type definition files for the module and its code.
- *
+ * @returns {Promise<{vfs: Map<string, string>; moduleName: string; version: string;}>} - Resolved type definition files for the module and its code. Version number may have been updated since the time of the call.
+ * 
  * */
 const fetchTypeAgent = (
     config: iConfig,
@@ -310,7 +314,9 @@ const fetchTypeAgent = (
     version: string
 ) => {
     // const moduleMap = new Map<string, ModuleMeta>();
-    const fsMap = new Map<string, string>();
+    const fsMap = new Map<string, string>();    
+    // moduleNameのモジュールの正確なバージョンを記憶する
+    let correctVersion = '';
 
     let downloading = 0;
     let downloaded = 0;
@@ -323,22 +329,25 @@ const fetchTypeAgent = (
         version: string,
         depth: number
     ) => {
+        // DEBUG:
         console.log(`[fetching ${fetchingModuleTitle}] depth: ${depth}`);
 
         // Exclude invalid module name and invalid version.
         if (!excludeInvalidModuleName(_moduleName)) {
-            console.error(
-                `Module name ${_moduleName} is invalid or unignorable.`
-            );
+            // // DEBUG:
+            // console.error(
+            //     `Module name ${_moduleName} is invalid or ignorable.`
+            // );
             if (depth > 0) return;
             throw new Error(
                 'Error: Invalid module name. You might input incorrect module name.'
             );
         }
         if (version !== 'latest' && !validateModuleVersion(version)) {
-            console.error(
-                `Module version ${version} of ${_moduleName} is invalid or unignorable.`
-            );
+            // // DEBUG:
+            // console.error(
+            //     `Module version ${version} of ${_moduleName} is invalid or ignorable.`
+            // );
             if (depth > 0) return;
             throw new Error(
                 'Error: Invalid semantic version. You might input incorrect module version.'
@@ -381,9 +390,10 @@ const fetchTypeAgent = (
         }
         const tree = _tree as iTreeMeta;
 
-        // DEBUG:
-        console.log(`[fetching ${fetchingModuleTitle}] treesOnly:`);
-        console.log(tree);
+        // Update requested module's version.
+        if (depth === 0) {
+            correctVersion = tree.version;
+        }
 
         const hasDtsFile = tree.files.find((f) => f.name.endsWith('.d.ts'));
 
@@ -521,7 +531,8 @@ const fetchTypeAgent = (
         return {
             vfs: fsMap,
             moduleName: moduleName,
-            version: version,
+            // version: version,
+            version: correctVersion,
         };
     });
 };
@@ -552,6 +563,8 @@ self.onmessage = (e: MessageEvent<iRequestFetchLibs>) => {
                 self.postMessage({
                     order: 'RESOLVE_DEPENDENCY',
                     payload: {
+                        moduleName: r.moduleName,
+                        version: r.version,
                         depsMap: r.vfs,
                     },
                 } as iResponseFetchLibs);
@@ -568,12 +581,3 @@ self.onmessage = (e: MessageEvent<iRequestFetchLibs>) => {
             } as iResponseFetchLibs);
         });
 };
-
-// NOTE: `window is not defined` エラーの件：
-// workerが正常に生成されているのかの確認
-// `self`は`DedicatedWebWorkerGlobalScope`になっていないとならない
-// もしも`self`が`Window`である場合、それは破棄されなくてはならない
-// ReactはStrictModeだとuseEffectを2度実行するのでuseEffectでworkerを生成すると2度生成することになる
-// この内globalがwindowになる方を破棄するはず
-console.log('[fetchLibs.worker.ts]...');
-console.log(self);

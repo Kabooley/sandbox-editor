@@ -71,6 +71,8 @@ export interface iRequestFetchLibs extends iRequest {
 export interface iResponseFetchLibs extends iResponse {
     order: 'RESOLVE_DEPENDENCY';
     payload: {
+        moduleName: string;
+        version: string;
         depsMap: Map<string, string>;
     };
 }

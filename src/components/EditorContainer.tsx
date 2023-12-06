@@ -4,6 +4,10 @@
  * - MonacoEditorの現在のモデルのonDidChangeModelContentから値を取得してbundleワーカへ渡す
  * - onDidChangeModelContentのたびに値をFilesContextへdispatch()する
  *
+ *
+ * NOTE: 一時的にaddTypingsをクラスメソッドとする(TypingLibsContext.tsxのテストの為)
+ * TODO: 仮想explorer上のファイルの中身が更新されたときに、addExtraLibsを適切に更新させる方法の追究。どうやって更新させるのが適切か、キャッシュできるのかなど
+ * TODO: lodashの使用を避ける。debounceはclassコンポーネントでも使えるものを１から作れないか?
  * ***************************************/
 import React from 'react';
 import * as monaco from 'monaco-editor';
@@ -11,7 +15,7 @@ import type { iOrderBundleResult } from '../worker/types';
 import type { File } from '../data/files';
 import type { iFilesActions } from '../context/FilesContext';
 import type { iBundledCodeActions } from '../context/BundleContext';
-import type { iTypingLibsContext } from '../context/TypingLibsContext';
+// import type { iTypingLibsContext } from '../context/TypingLibsContext';
 import type { iOrderBundle } from '../worker/types';
 import { Types as bundledContextTypes } from '../context/BundleContext';
 import { Types as filesContextTypes } from '../context/FilesContext';
@@ -21,14 +25,14 @@ import {
 } from '../worker/types';
 import MonacoEditor from './Monaco/MonacoEditor';
 import debounce from 'lodash.debounce';
-// NOTE: 以下の全部取得は避けた方がいいかも。lodashは巨大なライブラリである
+// TODO: 以下の全部取得は避けた方がいいかも。lodashは巨大なライブラリである
 import type * as lodash from 'lodash';
 import { generateTreeForBundler, getFilenameFromPath } from '../utils';
 import ScrollableTabs from './ScrollableTabs';
 
 interface iProps {
     files: File[];
-    addTypings: iTypingLibsContext;
+    // addTypings: iTypingLibsContext;
     dispatchFiles: React.Dispatch<iFilesActions>;
     dispatchBundledCode: React.Dispatch<iBundledCodeActions>;
     width: number;
@@ -72,13 +76,17 @@ class EditorContainer extends React.Component<iProps, iState> {
         this._onDidChangeModel = this._onDidChangeModel.bind(this);
         this._debouncedAddTypings = debounce(this._addTypings, delay);
         this._debouncedBundle = debounce(this._onBundle, delay);
+        this.addExtraLibs = this.addExtraLibs.bind(this);
     }
 
     componentDidMount() {
         // DEBUG:
         console.log('[EditorContainer] did mount');
 
-        const { files, addTypings } = this.props;
+        const {
+            files,
+            // addTypings
+        } = this.props;
 
         const selectedFile = files.find((f) => f.isSelected());
         selectedFile &&
@@ -88,7 +96,7 @@ class EditorContainer extends React.Component<iProps, iState> {
 
         // Register all files to monaco addExtraLibs
         files.forEach((f) => {
-            addTypings(f.getValue(), f.getPath());
+            this.addExtraLibs(f.getValue(), f.getPath());
         });
 
         if (window.Worker) {
@@ -119,6 +127,11 @@ class EditorContainer extends React.Component<iProps, iState> {
                     currentFilePath: selectedFile.getPath(),
                 });
         }
+
+        console.log('[EditorContainer] did update. getExtraLibs:');
+        const currentLibs =
+            monaco.languages.typescript.typescriptDefaults.getExtraLibs();
+        console.log(currentLibs);
     }
 
     componentWillUnmount() {
@@ -172,14 +185,14 @@ class EditorContainer extends React.Component<iProps, iState> {
      * Recieve bundled code message and send them to BundledContext.
      * */
     _onBundled(e: MessageEvent<iOrderBundleResult>) {
-        const { bundledCode, err } = e.data;
+        const { bundledCode, error } = e.data;
 
         bundledCode &&
             this.props.dispatchBundledCode({
                 type: bundledContextTypes.Update,
                 payload: {
                     bundledCode: bundledCode,
-                    error: err,
+                    error: error,
                 },
             });
     }
@@ -194,11 +207,12 @@ class EditorContainer extends React.Component<iProps, iState> {
         });
     }
 
-    _addTypings(code: string, path?: string) {
+    _addTypings(code: string, path: string) {
         // DEBUG:
         console.log('[EditorContainer][_addTypings]');
 
-        this.props.addTypings(code, path);
+        // this.props.addTypings(code, path);
+        this.addExtraLibs(code, path);
     }
 
     // https://stackoverflow.com/a/1129270/22007575
@@ -215,6 +229,42 @@ class EditorContainer extends React.Component<iProps, iState> {
                 return 0;
             });
     }
+
+    /***
+     * Register path and code to monaco.language.[type|java]script addExtraLibs.
+     * Reset code if passed path has already been registered.
+     * */
+    addExtraLibs(code: string, path: string) {
+        // DEBUG:
+        console.log(`[EditorContainer] Add extra Library: ${path}`);
+
+        // const cachedLib = typingLibs.current.get(path);
+        // if (cachedLib) {
+        //     cachedLib.js.dispose();
+        //     cachedLib.ts.dispose();
+        // }
+        // Monaco Uri parsing contains a bug which escapes characters unwantedly.
+        // This causes package-names such as `@expo/vector-icons` to not work.
+        // https://github.com/Microsoft/monaco-editor/issues/1375
+        let uri = monaco.Uri.from({
+            scheme: 'file',
+            path: path,
+        }).toString();
+        if (path.includes('@')) {
+            uri = uri.replace('%40', '@');
+        }
+
+        const js = monaco.languages.typescript.javascriptDefaults.addExtraLib(
+            code,
+            uri
+        );
+        const ts = monaco.languages.typescript.typescriptDefaults.addExtraLib(
+            code,
+            uri
+        );
+        // typingLibs.current.set(path, { js, ts });
+    }
+
     render() {
         return (
             <div className="editor-container">

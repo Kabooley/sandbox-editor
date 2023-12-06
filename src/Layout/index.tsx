@@ -9,15 +9,9 @@ import PaneSection from './PaneSection';
 import FooterSection from './FooterSection';
 import { FilesProvider } from '../context/FilesContext';
 import { BundledCodeProvider } from '../context/BundleContext';
-// import { DependenciesProvider } from '../context/DependecyContext';
-import { TypingLibsProvider } from '../context/TypingLibsContext';
+import { TypingLibsProvider } from '../context/TypingLibsContext3';
 import { LayoutStateProvider } from '../context/LayoutContext';
 
-/***
- * FilesProvider provides `files` and its action `dispatch`.
- *
- *
- * */
 const Layout = (): JSX.Element => {
     return (
         <>
@@ -29,11 +23,9 @@ const Layout = (): JSX.Element => {
                         <FilesProvider>
                             <BundledCodeProvider>
                                 <TypingLibsProvider>
-                                    {/* <DependenciesProvider> */}
                                     <PaneSection />
                                     <EditorSection />
                                     <PreviewSection />
-                                    {/* </DependenciesProvider> */}
                                 </TypingLibsProvider>
                             </BundledCodeProvider>
                         </FilesProvider>

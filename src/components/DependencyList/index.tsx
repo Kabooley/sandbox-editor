@@ -1,20 +1,10 @@
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import Form from './Form';
 import Column from './Column';
-// //
-// // TODO: codesandboxでworkerが使えなかったための措置。正式なworkerとのやり取りをすること
-// //
-// import { imitationFetchLibsWorker } from "../../temporaryWorker/fetchLibs.worker";
-
-const dummyDependencies = [
-    { name: 'react', version: '17.0.2' },
-    { name: 'react-dom', version: '17.0.2' },
-    { name: 'axios', version: '^1.4.0' },
-    { name: 'localforage', version: '^1.10.0' },
-    { name: '@types/react', version: '17.0.39' },
-    { name: 'prettier', version: '2.8.8' },
-    { name: 'tooMuchLongNameModule/suchAWaste', version: '9.9.9' },
-];
+import {
+    useDependencies,
+    useRequestFetch,
+} from '../../context/TypingLibsContext3';
 
 const styleOfContext: React.CSSProperties = {
     padding: '8px 16px',
@@ -26,7 +16,13 @@ const styleOfDependencyList: React.CSSProperties = {
     fontSize: '12px',
 };
 
+/***
+ *
+ * TODO: requestしたのがどうなったのか結果を待つ間state管理するか？そうすればローディング、失敗、とか表示できるかな？
+ * */
 const DependencyList = () => {
+    const dependencies = useDependencies();
+    const requestFetchTypings = useRequestFetch();
     const sectionTitle = 'Dependencies';
 
     /***
@@ -40,7 +36,6 @@ const DependencyList = () => {
     const send = (value: string) => {
         if (!value.length) return;
 
-        // TODO: validator
         let version = 'latest';
         const isScoped = value.startsWith('@');
         const splittedName = value.split('@');
@@ -49,24 +44,15 @@ const DependencyList = () => {
         }
         const dependencyName = splittedName.join(`@`);
 
-        console.log(`Gonna fetch ${dependencyName} @ ${version}`);
+        console.log(
+            `[DependencyList] Gonna fetch ${dependencyName} @ ${version}`
+        );
 
-        // // dispatch install dependency request
-        // imitationFetchLibsWorker({
-        //   name: dependencyName,
-        //   version: version
-        // })
-        //   .then((result) => {
-        //     console.log("Got result");
-        //     if (result === undefined) return;
-        //     const { name, version, typings, err } = result;
-        //     if (err) throw err;
-
-        //     console.log(`Result: ${name} @ ${version}`);
-        //     console.log(result);
-        //   })
-        //   .catch((err) => console.error(err));
+        requestFetchTypings(dependencyName, version);
     };
+
+    console.log('[DependencyList] running...');
+    console.log(dependencies);
 
     return (
         <section className="pane-section">
@@ -75,14 +61,14 @@ const DependencyList = () => {
             </div>
             <Form send={send} />
             <div className="dependency-list" style={styleOfDependencyList}>
-                {dummyDependencies.map((dd, index) => (
+                {dependencies.map((dep, index) => (
                     <Column
                         key={index}
                         handleClick={(e: React.MouseEvent<HTMLDivElement>) => {
                             console.log(e);
                         }}
-                        title={dd.name}
-                        version={dd.version}
+                        title={dep.moduleName}
+                        version={dep.version}
                     />
                 ))}
             </div>

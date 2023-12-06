@@ -10,5 +10,6 @@ export { sortObjectByKeys } from './sortObjectByKeys';
 export { generateTreeForBundler } from './generateTreeForBundler';
 export { findMax } from './findMax';
 export { moveInArray } from './moveInArray';
+export { removeAnItemFromArray } from './removeAnItemFromArray';
 // DEBUG:
-export { logArrayData } from "./logArrayData";
+export { logArrayData } from './logArrayData';
