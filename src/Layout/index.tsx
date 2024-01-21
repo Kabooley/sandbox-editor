@@ -9,7 +9,7 @@ import PaneSection from './PaneSection';
 import FooterSection from './FooterSection';
 import { FilesProvider } from '../context/FilesContext';
 import { BundledCodeProvider } from '../context/BundleContext';
-import { TypingLibsProvider } from '../context/TypingLibsContext3';
+import { TypingLibsProvider } from '../context/TypingLibsContext';
 import { LayoutStateProvider } from '../context/LayoutContext';
 
 const Layout = (): JSX.Element => {
