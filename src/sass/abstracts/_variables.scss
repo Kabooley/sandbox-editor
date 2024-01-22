@@ -15,6 +15,26 @@ $pane-font-size: 1.4rem;
 $pane-min-width: 19rem;
 $pane-max-width: 40rem;
 
+// ----
+
+// layout/main
+$color-border: rgb(52, 52, 52);
+
+// --- footer ---
+$--height-footer-section: 22px;
+// active
+$font-color-primary: #fff;
+// hover
+$font-color-secondary: #ddd;
+// inactive, not hovering
+$font-color-tertiary: #999999;
+// toggle switch
+$--color-primary: #0954a5;
+$--color-border: #3a3f42;
+$--color-background: rgb(46, 39, 55);
+
+// example
+
 // COLORS
 // $color-primary: #55c57a;
 // $color-primary-light: #7ed56f;

@@ -19,8 +19,6 @@ enum Types {
     Add = 'ADD_FILE',
     Change = 'CHANGE_FILE',
     ChangeMultiple = 'CHANGE_MULTIPLE_FILES',
-
-    // NOTE: Experimental
     ChangeSelectedFile = 'CHANGE_SELECTED_FILE',
     /****
      * FileExplorerからの操作

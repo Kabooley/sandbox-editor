@@ -1,87 +1,95 @@
-.scrollable-tabs {
-    position: relative;
-}
+/*
 
-.tabs-area {
-    display: flex;
-    min-height: 2.4rem;
-    background-color: rgb(21, 21, 21);
-    --title-border-bottom-color: rgb(52, 52, 52);
-    font-size: 14px;
-    overflow: hidden;
-    position: relative;
+  `div.monaco-editor` must be fits with rest space of 
+  `.tabs-area` and `.footer` on `.editor-container`.
 
-    // &::-webkit-scrollbar {
-    //     width: 4px;
-    //     height: 0.5rem;
-    // }
-    // &::-webkit-scrollbar-track {
-    //     // background: rgba(0, 0, 0, 0);
-    //     background-color: red;
-    // }
-    // &::-webkit-scrollbar-thumb {
-    //     // background: rgba(55, 147, 224, 0.2);
-    //     background-color: red;
-    // }
-    // &::-webkit-scrollbar-thumb:hover {
-    //     // background: rgba(55, 147, 224, 0.25);
-    //     background-color: red;
-    // }
-    // &::-webkit-scrollbar-thumb:active {
-    //     // background: rgba(55, 147, 224, 0.25);
-    //     background-color: red;
-    // }
-}
-
-.tab {
-    line-height: 1.4rem;
-    box-sizing: border-box;
-    color: #999;
-    padding: 2px 8px;
-    border: 1px solid rgb(52, 52, 52);
-    border-bottom: 0;
-    cursor: pointer;
-    float: left;
-
-    display: flex;
-    flex-direction: row;
-
-    & > span {
-        display: inline-block;
-        vertical-align: middle;
-        line-height: normal;
-        padding-right: 1.4rem;
-    }
-
-    & > div {
-        margin: auto;
-        opacity: 0;
-        width: 1rem;
-        height: 1rem;
-    }
-
-    &:hover > div {
-        opacity: 1;
-    }
-
-    & > div > img {
-        width: inherit;
-        height: inherit;
-        color: inherit;
-    }
-
-    &.active {
-        color: #ce9178;
-        border-top: 1px solid #136ab5;
-        background-color: #1e1e1e;
-    }
-
-    /*  */
-    //   &.dragging:hover {
-    //       background-color: red;
-    //   }
-}
-
+  `.tabs-area` height: 35px;
+  `.footer` height: 22px;
+*/
 .monaco-editor {
-    height: 100%;
+    height: calc(100% - 35px - 22px);
 }
+
+// .scrollable-tabs {
+//     position: relative;
+// }
+
+// .tab {
+//     line-height: 1.4rem;
+//     box-sizing: border-box;
+//     color: #999;
+//     padding: 2px 8px;
+//     border: 1px solid rgb(52, 52, 52);
+//     border-bottom: 0;
+//     cursor: pointer;
+//     float: left;
+
+//     display: flex;
+//     flex-direction: row;
+
+//     & > span {
+//         display: inline-block;
+//         vertical-align: middle;
+//         line-height: normal;
+//         padding-right: 1.4rem;
+//     }
+
+//     & > div {
+//         margin: auto;
+//         opacity: 0;
+//         width: 1rem;
+//         height: 1rem;
+//     }
+
+//     &:hover > div {
+//         opacity: 1;
+//     }
+
+//     & > div > img {
+//         width: inherit;
+//         height: inherit;
+//         color: inherit;
+//     }
+
+//     &.active {
+//         color: #ce9178;
+//         border-top: 1px solid #136ab5;
+//         background-color: #1e1e1e;
+//     }
+
+//     /*  */
+//     //   &.dragging:hover {
+//     //       background-color: red;
+//     //   }
+// }
+
+// .tabs-area {
+//     display: flex;
+//     min-height: 2.4rem;
+//     background-color: rgb(21, 21, 21);
+//     --title-border-bottom-color: rgb(52, 52, 52);
+//     font-size: 14px;
+//     overflow: hidden;
+//     position: relative;
+
+//     // &::-webkit-scrollbar {
+//     //     width: 4px;
+//     //     height: 0.5rem;
+//     // }
+//     // &::-webkit-scrollbar-track {
+//     //     // background: rgba(0, 0, 0, 0);
+//     //     background-color: red;
+//     // }
+//     // &::-webkit-scrollbar-thumb {
+//     //     // background: rgba(55, 147, 224, 0.2);
+//     //     background-color: red;
+//     // }
+//     // &::-webkit-scrollbar-thumb:hover {
+//     //     // background: rgba(55, 147, 224, 0.25);
+//     //     background-color: red;
+//     // }
+//     // &::-webkit-scrollbar-thumb:active {
+//     //     // background: rgba(55, 147, 224, 0.25);
+//     //     background-color: red;
+//     // }
+// }

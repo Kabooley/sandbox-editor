@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { ResizableBox } from 'react-resizable';
 import type { ResizeCallbackData } from 'react-resizable';
 import {
@@ -6,9 +6,10 @@ import {
     useLayoutDispatch,
     Types as TypeOfLayoutAction,
 } from '../context/LayoutContext';
+import { useWindowSize } from '../hooks';
 import type { ViewContexts } from '../context/LayoutContext';
-import Explorer from './Explorer';
-import DependencyList from './DependencyList';
+import VSCodeExplorer from './VSCodeExplorer/VSCodeExplorer';
+import SidebarTitle from './VSCodeExplorer/SidebarTitle';
 
 /***
  * NOTE: Must be the same value as defined in the css definition file.
@@ -18,40 +19,33 @@ import DependencyList from './DependencyList';
  */
 const defaultWidth = 240;
 const minimumWidth = 190;
-const maximumWidth = 400;
+const maximumWidth = window.screen.width * 0.26;
+// NOTE: cssと一致させること。
+const heightOfSidebarTitle = 36;
+// sass/layout/_main.scssより。
+const heightOfHeader = 48;
+const heightOfFooter = 22;
 
+/***
+ * windowのresizeに対応するために`useWindowSize`を使っている。
+ * */
 const PaneSection = (): JSX.Element => {
-    const { currentContext, paneWidth } = useLayoutState();
+    const { paneWidth, currentContext } = useLayoutState();
     const dispatch = useLayoutDispatch();
+    const { innerWidth, innerHeight } = useWindowSize();
+    const paneHeight = innerHeight - heightOfHeader - heightOfFooter;
+    const refThisPane = useRef<HTMLDivElement>(null);
 
     const onPaneResize: (
         e: React.SyntheticEvent,
         data: ResizeCallbackData
     ) => any = (event, { node, size, handle }) => {
-        // setPaneWidth(size.width);
         dispatch({
             type: TypeOfLayoutAction.UpdatePaneWidth,
             payload: {
                 width: size.width,
             },
         });
-    };
-
-    const renderContext = (context: ViewContexts) => {
-        switch (context) {
-            case 'explorer': {
-                return <Explorer />;
-            }
-            case 'dependencies': {
-                return <DependencyList />;
-            }
-            case 'none': {
-                return null;
-            }
-            default: {
-                throw new Error('Unexpexted context has been received.');
-            }
-        }
     };
 
     if (currentContext === 'none') {
@@ -72,8 +66,16 @@ const PaneSection = (): JSX.Element => {
                     />
                 )}
             >
-                <div className="pane" style={{ width: paneWidth }}>
-                    {renderContext(currentContext)}
+                <div
+                    className="sidebar-container"
+                    ref={refThisPane}
+                    style={{ height: '100%', width: '100%' }}
+                >
+                    <SidebarTitle width={paneWidth} title={'explorer'} />
+                    <VSCodeExplorer
+                        width={paneWidth}
+                        height={paneHeight - heightOfSidebarTitle}
+                    />
                 </div>
             </ResizableBox>
         );

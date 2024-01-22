@@ -1,6 +1,7 @@
 /***
  *　Decides state of app Layout.
  *
+ * TODO: Navigation削除に伴いViewContextsをなくす
  * */
 import React, { createContext, useContext, useReducer, Dispatch } from 'react';
 
@@ -93,7 +94,7 @@ const navigationWidth = initialLayout.navigation.width;
 
 const LayoutContext = createContext<iState>({
     pointerEventsOnPreviewIframe: true,
-    currentContext: 'dependencies',
+    currentContext: 'explorer',
     isPreviewDisplay: true,
     editorWidth: initialLayout.editorLayout.defaultWidth,
     paneWidth: initialLayout.paneLayout.defaultWidth,
@@ -292,7 +293,7 @@ function layoutReducer(state: iState, action: iLayoutActions) {
 
 const initialState: iState = {
     pointerEventsOnPreviewIframe: true,
-    currentContext: 'dependencies',
+    currentContext: 'explorer',
     isPreviewDisplay: true,
     editorWidth: initialLayout.editorLayout.defaultWidth,
     paneWidth: initialLayout.paneLayout.defaultWidth,
