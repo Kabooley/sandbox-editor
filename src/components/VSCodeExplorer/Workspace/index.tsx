@@ -24,6 +24,12 @@ import { Types } from "../../../context/FilesContext";
 import { useFiles, useFilesDispatch } from "../../../context/FilesContext";
 import { generateTreeNodeData } from "./generateTree";
 
+import {
+  useLayoutDispatch,
+  Types as LayoutContextActionType,
+} from "../../../context/LayoutContext";
+import { ModalTypes } from "../../../context/LayoutContext";
+
 interface iProps {
   id: number;
   collapse: boolean;
@@ -32,11 +38,10 @@ interface iProps {
   width: number;
 }
 
-/**************************************************************
- * TODO: `WorrkSpace`へ名称変更すること
+/**
  *
- * ************************************************************/
-const VirtualFolder: React.FC<iProps> = ({
+ **/
+const Workspace: React.FC<iProps> = ({
   id,
   collapse,
   onClick,
@@ -45,6 +50,7 @@ const VirtualFolder: React.FC<iProps> = ({
 }) => {
   const files = useFiles();
   const filesDispatch = useFilesDispatch();
+  const dispatchLayoutContextAction = useLayoutDispatch();
   const treeData = generateTreeNodeData(files, "root");
   const title = "virtual folder";
 
@@ -96,10 +102,34 @@ const VirtualFolder: React.FC<iProps> = ({
       return descendantPaths.find((d) => d === f.getPath()) ? true : false;
     });
 
-    filesDispatch({
-      type: Types.DeleteMultiple,
+    const callback = () => {
+      // やってほしいこと
+      filesDispatch({
+        type: Types.DeleteMultiple,
+        payload: {
+          requiredPaths: deletionTargetFiles.map((d) => d.getPath()),
+        },
+      });
+
+      // モーダルの解除
+      dispatchLayoutContextAction({
+        type: LayoutContextActionType.RemoveModal,
+        payload: {
+          modalType: isDeletionTargetFolder
+            ? ModalTypes.DeleteAFolder
+            : ModalTypes.DeleteAFile,
+        },
+      });
+    };
+
+    dispatchLayoutContextAction({
+      type: LayoutContextActionType.ShowModal,
       payload: {
-        requiredPaths: deletionTargetFiles.map((d) => d.getPath()),
+        modalType: isDeletionTargetFolder
+          ? ModalTypes.DeleteAFolder
+          : ModalTypes.DeleteAFile,
+        callback: callback,
+        fileName: _explorer.name,
       },
     });
   };
@@ -212,11 +242,9 @@ const VirtualFolder: React.FC<iProps> = ({
     }
   };
 
-  /**********************************
-   * Action handlers
-   *
-   *
-   **********************************/
+  /****************************************
+   * Action handlers for Stack PaneHeader
+   ****************************************/
 
   const handleNewItem = (isFolder: boolean) => {
     /***
@@ -286,9 +314,8 @@ const VirtualFolder: React.FC<iProps> = ({
   const renderActionNewFile = () => {
     const clickHandler = (e: React.MouseEvent<HTMLLIElement>) => {
       e.stopPropagation();
+      e.preventDefault();
       handleNewItem(false);
-
-      console.log("clicked 'new file' icon");
     };
     return <Action handler={clickHandler} icon={newFileIcon} altMessage="" />;
   };
@@ -296,9 +323,8 @@ const VirtualFolder: React.FC<iProps> = ({
   const renderActionNewFolder = () => {
     const clickHandler = (e: React.MouseEvent<HTMLLIElement>) => {
       e.stopPropagation();
+      e.preventDefault();
       handleNewItem(true);
-
-      console.log("clicked 'new folder' icon");
     };
     return <Action handler={clickHandler} icon={newFolderIcon} altMessage="" />;
   };
@@ -306,10 +332,9 @@ const VirtualFolder: React.FC<iProps> = ({
   const renderActionCollapseAll = () => {
     const clickHandler = (e: React.MouseEvent<HTMLLIElement>) => {
       e.stopPropagation();
+      e.preventDefault();
       // TODO: implement this.
       // handleCollapseAllFolders(e)
-
-      console.log("clicked 'collapse all' icon");
     };
     return (
       <Action handler={clickHandler} icon={collapseAllIcon} altMessage="" />
@@ -319,8 +344,7 @@ const VirtualFolder: React.FC<iProps> = ({
   const renderActionCloseAFile = () => {
     const clickHandler = (e: React.MouseEvent<HTMLLIElement>) => {
       e.stopPropagation();
-
-      console.log("clicked 'close file' icon");
+      e.preventDefault();
     };
     return <Action handler={clickHandler} icon={closeIcon} altMessage="" />;
   };
@@ -358,4 +382,4 @@ const VirtualFolder: React.FC<iProps> = ({
   );
 };
 
-export default VirtualFolder;
+export default Workspace;

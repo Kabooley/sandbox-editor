@@ -1,4 +1,7 @@
-import type { iExplorer } from '../../data/types';
+/***************************************************************************
+ * Utils for Node manipulation
+ * *************************************************************************/
+import type { iExplorer } from "../../data/types";
 
 /***
  * @param {iExplorer[]} nested - あるiExplorer.items
@@ -8,11 +11,9 @@ import type { iExplorer } from '../../data/types';
  * 参考: https://stackoverflow.com/a/40025777/22007575
  * */
 const findParentNodeByChildId = (nested: iExplorer[], lookFor: string) => {
-    const r = nested.find((exp) =>
-        exp.items.some((item) => item.id === lookFor)
-    );
+  const r = nested.find((exp) => exp.items.some((item) => item.id === lookFor));
 
-    return r;
+  return r;
 };
 
 /****
@@ -23,25 +24,25 @@ const findParentNodeByChildId = (nested: iExplorer[], lookFor: string) => {
  * 再帰呼出を行うことで、引数のitems以下のexplorerのitemsを続けて捜索する。
  * */
 const _getParentNodeByChildId = (
-    items: iExplorer[],
-    id: string
+  items: iExplorer[],
+  id: string
 ): iExplorer | undefined => {
-    let e: iExplorer | undefined;
-    const result = findParentNodeByChildId(items, id);
+  let e: iExplorer | undefined;
+  const result = findParentNodeByChildId(items, id);
 
-    if (!result) {
-        // NOTE: items.find()は配列をひとつずつ再帰呼出し、実行結果を得るために使用しており、findからの戻り値は必要としない。
-        //
-        // よく考えたらforEachでもかまわな...くない。
-        // パフォーマンスを考えたら、findでtruthyが返されたらfindは処理終了するが、
-        // forEachは全ての要素を呼び出すので余計な処理が増える。
-        items.find((item) => {
-            e = _getParentNodeByChildId(item.items, id);
-            return e;
-        });
-    } else e = result;
+  if (!result) {
+    // NOTE: items.find()は配列をひとつずつ再帰呼出し、実行結果を得るために使用しており、findからの戻り値は必要としない。
+    //
+    // よく考えたらforEachでもかまわな...くない。
+    // パフォーマンスを考えたら、findでtruthyが返されたらfindは処理終了するが、
+    // forEachは全ての要素を呼び出すので余計な処理が増える。
+    items.find((item) => {
+      e = _getParentNodeByChildId(item.items, id);
+      return e;
+    });
+  } else e = result;
 
-    return e;
+  return e;
 };
 
 /***
@@ -49,18 +50,18 @@ const _getParentNodeByChildId = (
  * そのためこの関数はその部分をカバーする。
  * */
 export const getParentNodeByChildId = (
-    explorer: iExplorer,
-    lookForId: string
+  explorer: iExplorer,
+  lookForId: string
 ) => {
-    let result: iExplorer | undefined;
-    const r = explorer.items.find((item) => item.id === lookForId);
-    if (!r) {
-        result = _getParentNodeByChildId(explorer.items, lookForId);
-    } else {
-        // rがundefinedでない場合、explorerが親要素
-        result = explorer;
-    }
-    return result;
+  let result: iExplorer | undefined;
+  const r = explorer.items.find((item) => item.id === lookForId);
+  if (!r) {
+    result = _getParentNodeByChildId(explorer.items, lookForId);
+  } else {
+    // rがundefinedでない場合、explorerが親要素
+    result = explorer;
+  }
+  return result;
 };
 
 /****
@@ -68,19 +69,19 @@ export const getParentNodeByChildId = (
  *
  *  */
 const _getNodeById = (
-    items: iExplorer[],
-    id: string
+  items: iExplorer[],
+  id: string
 ): iExplorer | undefined => {
-    let e = items.find((item) => item.id === id);
+  let e = items.find((item) => item.id === id);
 
-    if (!e) {
-        items.find((item) => {
-            let el = _getNodeById(item.items, id);
-            if (el) e = el;
-        });
-    }
+  if (!e) {
+    items.find((item) => {
+      let el = _getNodeById(item.items, id);
+      if (el) e = el;
+    });
+  }
 
-    return e;
+  return e;
 };
 
 /****
@@ -89,10 +90,10 @@ const _getNodeById = (
  * この関数はexplorer.idの検査を設けた。
  *  */
 export const getNodeById = (
-    explorer: iExplorer,
-    id: string
+  explorer: iExplorer,
+  id: string
 ): iExplorer | undefined => {
-    return explorer.id === id ? explorer : _getNodeById(explorer.items, id);
+  return explorer.id === id ? explorer : _getNodeById(explorer.items, id);
 };
 
 /***
@@ -100,19 +101,19 @@ export const getNodeById = (
  *
  * */
 export const isNodeIncludedUnderExplorer = (
-    explorer: iExplorer,
-    nodeId: string,
-    from: string
+  explorer: iExplorer,
+  nodeId: string,
+  from: string
 ) => {
-    // DEBUG:
+  // DEBUG:
 
-    const startPoint = getNodeById(explorer, from);
+  const startPoint = getNodeById(explorer, from);
 
-    if (startPoint && getParentNodeByChildId(startPoint, nodeId)) {
-        return true;
-    }
+  if (startPoint && getParentNodeByChildId(startPoint, nodeId)) {
+    return true;
+  }
 
-    return false;
+  return false;
 };
 
 /***
@@ -120,20 +121,20 @@ export const isNodeIncludedUnderExplorer = (
  * Return array of them.
  * */
 export const getAllDescendants = (_explorer: iExplorer): iExplorer[] => {
-    const descendants: iExplorer[] = [];
+  const descendants: iExplorer[] = [];
 
-    function getAllDescendantsRecursively(exp: iExplorer) {
-        exp.items.forEach((item) => {
-            descendants.push(item);
-            if (item.items.length) {
-                getAllDescendantsRecursively(item);
-            }
-        });
-    }
+  function getAllDescendantsRecursively(exp: iExplorer) {
+    exp.items.forEach((item) => {
+      descendants.push(item);
+      if (item.items.length) {
+        getAllDescendantsRecursively(item);
+      }
+    });
+  }
 
-    getAllDescendantsRecursively(_explorer);
+  getAllDescendantsRecursively(_explorer);
 
-    return descendants;
+  return descendants;
 };
 
 // DEPLICATED:

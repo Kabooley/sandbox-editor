@@ -39,7 +39,7 @@ interface iProps {
 }
 
 // According to `sass/components/_tabsAndActions.scss`.
-const containerHeight = 35;
+const containerHeight = 28;
 
 const TabsAndActionsContainer = ({
   path,
@@ -312,16 +312,16 @@ const arePropsEqual = (
     );
   }
 
-  console.log(
-    `Will TabsAndActions rerender?: ${
-      isEqualNumberOfFiles &&
-      isSameSelectedFile &&
-      isEqualWidth &&
-      isTabOrderEqual
-        ? "NO"
-        : "YES"
-    }`
-  );
+  // console.log(
+  //   `Will TabsAndActions rerender?: ${
+  //     isEqualNumberOfFiles &&
+  //     isSameSelectedFile &&
+  //     isEqualWidth &&
+  //     isTabOrderEqual
+  //       ? "NO"
+  //       : "YES"
+  //   }`
+  // );
 
   return (
     isEqualNumberOfFiles &&

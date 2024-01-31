@@ -1,225 +1,209 @@
-$color-hovered-item-primary: #0f2c60;
-$color-hovered-item-secondary: #16408c;
-$color-focused-border: #ea00d9;
-$color-text-primary: #e5e5e5;
-$color-text-secondary: rgb(153, 153, 153);
-$height-pane-header: 24px;
-$pane-font-size: 13px;
-$pane-font-size-secondary: 12px;
+.stack {
+  box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  height: calc(100% - 1px);
+}
+.stack:not(:lst-child) {
+  border-bottom: 1px solid #999999;
+}
 
 .collapsible {
-    visibility: visible;
-    opacity: 1;
-    max-height: 100%;
-    transition: all 0.4s ease 0s;
-    // heightは子要素にフィットするようにする
+  visibility: visible;
+  opacity: 1;
+  max-height: 100%;
+  transition: all 0.4s ease 0s;
+  // heightは子要素にフィットするようにする
 }
 
 .collapsible.collapse {
-    visibility: hidden;
-    opacity: 0;
-    height: 0;
-    min-height: 0;
+  visibility: hidden;
+  opacity: 0;
+  height: 0;
+  min-height: 0;
 }
 
 /* ------- */
 
 .section {
-    position: relative;
+  position: relative;
 }
 
-/* ----- */
-
-/* 
-  
-  sidebar theme 
-  
-  color theme:
-  - 091833
-  - 133E7C
-  - 0ABDC6
-  - EA00D9
-  - 711C91
-  
-  background: #061125; 
-  */
-
-.sidebar-container {
-    background-color: #061125;
+.pane-container {
+  height: 100%;
 }
 
 .vscode-sidebar {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    /* overflow-y: hidden; */
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  /* overflow-y: hidden; */
 }
 
 .vscode-sidebar > div {
-    position: absolute;
+  position: absolute;
 
-    // resizeをスムースにできるかと思ったけどそんなことはなかった
-    // transition: height 0s linear;
+  // resizeをスムースにできるかと思ったけどそんなことはなかった
+  // transition: height 0s linear;
 }
 
 /* --- sidebar title --- */
 .sidebar-title-container {
-    display: flex;
-    height: 36px;
-    overflow: hidden;
-    padding-left: 8px;
-    padding-right: 8px;
+  display: flex;
+  height: 36px;
+  overflow: hidden;
+  padding-left: 8px;
+  padding-right: 8px;
 }
 
 .title-label {
-    line-height: 36px;
-    overflow: hidden;
-    padding-left: 8px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  line-height: 36px;
+  overflow: hidden;
+  padding-left: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .title-label > h2 {
-    cursor: default;
-    font-size: $pane-font-size-secondary;
-    font-weight: 400;
-    margin: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  cursor: default;
+  font-size: $pane-font-size-secondary;
+  font-weight: 400;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.title-actions {
-}
+// .title-actions {}
 
 /* --- pane header --- */
 
 .pane-header {
-    align-items: center;
-    box-sizing: border-box;
-    cursor: pointer;
-    display: flex;
-    font-size: 11px;
-    font-weight: 700;
-    overflow: hidden;
-    /* NOTE: stackの高さと同じにすること! */
-    height: $height-pane-header;
+  align-items: center;
+  box-sizing: border-box;
+  cursor: pointer;
+  display: flex;
+  font-size: 11px;
+  font-weight: 700;
+  overflow: hidden;
+  /* NOTE: stackの高さと同じにすること! */
+  height: $height-pane-header;
 }
 
 .codicon {
-    font-size: 16px;
-    font: 16px/1 codicon;
-    display: inline-block;
-    text-decoration: none;
-    text-rendering: auto;
-    text-align: center;
-    text-transform: none;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    user-select: none;
-    -webkit-user-select: none;
-    margin: 0 2px;
-    margin-top: 2px;
+  font-size: 16px;
+  font: 16px/1 codicon;
+  display: inline-block;
+  text-decoration: none;
+  text-rendering: auto;
+  text-align: center;
+  text-transform: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  user-select: none;
+  -webkit-user-select: none;
+  margin: 0 2px;
+  margin-top: 2px;
 }
 
 .pane-header > h3 {
-    font-weight: 400;
-    -webkit-margin-before: 0;
-    -webkit-margin-after: 0;
-    font-size: $pane-font-size-secondary;
-    min-width: 3ch;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    text-transform: uppercase;
+  font-weight: 400;
+  -webkit-margin-before: 0;
+  -webkit-margin-after: 0;
+  font-size: $pane-font-size-secondary;
+  min-width: 3ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-transform: uppercase;
 }
 
 .actions {
-    display: none;
-    height: 100%;
-    margin-left: auto;
+  display: none;
+  height: 100%;
+  margin-left: auto;
 }
 
 /********
   このようにclassを追加すればdisplayを上書きできる
 ********/
 .pane-header > .display.actions {
-    display: block;
+  display: block;
 }
 
 .actions-bar {
-    white-space: nowrap;
-    height: 100%;
+  white-space: nowrap;
+  height: 100%;
 }
 
 .actions-container {
-    display: flex;
-    margin: 0 auto;
-    padding: 0;
-    height: 100%;
-    width: 100%;
-    align-items: center;
+  display: flex;
+  margin: 0 auto;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  align-items: center;
 }
 
 .action-item {
-    margin-right: 4px;
-    display: block;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    position: relative;
+  margin-right: 4px;
+  display: block;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
 }
 
 .action-item > img {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 3px !important;
-    border-radius: 4px;
-    font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px !important;
+  border-radius: 4px;
+  font-size: 16px;
 }
 
 .action-item > img:hover {
-    background-color: $color-hovered-item-primary;
-    outline: 1px dshed blue;
-    outline-offset: -1px;
+  background-color: $color-hovered-item-primary;
+  outline: 1px dshed blue;
+  outline-offset: -1px;
 }
 
 /**********************************************
   stack-body-lit
 ***********************************************/
 .stack-body-list {
-    // width: 100%;
-    height: 100%;
-    white-space: nowrap;
+  // width: 100%;
+  height: 100%;
+  white-space: nowrap;
 }
 
 .stack-body-list__item {
-    align-items: center;
-    box-sizing: border-box;
-    cursor: pointer;
-    display: flex;
-    font-size: 11px;
-    font-weight: 700;
-    height: 22px;
+  align-items: center;
+  box-sizing: border-box;
+  cursor: pointer;
+  display: flex;
+  font-size: 11px;
+  font-weight: 700;
+  height: 22px;
 }
 
 .item-label {
-    font-size: $pane-font-size;
-    min-width: 3ch;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-weight: 400;
-    color: $color-text-secondary;
+  font-size: $pane-font-size;
+  min-width: 3ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 400;
+  color: $color-text-secondary;
 }
 
 .stack-body-list__item:hover {
-    background-color: $color-hovered-item-primary;
+  background-color: $color-hovered-item-primary;
 }
 
 .stack-body-list__item:hover .actions {
-    display: block;
+  display: block;
 }
 
 /*********************************************
@@ -227,13 +211,13 @@ $pane-font-size-secondary: 12px;
 **********************************************/
 
 .inputContainer {
-    position: relative;
-    // padding-left: 1rem;
+  position: relative;
+  // padding-left: 1rem;
 }
 
 .inputContainer--column {
-    display: flex;
-    gap: 0.8rem;
+  display: flex;
+  gap: 0.8rem;
 }
 
 /* NOTE:
@@ -244,135 +228,134 @@ $pane-font-size-secondary: 12px;
   paneいっぱいまで幅をとる
 */
 .inputContainer--input {
-    margin: 0;
-    padding: 0px;
-    border: 1px solid lightgray;
-    cursor: pointer;
-    width: 100%;
-    box-sizing: border-box;
-    -webkit-box-sizing: border-box;
-    -moz-box-sizing: border-box;
-    -o-box-sizing: border-box;
-    -ms-box-sizing: border-box;
-    // ---
-    height: 100%;
-    font-size: 11px;
+  margin: 0;
+  padding: 0px;
+  border: 1px solid lightgray;
+  cursor: pointer;
+  width: 100%;
+  box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  -o-box-sizing: border-box;
+  -ms-box-sizing: border-box;
+  // ---
+  height: 100%;
+  font-size: 11px;
 }
 
 .inputContainer--input:focus {
-    outline: none;
-    // border: 1px solid $color-focused-border;
+  outline: none;
+  // border: 1px solid $color-focused-border;
 }
 
 .inputContainer--input:focus.__valid {
-    border: 1px solid cyan;
+  border: 1px solid cyan;
 }
 
 .inputContainer--validSign {
-    // JavaScriptでwidthとmarginLeftが提供される
-    position: absolute;
-    box-sizing: border-box;
-    -webkit-box-sizing: border-box;
-    -moz-box-sizing: border-box;
-    -o-box-sizing: border-box;
-    -ms-box-sizing: border-box;
-    display: block;
-    // topは.stack-body-list__itemのheightと同じにすること!
-    top: 22px;
-    line-height: 20px;
-    padding: 4px 10px;
+  // JavaScriptでwidthとmarginLeftが提供される
+  position: absolute;
+  box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  -o-box-sizing: border-box;
+  -ms-box-sizing: border-box;
+  display: block;
+  // topは.stack-body-list__itemのheightと同じにすること!
+  top: 22px;
+  line-height: 20px;
+  padding: 4px 10px;
 }
 
 // なんか効いてない
 .inputContainer--validSign > span {
-    margin: 0 auto;
-    font-weight: 400;
-    white-space: pre-wrap;
-    width: 80%;
+  margin: 0 auto;
+  font-weight: 400;
+  white-space: pre-wrap;
+  width: 80%;
 }
 
 .inputContainer--validSign:not(:placeholder-shown).__invalid {
-    background-color: rgba(255, 0, 0, 0.9);
-    border: 1px solid red;
+  background-color: rgba(255, 0, 0, 0.9);
+  border: 1px solid red;
 }
 
 /************************************
   OPEN EDITOR Component
 ************************************/
-.open-editor {
-}
+// .open-editor {}
 
 .stack-body-list__item.open-editor > .actions {
-    display: block;
-    margin: 0;
+  display: block;
+  margin: 0;
 }
 
 .stack-body-list__item.open-editor
-    > .actions
-    > .actions-bar
-    > .actions-container
-    > .action-item {
-    margin-right: 0;
+  > .actions
+  > .actions-bar
+  > .actions-container
+  > .action-item {
+  margin-right: 0;
 }
 
 .stack-body-list__item.open-editor
-    > .actions
-    > .actions-bar
-    > .actions-container
-    > .action-item
-    > .codicon {
-    margin-right: 0;
+  > .actions
+  > .actions-bar
+  > .actions-container
+  > .action-item
+  > .codicon {
+  margin-right: 0;
 }
 
 .stack-body-list__item.open-editor
-    > .actions
-    > .actions-bar
-    > .actions-container
-    > .action-item
-    > img:hover {
-    background-color: $color-hovered-item-secondary;
+  > .actions
+  > .actions-bar
+  > .actions-container
+  > .action-item
+  > img:hover {
+  background-color: $color-hovered-item-secondary;
 }
 
 .stack-body-list__item.open-editor > span {
-    font-weight: 400;
-    margin-left: 16px;
-    overflow-x: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    color: $color-text-secondary;
+  font-weight: 400;
+  margin-left: 16px;
+  overflow-x: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: $color-text-secondary;
 }
 
 /************************************************** 
   VIRTUAL FOLDER Component
 **************************************************/
 .stack-body-list__item.virtual-folder
-    > .actions
-    > .actions-bar
-    > .actions-container
-    > li
-    > img:hover {
-    background-color: $color-hovered-item-secondary;
+  > .actions
+  > .actions-bar
+  > .actions-container
+  > li
+  > img:hover {
+  background-color: $color-hovered-item-secondary;
 }
 
 /************************************************** 
   DEPENDENCEIS Component
 **************************************************/
 .stack-body-list__item.dependencies > .item-label {
-    margin-right: 16px;
+  margin-right: 16px;
 }
 
 .stack-body-list__item.dependencies > span {
-    font-weight: 400;
-    color: $color-text-secondary;
+  font-weight: 400;
+  color: $color-text-secondary;
 }
 
 .stack-body-list__item.dependencies
-    > .actions
-    > .actions-bar
-    > .actions-container
-    > li
-    > img:hover {
-    background-color: $color-hovered-item-secondary;
+  > .actions
+  > .actions-bar
+  > .actions-container
+  > li
+  > img:hover {
+  background-color: $color-hovered-item-secondary;
 }
 
 /****************************************************
@@ -381,5 +364,5 @@ $pane-font-size-secondary: 12px;
 
 // gray: 60% (rgb(153, 153, 153))
 .filter-grayscale-60 {
-    filter: grayscale(0.6);
+  filter: grayscale(0.6);
 }

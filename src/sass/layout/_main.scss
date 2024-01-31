@@ -5,58 +5,51 @@ WATCH:
     read scss variable definitions from each seperated scss files.
 *************************************/
 .header-section {
-    border-bottom: 1px solid $color-border;
-    border-top-color: $color-border;
-    border-right-color: $color-border;
-    border-left-color: $color-border;
-
-    height: 48px;
-    min-height: 48px;
+  height: $--height-header-section;
+  min-height: $--height-header-section;
 }
 
 .main-container {
-    display: flex;
-    flex: 1 1 auto;
-    width: 100%;
-    height: 100%;
+  display: flex;
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
 }
-
 
 .split-pane {
-    display: flex;
-    height: auto;
-    z-index: 9;
-    width: 100%;
+  display: flex;
+  height: calc(100% - #{$--height-footer-section});
+  z-index: 9;
+  width: 100%;
 }
 
-
 .editor-section {
-    // width: 50%;
-    min-width: 100px;
-    height: 100%;
+  // width: 50%;
+  min-width: 100px;
+  height: 100%;
 }
 
 .editor-container {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .preview-section {
-    // visibility: visible;
-    max-width: 100%;
-    width: 100%;
-    overflow: hidden;
-    z-index: 0;
-    flex: 1 1 0%;
-    position: relative;
-    outline: none;
+  // visibility: visible;
+  max-width: 100%;
+  width: 100%;
+  overflow: hidden;
+  z-index: 0;
+  flex: 1 1 0%;
+  position: relative;
+  outline: none;
 
-    /* iframe内部だけど */
-    background-color: white;
+  /* iframe内部だけど */
+  background-color: white;
 
-    //
-    // overflow: auto;
-    height: 100%;
-    min-width: 10rem;
+  //
+  // overflow: auto;
+  height: 100%;
+  min-width: 10rem;
 }

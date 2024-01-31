@@ -18,6 +18,7 @@
  * TODO:
  * - thumbをつかんでスクロールさせるときにマウスの動きよりスクロールが遅い（移動量の反映が少ない）ことの改善。
  * - scrollHeightとheightが同値の時は非表示にするという機能をつける
+ * - 要修正：scrollTopを0より大きい値にしたまま親コンテナが広がると、スクロールする余地がない状態になるはずがコンテンツが上にスクロールされたままの状態になってしまう
  ***************************************************************************/
 import React, { useState, useEffect, useRef } from "react";
 import "./styles.css";
@@ -130,8 +131,26 @@ const ScrollableElement: React.FC<iProps> = ({
   /***
    * Update scrollWidth, scrollHeight in case children has been resized.
    *
+   * Resizeに応じてscrollTopやscrollLeftも更新されなくてはならない
    **/
   useEffect(() => {
+    console.log("[ScrollableElement] --- onChildrenResizeEvent ---");
+    console.log(`state.scrollTop: ${scrollTop}`);
+    console.log(`state.scrollLeft: ${scrollLeft}`);
+    console.log(`state.scrollheight: ${scrollHeight}`);
+    console.log(`state.scrollWidth: ${scrollWidth}`);
+    const container = document.querySelector(
+      "div.scrollable-elelement__container"
+    );
+    if (container) {
+      console.log(
+        "container height: ",
+        container.getBoundingClientRect().height
+      );
+    }
+    console.log(`props.height: ${height}`);
+    console.log("-------------------------------------------------");
+
     if (
       refScrollableElement.current !== undefined &&
       refScrollableElement.current !== null
@@ -139,22 +158,66 @@ const ScrollableElement: React.FC<iProps> = ({
       const _scrollWidth = refScrollableElement.current.scrollWidth;
       const _scrollHeight = refScrollableElement.current.scrollHeight;
 
+      console.log(`scrollHeight: ${scrollHeight}`);
+      console.log(`scrollWidth: ${scrollWidth}`);
+
       if (scrollHeight !== _scrollHeight) {
-        // // DEBUG:
-        // console.log(
-        //   `[ScrollableElement] update scrollHeight ${scrollHeight} --> ${_scrollHeight}`
-        // );
+        // DEBUG:
+        console.log(
+          `[ScrollableElement] update scrollHeight ${scrollHeight} --> ${_scrollHeight}`
+        );
+        console.log(`scrollTop: ${scrollTop}`);
         setScrollHeight(_scrollHeight);
       }
       if (scrollWidth !== _scrollWidth) {
-        // // DEBUG:
-        // console.log(
-        //   `[ScrollableElement] update scrollHeight ${scrollWidth} --> ${_scrollWidth}`
-        // );
+        // DEBUG:
+        console.log(
+          `[ScrollableElement] update scrollHeight ${scrollWidth} --> ${_scrollWidth}`
+        );
+        console.log(`scrollLeft: ${scrollLeft}`);
         setScrollWidth(_scrollWidth);
       }
     }
   }, [onChildrenResizeEvent]);
+
+  // /***
+  //  * Update scrollWidth, scrollHeight in case children has been resized.
+  //  *
+  //  * Resizeに応じてscrollTopやscrollLeftも更新されなくてはならない
+  //  **/
+  // useEffect(() => {
+  //   console.log(
+  //     "[ScrollableElement] --- on did update onChildrenResizeEvent ---"
+  //   );
+
+  //   if (
+  //     refScrollableElement.current !== undefined &&
+  //     refScrollableElement.current !== null
+  //   ) {
+  //     const _scrollWidth = refScrollableElement.current.scrollWidth;
+  //     const _scrollHeight = refScrollableElement.current.scrollHeight;
+
+  //     console.log(`scrollHeight: ${scrollHeight}`);
+  //     console.log(`scrollWidth: ${scrollWidth}`);
+
+  //     if (scrollHeight !== _scrollHeight) {
+  //       // DEBUG:
+  //       console.log(
+  //         `[ScrollableElement] update scrollHeight ${scrollHeight} --> ${_scrollHeight}`
+  //       );
+  //       console.log(`scrollTop: ${scrollTop}`);
+  //       setScrollHeight(_scrollHeight);
+  //     }
+  //     if (scrollWidth !== _scrollWidth) {
+  //       // DEBUG:
+  //       console.log(
+  //         `[ScrollableElement] update scrollHeight ${scrollWidth} --> ${_scrollWidth}`
+  //       );
+  //       console.log(`scrollLeft: ${scrollLeft}`);
+  //       setScrollWidth(_scrollWidth);
+  //     }
+  //   }
+  // }, [onChildrenResizeEvent]);
 
   /***
    * Always atattch anew event listener callbacks
