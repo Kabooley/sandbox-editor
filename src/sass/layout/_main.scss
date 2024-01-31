@@ -1,0 +1,55 @@
+/************************************
+WATCH:
+    These variables below are only for codesandbox environment
+    this is because codesandbox environment cannot 
+    read scss variable definitions from each seperated scss files.
+*************************************/
+.header-section {
+  height: $--height-header-section;
+  min-height: $--height-header-section;
+}
+
+.main-container {
+  display: flex;
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+}
+
+.split-pane {
+  display: flex;
+  height: calc(100% - #{$--height-footer-section});
+  z-index: 9;
+  width: 100%;
+}
+
+.editor-section {
+  // width: 50%;
+  min-width: 100px;
+  height: 100%;
+}
+
+.editor-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.preview-section {
+  // visibility: visible;
+  max-width: 100%;
+  width: 100%;
+  overflow: hidden;
+  z-index: 0;
+  flex: 1 1 0%;
+  position: relative;
+  outline: none;
+
+  /* iframe内部だけど */
+  background-color: white;
+
+  //
+  // overflow: auto;
+  height: 100%;
+  min-width: 10rem;
+}
