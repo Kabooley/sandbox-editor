@@ -4,7 +4,7 @@
  * - tab表示中のファイル名と同じ名前のファイルをtabに追加するとき、それらにpath情報を表示させる
  *
  * *************************************************************/
-import React, { useRef, useState, useEffect, useMemo } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import DragNDrop from '../VSCodeExplorer/DragNDrop';
 import {
     Types as FilesContextType,
@@ -16,10 +16,11 @@ import {
 } from '../../context/LayoutContext';
 import { getFilenameFromPath, moveInArray } from '../../utils';
 import type { File } from '../../data/files';
-import closeButtonIcon from '../../assets/vscode/dark/close.svg';
-import chevronRightIcon from '../../assets/vscode/dark/chevron-right.svg';
 import ScrollableElement from '../ScrollableElement';
 import Action from '../VSCodeExplorer/Action';
+import closeButtonIcon from '../../assets/vscode/dark/close.svg';
+import chevronRightIcon from '../../assets/vscode/dark/chevron-right.svg';
+import ellipsisIcon from '../../assets/vscode/dark/ellipsis.svg';
 
 // NOTE: 無理やり型を合わせている。
 // 本来`child: Node`でclassNameというpropertyを持たないが、iJSXNode.classNameをoptionalにすることによって
@@ -69,6 +70,14 @@ const TabsAndActionsContainer = ({
     useEffect(() => {
         if (refTabs.current) {
             refTabs.current = refTabs.current.slice(0, filesOpening.length);
+
+            // // TODO: selectedされたfileは常にview上に表示されるようにする（手動スクロールしたとき以外）
+            // const refSelectedFile = refTabs.current.find(
+            //     (tab) => tab.className === 'tab active'
+            // );
+            // if (refSelectedFile !== undefined) {
+            //     refSelectedFile.scrollIntoView();
+            // }
         }
     }, [filesOpening]);
 
@@ -192,6 +201,28 @@ const TabsAndActionsContainer = ({
         });
     };
 
+    /********************************************
+     * RENDERER
+     * ******************************************/
+
+    const renderActionThreeDots = () => {
+        const clickHandler = (e: React.MouseEvent<HTMLLIElement>) => {
+            e.stopPropagation();
+            e.preventDefault();
+            // TODO: implement this.
+            // handleThreeDotsMenuOpen(e);
+        };
+        return (
+            <Action
+                handler={clickHandler}
+                icon={ellipsisIcon}
+                altMessage="Toggle tabs action menu"
+            />
+        );
+    };
+
+    const actions = [renderActionThreeDots];
+
     return (
         <div className="scrollable-tabs" style={{ width: `${width}px` }}>
             <ScrollableElement
@@ -263,6 +294,13 @@ const TabsAndActionsContainer = ({
                     ))}
                 </div>
             </ScrollableElement>
+            <div className="tabs-actions">
+                <div className="actions-bar">
+                    <ul className="actions-container">
+                        {actions.map((action) => action())}
+                    </ul>
+                </div>
+            </div>
         </div>
     );
 };
