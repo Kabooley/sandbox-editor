@@ -117,7 +117,8 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
             // DEBUG:
             console.log('[TypingLibsContext] did update. current relatedLibs:');
             for (const [key, value] of relatedLibs.current.entries()) {
-                console.log(`${key} = ${value}`);
+                console.log(`${key}:`);
+                console.log(value);
             }
         }
 
