@@ -24,7 +24,7 @@ import debounce from 'lodash.debounce';
 // NOTE: 以下の全部取得は避けた方がいいかも。lodashは巨大なライブラリである
 import type * as lodash from 'lodash';
 import { generateTreeForBundler, getFilenameFromPath } from '../utils';
-import ScrollableTabs from './ScrollableTabs';
+import TabsAndActionsContainer from './TabsAndActions';
 
 interface iProps {
     files: File[];
@@ -75,9 +75,6 @@ class EditorContainer extends React.Component<iProps, iState> {
     }
 
     componentDidMount() {
-        // DEBUG:
-        console.log('[EditorContainer] did mount');
-
         const { files, addTypings } = this.props;
 
         const selectedFile = files.find((f) => f.isSelected());
@@ -105,9 +102,6 @@ class EditorContainer extends React.Component<iProps, iState> {
     }
 
     componentDidUpdate(prevProp: iProps, prevState: iState) {
-        // DEBUG:
-        console.log('[EditorContainer][componentDidUpdate]');
-
         const { files } = this.props;
 
         const selectedFile = files.find((f) => f.isSelected());
@@ -157,9 +151,6 @@ class EditorContainer extends React.Component<iProps, iState> {
      * Send all files to bundle.worker to bundle them.
      * */
     _onBundle() {
-        // DEBUG:
-        console.log('[EditorContainer][on bundle]');
-
         this._bundleWorker &&
             this._bundleWorker.postMessage({
                 order: OrderTypes.Bundle,
@@ -187,7 +178,6 @@ class EditorContainer extends React.Component<iProps, iState> {
     _onDidChangeModel(oldModelPath: string, newModelPath: string) {}
 
     _onChangeSelectedTab(selected: string) {
-        console.log(`[EditorContainer] on change selected tab: ${selected}`);
         this.props.dispatchFiles({
             type: filesContextTypes.ChangeSelectedFile,
             payload: { selectedFilePath: selected },
@@ -195,9 +185,6 @@ class EditorContainer extends React.Component<iProps, iState> {
     }
 
     _addTypings(code: string, path?: string) {
-        // DEBUG:
-        console.log('[EditorContainer][_addTypings]');
-
         this.props.addTypings(code, path);
     }
 
@@ -218,7 +205,7 @@ class EditorContainer extends React.Component<iProps, iState> {
     render() {
         return (
             <div className="editor-container">
-                <ScrollableTabs
+                <TabsAndActionsContainer
                     path={this.state.currentFilePath}
                     onChangeSelectedTab={this._onChangeSelectedTab}
                     width={this.props.width}

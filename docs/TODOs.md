@@ -4,19 +4,18 @@
 
 このノートはブランチに関係なく横断して編集される
 
-## list
+## 機能
 
-- dependency installerが`react-dom/client`のインストールができるようになったら採用。
-    workerの内奥とATAの内容を比較して何がいけないのか確認
-- エラーパネルは本当に必要か？ブラウザでlintを動かせないならば必要ないなぁ
-- footerのline colの必要性。もし実現するとしてどのくらいめんどくさいか
-- footerのprettierボタン実装
-- editorの設定を変更可能にしてfooterに設けるという機能の検討
+-   TODO: ボタンなどをホバーしたらそれが何者なのか excel のコメントみたいに窓が浮かび上がる機能
+-   TODO: TabsAndActions と Preview に action の追加（Preview は閉じるボタンなど、TabsAndActions は開いているファイルを閉じるボタンなど）
+-   TODO: Preview を別タブで開く機能
 
+## 修正
 
-#### View関連
+-   TODO: Explorer で新規ファイル/フォルダを追加するときの input フォームの左インデントを 1 段追加する件
+-   TODO: 依存関係がうまく取得できていない件の確認(まだ依存関係修正ブランチを取りこんでいないからという可能性もあり)
+-   TODO: data/files.ts を class インスタンス化をやめる
 
-- Paneのスクロールバーの幅が予め確保されていることの修正
-- Preview画面のトグル
-- Activitybarのアイコンの位置がおかしいことの修正
-- Paneの`EXPLORER`のデザイン
+## パフォーマンス
+
+実際に何らかのプログラムをこの sandbox-editor で動かしてみよう

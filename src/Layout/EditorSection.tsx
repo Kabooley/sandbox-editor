@@ -1,73 +1,64 @@
-import React, { useState } from 'react';
-import { ResizableBox } from 'react-resizable';
-import type { ResizeCallbackData } from 'react-resizable';
-import { useWindowSize } from '../hooks';
-import EditorContext from '../context/EditorContext';
-import { useLayoutDispatch, useLayoutState } from '../context/LayoutContext';
-import { Types as LayoutContextActionType } from '../context/LayoutContext';
-
-// cssと異なる値にしないこと
-const defaultWidth = 600;
-const minimumWidth = 100;
+import React, { useState, useEffect } from "react";
+import { Resizable } from "react-resizable";
+import type { ResizeCallbackData } from "react-resizable";
+import { useWindowSize } from "../hooks";
+import EditorContext from "../context/EditorContext";
+import { useLayoutDispatch, useLayoutState } from "../context/LayoutContext";
+import { Types as LayoutContextActionType } from "../context/LayoutContext";
+import { $heightOfHeader, $heightOfFooter, $initialLayout } from "../constants";
 
 const EditorSection = (): JSX.Element => {
-    const { editorWidth, isPreviewDisplay } = useLayoutState();
-    const dispatch = useLayoutDispatch();
-    const { innerWidth } = useWindowSize();
+  const [height, setHeight] = useState(
+    window.innerHeight - $heightOfHeader - $heightOfFooter
+  );
+  const { editorWidth, isPreviewDisplay } = useLayoutState();
+  const dispatch = useLayoutDispatch();
+  const { innerHeight } = useWindowSize();
+  const { minimumWidth, maximumWidth } = $initialLayout.editorLayout;
 
-    const onEditorSecResize: (
-        e: React.SyntheticEvent,
-        data: ResizeCallbackData
-    ) => any = (event, { node, size, handle }) => {
-        // NOTE: previewが非表示のときはリサイズ無効にする
-        if (!isPreviewDisplay) return;
-        dispatch({
-            type: LayoutContextActionType.UpdateEditorWidth,
-            payload: {
-                width: size.width,
-            },
-        });
-    };
+  useEffect(() => {
+    setHeight(innerHeight - $heightOfHeader - $heightOfFooter);
+  }, [innerHeight]);
 
-    // TODO: 結局こいつらもLayoutContext管理になるのでは？
-    //
-    // previewが閉じているときは、ハンドルでリサイズさせない（リサイズ無効にする）
-    // そのため最小値をeditorWidthにしている
-    // これらの計算はLayoutContextで何が起こっているのか知っているという前提に立っている(よくないね)
-    const _minimumWidth = isPreviewDisplay ? minimumWidth : editorWidth;
-    const _maximumWidth = isPreviewDisplay ? innerWidth * 0.7 : editorWidth;
+  const onEditorSecResize: (
+    e: React.SyntheticEvent,
+    data: ResizeCallbackData
+  ) => any = (event, { node, size, handle }) => {
+    // NOTE: previewが非表示のときはリサイズ無効にする
+    if (!isPreviewDisplay) return;
+    dispatch({
+      type: LayoutContextActionType.UpdateEditorWidth,
+      payload: {
+        width: size.width,
+      },
+    });
+  };
 
-    // DEBUG:
-    console.log(`_minimumWidth: ${_minimumWidth}`);
-    console.log(`_maximumWidth: ${_maximumWidth}`);
-    console.log(`editorWidth: ${editorWidth}`);
+  const _minimumWidth = isPreviewDisplay ? minimumWidth : editorWidth;
+  const _maximumWidth = isPreviewDisplay ? maximumWidth : editorWidth;
 
-    return (
-        <ResizableBox
-            width={editorWidth}
-            height={Infinity}
-            minConstraints={[_minimumWidth, Infinity]}
-            maxConstraints={[_maximumWidth, Infinity]}
-            onResize={onEditorSecResize}
-            resizeHandles={['e']}
-            handle={(h, ref) => (
-                <span
-                    className={`custom-handle custom-handle-${h}`}
-                    ref={ref}
-                />
-            )}
-        >
-            <div
-                className="editor-section"
-                style={{
-                    width: editorWidth,
-                    backgroundColor: '#3e354b',
-                }}
-            >
-                <EditorContext width={editorWidth} />
-            </div>
-        </ResizableBox>
-    );
+  return (
+    <Resizable
+      width={editorWidth}
+      height={height}
+      minConstraints={[_minimumWidth, height]}
+      maxConstraints={[_maximumWidth, height]}
+      onResize={onEditorSecResize}
+      resizeHandles={["e"]}
+      handle={(h, ref) => (
+        <span className={`custom-handle custom-handle-${h}`} ref={ref} />
+      )}
+    >
+      <div
+        className="editor-section"
+        style={{
+          width: editorWidth,
+        }}
+      >
+        <EditorContext width={editorWidth} />
+      </div>
+    </Resizable>
+  );
 };
 
 export default EditorSection;

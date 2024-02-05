@@ -1,35 +1,35 @@
-import React from 'react';
+import React from "react";
 
 type Props = {
-    checked: boolean;
+  checked: boolean;
+  label: string;
+  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  classNames: {
+    container: string;
     label: string;
-    onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
-    classNames: {
-        container: string;
-        label: string;
-        switch: string;
-        input: string;
-    };
+    switch: string;
+    input: string;
+  };
 };
 
 export const ToggleSwitch = (props: Props) => {
-    return (
-        <label className={props.classNames.container}>
-            <span className={props.classNames.label}>{props.label}</span>
-            <span
-                className={[
-                    props.classNames.switch,
-                    props.checked ? 'active' : 'inactive',
-                ].join()}
-            />
-            <input
-                type="checkbox"
-                checked={props.checked}
-                onChange={props.onChange}
-                className={props.classNames.input}
-            />
-        </label>
-    );
+  return (
+    <label className={props.classNames.container}>
+      <span className={props.classNames.label}>{props.label}</span>
+      <span
+        className={[
+          props.classNames.switch,
+          props.checked ? "active" : "inactive",
+        ].join(" ")}
+      />
+      <input
+        type="checkbox"
+        checked={props.checked}
+        onChange={props.onChange}
+        className={props.classNames.input}
+      />
+    </label>
+  );
 };
 
 // const styles = StyleSheet.create({

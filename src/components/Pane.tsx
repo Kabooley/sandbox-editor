@@ -1,83 +1,68 @@
-import React, { useState } from 'react';
-import { ResizableBox } from 'react-resizable';
-import type { ResizeCallbackData } from 'react-resizable';
+import React, { useState, useRef } from "react";
+import { Resizable } from "react-resizable";
+import type { ResizeCallbackData } from "react-resizable";
 import {
-    useLayoutState,
-    useLayoutDispatch,
-    Types as TypeOfLayoutAction,
-} from '../context/LayoutContext';
-import type { ViewContexts } from '../context/LayoutContext';
-import Explorer from './Explorer';
-import DependencyList from './DependencyList';
+  useLayoutState,
+  useLayoutDispatch,
+  Types as TypeOfLayoutAction,
+} from "../context/LayoutContext";
+import { useWindowSize } from "../hooks";
+import VSCodeExplorer from "./VSCodeExplorer/VSCodeExplorer";
+import SidebarTitle from "./VSCodeExplorer/SidebarTitle";
+import {
+  $heightOfPaneTitle,
+  $heightOfHeader,
+  $heightOfFooter,
+  $minConstraintsOfPaneWidth,
+  $maxConstraintsOfPaneWidth,
+} from "../constants";
 
 /***
- * NOTE: Must be the same value as defined in the css definition file.
- *
- * minimumWidth: $pane-min-width
- * maximumWidth: $pane-max-width
- */
-const defaultWidth = 240;
-const minimumWidth = 190;
-const maximumWidth = 400;
-
+ * windowのresizeに対応するために`useWindowSize`を使っている。
+ * */
 const PaneSection = (): JSX.Element => {
-    const { currentContext, paneWidth } = useLayoutState();
-    const dispatch = useLayoutDispatch();
+  const { paneWidth, isSidebarDisplay } = useLayoutState();
+  const dispatch = useLayoutDispatch();
+  const { innerHeight } = useWindowSize();
+  const paneHeight = innerHeight - $heightOfHeader - $heightOfFooter;
 
-    const onPaneResize: (
-        e: React.SyntheticEvent,
-        data: ResizeCallbackData
-    ) => any = (event, { node, size, handle }) => {
-        // setPaneWidth(size.width);
-        dispatch({
-            type: TypeOfLayoutAction.UpdatePaneWidth,
-            payload: {
-                width: size.width,
-            },
-        });
-    };
+  const onPaneResize: (
+    e: React.SyntheticEvent,
+    data: ResizeCallbackData
+  ) => any = (event, { node, size, handle }) => {
+    dispatch({
+      type: TypeOfLayoutAction.UpdatePaneWidth,
+      payload: {
+        width: size.width,
+      },
+    });
+  };
 
-    const renderContext = (context: ViewContexts) => {
-        switch (context) {
-            case 'explorer': {
-                return <Explorer />;
-            }
-            case 'dependencies': {
-                return <DependencyList />;
-            }
-            case 'none': {
-                return null;
-            }
-            default: {
-                throw new Error('Unexpexted context has been received.');
-            }
-        }
-    };
-
-    if (currentContext === 'none') {
-        return <></>;
-    } else {
-        return (
-            <ResizableBox
-                width={paneWidth}
-                height={Infinity}
-                minConstraints={[minimumWidth, Infinity]}
-                maxConstraints={[maximumWidth, Infinity]}
-                onResize={onPaneResize}
-                resizeHandles={['e']}
-                handle={(h, ref) => (
-                    <span
-                        className={`custom-handle custom-handle-${h}`}
-                        ref={ref}
-                    />
-                )}
-            >
-                <div className="pane" style={{ width: paneWidth }}>
-                    {renderContext(currentContext)}
-                </div>
-            </ResizableBox>
-        );
-    }
+  if (isSidebarDisplay) {
+    return (
+      <Resizable
+        width={paneWidth}
+        height={paneHeight}
+        minConstraints={[$minConstraintsOfPaneWidth, paneHeight]}
+        maxConstraints={[$maxConstraintsOfPaneWidth, paneHeight]}
+        onResize={onPaneResize}
+        resizeHandles={["e"]}
+        handle={(h, ref) => (
+          <span className={`custom-handle custom-handle-${h}`} ref={ref} />
+        )}
+      >
+        <div className="pane-container">
+          <SidebarTitle width={paneWidth} title={"explorer"} />
+          <VSCodeExplorer
+            width={paneWidth}
+            height={paneHeight - $heightOfPaneTitle}
+          />
+        </div>
+      </Resizable>
+    );
+  } else {
+    return <></>;
+  }
 };
 
 export default PaneSection;

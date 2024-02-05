@@ -1,3 +1,0 @@
-codesandbox dependency component
-
-https://github.com/codesandbox/codesandbox-client/blob/9a75ddff1312faaf9fcd3f7f8a019de0f464ab47/packages/app/src/app/pages/Sandbox/SearchDependencies/Dependency.tsx#L85

@@ -4,129 +4,52 @@ WATCH:
     this is because codesandbox environment cannot 
     read scss variable definitions from each seperated scss files.
 *************************************/
-$default-font-size: 1.6rem;
-$color-border: rgb(52, 52, 52);
-$pane-font-size: 1.4rem;
-$color-font: #999;
-$color-bg-dark: rgb(21, 21, 21);
-
 .header-section {
-    border-bottom: 1px solid $color-border;
-    border-top-color: $color-border;
-    border-right-color: $color-border;
-    border-left-color: $color-border;
-
-    height: 48px;
-    min-height: 48px;
+  height: $--height-header-section;
+  min-height: $--height-header-section;
 }
 
 .main-container {
-    display: flex;
-    flex: 1 1 auto;
-    width: 100%;
-    height: 100%;
-}
-
-// .navigation-section {
-//     height: 100%;
-//     padding: 0.8rem;
-//     border-right: 1px solid $color-border;
-//     color: $color-font;
-//     font-size: $default-font-size;
-//     background-color: $color-bg-dark;
-// }
-
-.navigation-section {
-    min-width: 4.8rem;
-    width: 4.8rem;
-    height: 100%;
-    padding: 0.8rem;
-    border-right: 1px solid $color-border;
-    color: $color-font;
-    font-size: $default-font-size;
-    background-color: $color-bg-dark;
+  display: flex;
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
 }
 
 .split-pane {
-    display: flex;
-    height: auto;
-    z-index: 9;
-    width: 100%;
-}
-
-.pane {
-    height: 100%;
-    border-right: 1px solid $color-border;
-    font-size: $pane-font-size;
-    overflow-y: scroll;
-
-    /************************************
-        scrollbarの幅は、div.paneの幅から
-        下記のwidth幅をとる。
-        そのためpaneの子要素の幅は、
-        このdiv.pane幅 - scrollbar幅となる
-
-    **************************************/
-    &::-webkit-scrollbar {
-        width: 10px;
-    }
-    &::-webkit-scrollbar-track {
-        background-color: transparent;
-        opacity: 0.4;
-    }
-    // スライダ
-    &::-webkit-scrollbar-thumb {
-        // TODO: 色指定:tabsのスライダと同じ色に
-        background-color: rgba(121, 121, 121, 0.6);
-    }
-    // ホバーしたとき
-    &::-webkit-scrollbar-thumb:hover {
-        opacity: 1;
-    }
-    // つかんだ時
-    &::-webkit-scrollbar-thumb:active {
-        opacity: 1;
-    }
+  display: flex;
+  height: calc(100% - #{$--height-footer-section});
+  z-index: 9;
+  width: 100%;
 }
 
 .editor-section {
-    width: 50%;
-    min-width: 100px;
-    height: 100%;
+  // width: 50%;
+  min-width: 100px;
+  height: 100%;
 }
 
 .editor-container {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .preview-section {
-    // visibility: visible;
-    max-width: 100%;
-    width: 100%;
-    overflow: hidden;
-    z-index: 0;
-    flex: 1 1 0%;
-    position: relative;
-    outline: none;
+  // visibility: visible;
+  max-width: 100%;
+  width: 100%;
+  overflow: hidden;
+  z-index: 0;
+  flex: 1 1 0%;
+  position: relative;
+  outline: none;
 
-    /* iframe内部だけど */
-    background-color: white;
+  /* iframe内部だけど */
+  background-color: white;
 
-    //
-    // overflow: auto;
-    height: 100%;
-    min-width: 10rem;
-}
-
-// NOTE: これがないとなぜかリサイズしてくれない。
-.react-draggable-transparent-selection .preview-section:after {
-    content: '';
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    opacity: 0;
+  //
+  // overflow: auto;
+  height: 100%;
+  min-width: 10rem;
 }
