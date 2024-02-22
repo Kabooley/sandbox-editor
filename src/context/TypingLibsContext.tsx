@@ -105,6 +105,7 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
             : packageJsonNecessary;
     // Saves previous packageJson string
     const [snapshot, setSnapshot] = useState<string>(packageJsonNecessary);
+    // Dependency requested to be fetched will be added.
     const [requestingDependencies, setRequestingDependencies] = useState<
         iDependencyState[]
     >([]);
@@ -131,7 +132,13 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
         };
     }, []);
 
-    // Update worker to synchronous updated Reactives.
+    /***
+     * NOTE: SUPER IMPORTANT to reattatch event listener
+     * for referencing latest reactives.
+     * Not doing this, worker always references stale state.
+     *
+     * https://www.reddit.com/r/reactjs/comments/v9csv5/react_usestate_hooks_state_not_ready_after/
+     * */
     useEffect(() => {
         if (window.Worker && agent.current !== undefined) {
             agent.current.addEventListener('message', handleWorkerMessage);
@@ -146,6 +153,11 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
         };
     }, [dependencies]);
 
+    /***
+     * package.jsonファイルの変更内容を読取り、変更内容に応じて依存関係を更新する。
+     *
+     *
+     * */
     useEffect(() => {
         console.log('[TypingLibsContext] Updated packageJson');
         console.log(packageJson);
@@ -223,7 +235,7 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
 
         /***
          * 取得失敗したら何もせず戻る
-         * TODO: 取得失敗したよの通知を出したい
+         * TODO: 取得失敗通知を出したい
          * */
         if (isFailed) {
             console.log(
@@ -239,23 +251,23 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
 
         // --- update dependencies ---
 
-        let deps: iDependencyState[] = [];
+        let updatedDependencies: iDependencyState[] = [];
         // 同名別バージョンがインストールされた場合
         // 上書きする
         if (isAlreadyExists) {
             const d = dependencies.filter(
                 (dep) => dep.moduleName !== moduleName
             );
-            setDependencies([
-                ...d,
-                {
-                    moduleName: moduleName,
-                    version: version,
-                    state: 'loaded',
-                },
-            ]);
+            // setDependencies([
+            //     ...d,
+            //     {
+            //         moduleName: moduleName,
+            //         version: version,
+            //         state: 'loaded',
+            //     },
+            // ]);
 
-            deps = [
+            updatedDependencies = [
                 ...d,
                 {
                     moduleName: moduleName,
@@ -267,16 +279,16 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
         // 新規がインストールされた場合
         // 追加する
         else {
-            setDependencies([
-                ...dependencies,
-                {
-                    moduleName: moduleName,
-                    version: version,
-                    state: 'loaded',
-                },
-            ]);
+            // setDependencies([
+            //     ...dependencies,
+            //     {
+            //         moduleName: moduleName,
+            //         version: version,
+            //         state: 'loaded',
+            //     },
+            // ]);
 
-            deps = [
+            updatedDependencies = [
                 ...dependencies,
                 {
                     moduleName: moduleName,
@@ -285,6 +297,7 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
                 },
             ];
         }
+        setDependencies([...updatedDependencies]);
         setRequestingDependencies(
             requestingDependencies.filter((d) => d.moduleName !== moduleName)
         );
@@ -308,7 +321,9 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
             `[TypingLibsContext][handleWorkerMessage] Succeeded to install ${moduleName}@${version}`
         );
 
-        reflectToPackageJson(deps);
+        // NOTE: この呼出時点でまだsetDependencies()の反映が完了していない
+        // そのため更新されたdependenciesを必ず渡すこと
+        reflectToPackageJson(updatedDependencies);
     };
 
     /**
@@ -389,8 +404,7 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
      * Reset code if passed path has already been registered.
      * */
     const addExtraLibs = (code: string, path: string) => {
-        // DEBUG:
-        console.log(`[TypingLibsContext] Add extra Library: ${path}`);
+        // console.log(`[TypingLibsContext] Add extra Library: ${path}`);
 
         const cachedLib = typingLibs.current.get(path);
         if (cachedLib) {
@@ -537,20 +551,15 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
     };
 
     /***
-     * `_dependencies`の通りにpackage.jsonを更新する
+     * 引数`_dependencies`の通りにpackage.jsonを更新する
      *
-     * TODO: `dependencies`と`devDependencies`の区別がついていないからdevDependenciesのものがすべてdependenciesになる　どうする?
+     * TODO: `dependencies`と`devDependencies`の区別がついていないからdevDependenciesのものが更新後にpackage.jsonのdependenciesに入る。どうする?
      * */
     const reflectToPackageJson = (_dependencies: iDependencyState[]) => {
         try {
             console.log(
                 '[TypingLibsContext][reflectToPackageJson] reflecting...'
             );
-            // どちらもいつも空の配列になっているみたい
-            // 理由は多分setStateを非同期に呼び出しているからだと思う
-            // 非同期に呼び出しているから常に古いstateを参照していてアップデートされていない
-            //
-            // https://www.reddit.com/r/reactjs/comments/v9csv5/react_usestate_hooks_state_not_ready_after/
             console.log(_dependencies);
             console.log(dependencies);
 

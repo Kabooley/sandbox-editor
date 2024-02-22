@@ -580,11 +580,11 @@ self.onmessage = (e: MessageEvent<iRequestFetchLibs>) => {
             existItem !== undefined &&
             !compareTwoModuleNameAndVersion(moduleName, version, existItem)
         ) {
-            // キャッシュ済のデータを返す
             console.log(
                 `[fetchDependencies] return cached data of ${moduleName}@${version}`
             );
 
+            // キャッシュ済のデータを返す
             return getItem<iStoreSetOfDependencyValue>(
                 moduleName + '@' + version,
                 storeSetOfDependency
@@ -601,6 +601,9 @@ self.onmessage = (e: MessageEvent<iRequestFetchLibs>) => {
         } else {
             // キャッシュしていないならそのまま新規取得
             // 新規モジュール取得、同名モジュール別バージョン取得の場合がある
+            //
+            // TODO: 新規モジュール取得と同名モジュール別バージョン取得の処理は完全に分けなくてはならない。そうしないと同名モジュール別バージョン取得の処理中にエラーが起こった場合、storeModuleNameVersionに登録されている同名モジュール前バージョンまで削除される。これの修正。
+            //
             return (
                 deleteItem(moduleName, storeModuleNameVersion)
                     // storeSetOfDependencyは削除要求されても残す
@@ -629,13 +632,31 @@ self.onmessage = (e: MessageEvent<iRequestFetchLibs>) => {
                     )
                     .catch((e: Error) => {
                         const emptyMap = new Map<string, string>();
-                        deleteItem(moduleName, storeModuleNameVersion)
-                            // DEBUG:
-                            .then(() => {
-                                console.log(
-                                    `[fetchDependencies] deleted ${moduleName} from storeModuleNameVersion`
+
+                        // 取得失敗した依存関係がstoreに登録されたままの場合削除する
+                        // ただし同名別バージョンが削除されないようにバージョン一まで確認する
+                        getItem<iStoreModuleNameVersionValue>(
+                            moduleName,
+                            storeModuleNameVersion
+                        ).then((item) => {
+                            if (
+                                item !== undefined &&
+                                item === moduleName + '@' + version
+                            ) {
+                                return (
+                                    deleteItem(
+                                        moduleName,
+                                        storeModuleNameVersion
+                                    )
+                                        // DEBUG:
+                                        .then(() => {
+                                            console.log(
+                                                `[fetchDependencies] deleted ${moduleName} from storeModuleNameVersion`
+                                            );
+                                        })
                                 );
-                            });
+                            }
+                        });
 
                         console.error(e);
 
