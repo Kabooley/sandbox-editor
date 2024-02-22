@@ -1,12 +1,14 @@
-/*****************************************************
+/************************************************************************************************
  * Fetches requested npm package module from jsdelvr
  *
  * - resolver呼出時の引数version番号は解決プロセス中に正確なバージョン番号`correctVersion`に更新されて返されます。
- * 
- * 
- * - NOTE: importしたいモジュールが`window`グローバルスコープを必要としないかどうか予めチェックすること
- * - NOTE: `import { preProcessFile } from 'typescript'`をすると`ts`ってなにというエラーが発生するので結局すべてtypescriptをimportしている
- *****************************************************/
+ *
+ *
+ * NOTE:
+ * - importしたいモジュールが`window`グローバルスコープを必要としないかどうか予めチェックすること
+ * - `import { preProcessFile } from 'typescript'`をすると`ts`って何？
+ *    というエラーが発生するので結局すべてtypescriptをimportしている
+ ************************************************************************************************/
 
 import { valid } from 'semver';
 import {
@@ -16,7 +18,12 @@ import {
     getNPMVersionsForModule,
 } from './fetcher';
 import { mapModuleNameToModule } from './edgeCases';
-import { createStore, set as setItem, get as getItem } from 'idb-keyval';
+import {
+    createStore,
+    set as setItem,
+    get as getItem,
+    del as deleteItem,
+} from 'idb-keyval';
 import {
     iTreeMeta,
     iConfig,
@@ -24,16 +31,6 @@ import {
     iResponseFetchLibs,
 } from './types';
 import ts from 'typescript';
-
-
-// DEBUG:
-// log each elements in a column from array data.
-const logArrayData = (arr: any[]) => {
-    for (let i = 0; i < arr.length; i++) {
-        console.log(arr[i]);
-    }
-};
-
 
 // --- types ---
 
@@ -89,9 +86,27 @@ interface iDTSFile {
 
 // --- IndexedDB interfaces ---
 
-const store = createStore(
-    'fetched-type-modules-cache-v1-db',
-    'fetched-type-modules-cache-v1-store'
+/***
+ * 以下のように依存関係名称と`依存関係@バージョン`のマップデータを保存する
+ * e.g. {key: "react", value: "react@18.2.0"}
+ * e.g. {key: "semver", value: "semver@7.5.4"}
+ * */
+type iStoreModuleNameVersionValue = string;
+const storeModuleNameVersion = createStore(
+    'sandbox-editor--modulename-n-version--cache-v1-db',
+    'sandbox-editor--modulename-n-version--cache-v1-store'
+);
+
+/**
+ * 以下のように`依存関係@バージョン`と、その依存関係に必要な依存関係一覧の組み合わせのMapデータを保存する
+ * いわば依存関係の依存関係
+ * key: react-dom@18.2.0"
+ * value: Map(20) {'/node_modules/@types/react-dom/package.json' => '{\n  "name": "...}
+ * */
+type iStoreSetOfDependencyValue = Map<string, string>;
+const storeSetOfDependency = createStore(
+    'sandbox-editor--set-of-dependency--cachde-v1-db',
+    'sandbox-editor--set-of-dependency--cachde-v1-store'
 );
 
 // --- Methods ---
@@ -108,7 +123,6 @@ const store = createStore(
  * This will fix version when `version` is incorrect if possible.
  * `response` contains its modules's correct version.
  * */
-
 const getFileTreeForModule = async (
     config: iConfig,
     moduleName: string,
@@ -164,14 +178,28 @@ const getFileTreeForModule = async (
         };
     }
 
-    // DEBUG:
-    console.log('[fetchLibs.worker] getFileTreeForModule response:');
-    console.log(response);
+    // // DEBUG:
+    // console.log('[fetchLibs.worker] getFileTreeForModule response:');
+    // console.log(response);
 
     return response;
 };
 
 // --- helpers ---
+
+/***
+ *  0:  exact match
+ *  -1: `moduleName`@`version` < `compareWith`
+ *  1:  `moduleName`@`version` > `compareWith`
+ * */
+const compareTwoModuleNameAndVersion = (
+    moduleName: string,
+    version: string,
+    compareWith = ''
+) =>
+    compareWith
+        .toLocaleLowerCase()
+        .localeCompare((moduleName + '@' + version).toLocaleLowerCase());
 
 /***
  * Check if parameter string includes any whitespaces.
@@ -190,7 +218,6 @@ const isIncludingWhiteSpaces = (str: string) => {
  * Module name includes any whitespace is not allowed.
  * package name should not contain any of the following characters: ~)('!*
  * */
-
 const excludeInvalidModuleName = (moduleName: string) => {
     let result = true;
     result = !moduleName.startsWith('.') && result;
@@ -224,7 +251,6 @@ const validateModuleVersion = (version: string) => {
  * @param {string} vfsPrefix - Virtual file path for `.d.ts` file.
  * @returns {Array<iDTSFile>}
  * */
-
 const getDTSFilesFromTree = (tree: iTreeMeta, vfsPrefix: string) => {
     const dtsFiles: iDTSFile[] = [];
 
@@ -306,7 +332,7 @@ const retrieveImportedModulesByParse = (
  * @param {string} moduleName - Module name to be resolved.
  * @param {string} version - Module's version to be resolved.
  * @returns {Promise<{vfs: Map<string, string>; moduleName: string; version: string;}>} - Resolved type definition files for the module and its code. Version number may have been updated since the time of the call.
- * 
+ *
  * */
 const fetchTypeAgent = (
     config: iConfig,
@@ -314,7 +340,7 @@ const fetchTypeAgent = (
     version: string
 ) => {
     // const moduleMap = new Map<string, ModuleMeta>();
-    const fsMap = new Map<string, string>();    
+    const fsMap = new Map<string, string>();
     // moduleNameのモジュールの正確なバージョンを記憶する
     let correctVersion = '';
 
@@ -329,25 +355,17 @@ const fetchTypeAgent = (
         version: string,
         depth: number
     ) => {
-        // DEBUG:
-        console.log(`[fetching ${fetchingModuleTitle}] depth: ${depth}`);
+        // // DEBUG:
+        // console.log(`[fetching ${fetchingModuleTitle}] depth: ${depth}`);
 
         // Exclude invalid module name and invalid version.
         if (!excludeInvalidModuleName(_moduleName)) {
-            // // DEBUG:
-            // console.error(
-            //     `Module name ${_moduleName} is invalid or ignorable.`
-            // );
             if (depth > 0) return;
             throw new Error(
                 'Error: Invalid module name. You might input incorrect module name.'
             );
         }
         if (version !== 'latest' && !validateModuleVersion(version)) {
-            // // DEBUG:
-            // console.error(
-            //     `Module version ${version} of ${_moduleName} is invalid or ignorable.`
-            // );
             if (depth > 0) return;
             throw new Error(
                 'Error: Invalid semantic version. You might input incorrect module version.'
@@ -358,23 +376,30 @@ const fetchTypeAgent = (
         // And strip module filepath e.g. react-dom/client --> react-dom
         const moduleName = mapModuleNameToModule(_moduleName);
 
-        // DEBUG:
-        console.log(
-            `[fetching ${fetchingModuleTitle}] depsToGet: ${_moduleName}@${version}`
-        );
+        // // DEBUG:
+        // console.log(
+        //   `[fetching ${fetchingModuleTitle}] depsToGet: ${_moduleName}@${version}`
+        // );
 
         // Return if it's already downloaded.
-        const isAlreadyExists = await getItem(moduleName, store);
+        const isAlreadyExists = await getItem(
+            moduleName,
+            storeModuleNameVersion
+        );
         if (isAlreadyExists) {
-            console.log(
-                `[fetching ${fetchingModuleTitle}] Module ${moduleName} is already downloaded.`
-            );
+            // console.log(
+            //   `[fetching ${fetchingModuleTitle}] Module ${moduleName} is already downloaded.`
+            // );
             return;
         }
 
         // Find where the .d.ts file at.
         // moduleMap.set(moduleName, { state: "loading" });
-        await setItem(moduleName, `${moduleName}@${version}`, store);
+        await setItem(
+            moduleName,
+            `${moduleName}@${version}`,
+            storeModuleNameVersion
+        );
 
         const _tree: iTree = await getFileTreeForModule(
             config,
@@ -385,7 +410,6 @@ const fetchTypeAgent = (
             config.logger?.error(
                 (_tree as { error: Error; message: string }).message
             );
-            // TODO: このエラースローは適切か？
             throw (_tree as { error: Error; message: string }).error;
         }
         const tree = _tree as iTreeMeta;
@@ -397,9 +421,9 @@ const fetchTypeAgent = (
 
         const hasDtsFile = tree.files.find((f) => f.name.endsWith('.d.ts'));
 
-        // DEBUG:
-        console.log(`[fetching ${fetchingModuleTitle}] hasDtsFile:`);
-        console.log(hasDtsFile);
+        // // DEBUG:
+        // console.log(`[fetching ${fetchingModuleTitle}] hasDtsFile:`);
+        // console.log(hasDtsFile);
 
         let DTSFiles1: iDTSFile[] = [];
         let DTSFiles2: iDTSFile[] = [];
@@ -410,10 +434,6 @@ const fetchTypeAgent = (
                 tree,
                 `/node_modules/${tree.moduleName}`
             );
-
-            // DEBUG:
-            console.log(`[fetching ${fetchingModuleTitle}] dtsFilesFromNPM:`);
-            logArrayData(DTSFiles1);
         } else {
             // Look for DT file instead.
             const _dtTree: iTree = await getFileTreeForModule(
@@ -425,14 +445,13 @@ const fetchTypeAgent = (
                 config.logger?.error(
                     (_dtTree as { error: Error; message: string }).message
                 );
-                // TODO: このエラースローは適切か？
                 throw (_dtTree as { error: Error; message: string }).error;
             }
             const dtTree = _dtTree as iTreeMeta;
 
-            // DEBUG:
-            console.log(`[fetching ${fetchingModuleTitle}] dtTreesOnly:`);
-            console.log(dtTree);
+            // // DEBUG:
+            // console.log(`[fetching ${fetchingModuleTitle}] dtTreesOnly:`);
+            // console.log(dtTree);
 
             DTSFiles2 = getDTSFilesFromTree(
                 dtTree,
@@ -442,17 +461,17 @@ const fetchTypeAgent = (
                 )}`
             );
 
-            // DEBUG:
-            console.log(`[fetching ${fetchingModuleTitle}] dtsFilesFromDT:`);
-            console.log(DTSFiles2);
+            // // DEBUG:
+            // console.log(`[fetching ${fetchingModuleTitle}] dtsFilesFromDT:`);
+            // console.log(DTSFiles2);
         }
 
         const downloadListOfDTSFiles = DTSFiles1.concat(DTSFiles2);
         downloading = downloadListOfDTSFiles.length;
 
-        // DEBUG:
-        console.log(`[fetching ${fetchingModuleTitle}] allDTSFiles:`);
-        console.log(downloadListOfDTSFiles);
+        // // DEBUG:
+        // console.log(`[fetching ${fetchingModuleTitle}] allDTSFiles:`);
+        // console.log(downloadListOfDTSFiles);
 
         // downloadListOfDTSFilesの長さがゼロの時はそのまま戻るので特に
 
@@ -537,7 +556,6 @@ const fetchTypeAgent = (
     });
 };
 
-// Incase this was worker.
 // self.addEventListener('message', (e: MessageEvent<iRequestFetchLibs>) => {
 self.onmessage = (e: MessageEvent<iRequestFetchLibs>) => {
     const { payload, order } = e.data;
@@ -553,31 +571,233 @@ self.onmessage = (e: MessageEvent<iRequestFetchLibs>) => {
     // DEBUG:
     console.log(`[fetchLibs.worker] Got request: ${moduleName}@${version}`);
 
-    fetchTypeAgent(config, moduleName, version)
-        .then(
-            (r: {
-                vfs: Map<string, string>;
-                moduleName: string;
-                version: string;
-            }) => {
+    getItem<iStoreModuleNameVersionValue>(
+        moduleName,
+        storeModuleNameVersion
+    ).then((existItem) => {
+        // もしもmoduleName@versionがキャッシュ済であるならば
+        if (
+            existItem !== undefined &&
+            !compareTwoModuleNameAndVersion(moduleName, version, existItem)
+        ) {
+            // キャッシュ済のデータを返す
+            console.log(
+                `[fetchDependencies] return cached data of ${moduleName}@${version}`
+            );
+
+            return getItem<iStoreSetOfDependencyValue>(
+                moduleName + '@' + version,
+                storeSetOfDependency
+            ).then((vfs) => {
                 self.postMessage({
                     order: 'RESOLVE_DEPENDENCY',
                     payload: {
-                        moduleName: r.moduleName,
-                        version: r.version,
-                        depsMap: r.vfs,
+                        moduleName: moduleName,
+                        version: version,
+                        depsMap: vfs,
                     },
                 } as iResponseFetchLibs);
-            }
-        )
-        .catch((e: Error) => {
-            const emptyMap = new Map<string, string>();
-            self.postMessage({
-                order: 'RESOLVE_DEPENDENCY',
-                payload: {
-                    depsMap: emptyMap,
-                },
-                error: e,
-            } as iResponseFetchLibs);
-        });
+            });
+        } else {
+            // キャッシュしていないならそのまま新規取得
+            // 新規モジュール取得、同名モジュール別バージョン取得の場合がある
+            return (
+                deleteItem(moduleName, storeModuleNameVersion)
+                    // storeSetOfDependencyは削除要求されても残す
+                    .then(() => fetchTypeAgent(config, moduleName, version))
+                    .then(
+                        (r: {
+                            vfs: Map<string, string>;
+                            moduleName: string;
+                            version: string;
+                        }) => {
+                            // 新規取得モジュールのファイル群はこのタイミングで保存する
+                            setItem(
+                                r.moduleName + '@' + r.version,
+                                r.vfs,
+                                storeSetOfDependency
+                            );
+                            self.postMessage({
+                                order: 'RESOLVE_DEPENDENCY',
+                                payload: {
+                                    moduleName: r.moduleName,
+                                    version: r.version,
+                                    depsMap: r.vfs,
+                                },
+                            } as iResponseFetchLibs);
+                        }
+                    )
+                    .catch((e: Error) => {
+                        const emptyMap = new Map<string, string>();
+                        deleteItem(moduleName, storeModuleNameVersion)
+                            // DEBUG:
+                            .then(() => {
+                                console.log(
+                                    `[fetchDependencies] deleted ${moduleName} from storeModuleNameVersion`
+                                );
+                            });
+
+                        console.error(e);
+
+                        self.postMessage({
+                            order: 'RESOLVE_DEPENDENCY',
+                            payload: {
+                                moduleName: moduleName,
+                                version: version,
+                                depsMap: emptyMap,
+                            },
+                            error: e,
+                        } as iResponseFetchLibs);
+                    })
+            );
+        }
+    });
 };
+
+// /***
+//  *
+//  * NOTE: Stackblitz.comで動作確認するためワーカの代わりにagent関数を呼び出す。
+//  *
+//  * */
+// const agent = (
+//   moduleName: string,
+//   version: string
+// ): Promise<{
+//   moduleName: string;
+//   version: string;
+//   depsMap: Map<string, string>;
+//   error?: Error;
+// }> => {
+//   // TODO: configは必要か検討
+//   const config = {
+//     typescript: ts,
+//     logger: console,
+//   };
+
+//   // DEBUG:
+//   console.log(`[fetchLibs.worker] Got request: ${moduleName}@${version}`);
+
+//   return getItem<iStoreModuleNameVersionValue>(
+//     moduleName,
+//     storeModuleNameVersion
+//   ).then((existItem) => {
+//     // もしもmoduleName@versionがキャッシュ済であるならば
+//     if (
+//       existItem !== undefined &&
+//       !compareTwoModuleNameAndVersion(moduleName, version, existItem)
+//     ) {
+//       // キャッシュ済のデータを返す
+//       console.log(
+//         `[fetchDependencies] return cached data of ${moduleName}@${version}`
+//       );
+
+//       return getItem<iStoreSetOfDependencyValue>(
+//         moduleName + '@' + version,
+//         storeSetOfDependency
+//       ).then((vfs) => {
+//         return {
+//           moduleName: moduleName,
+//           // TODO: versionがコレクトされていないのでコレクトされたバージョンを返すこと
+//           version: version,
+//           depsMap: vfs,
+//         };
+//       });
+//     } else {
+//       // キャッシュしていないならそのまま新規取得
+//       // 新規モジュール取得、同名モジュール別バージョン取得の場合がある
+//       return (
+//         deleteItem(moduleName, storeModuleNameVersion)
+//           // NOTE: storeSetOfDependencyは削除要求されても残す
+//           .then(() => fetchTypeAgent(config, moduleName, version))
+//           .then(
+//             (r: {
+//               vfs: Map<string, string>;
+//               moduleName: string;
+//               version: string;
+//             }) => {
+//               // 新規取得モジュールのファイル群はこのタイミングで保存する
+//               setItem(
+//                 r.moduleName + '@' + r.version,
+//                 r.vfs,
+//                 storeSetOfDependency
+//               );
+//               return {
+//                 moduleName: r.moduleName,
+//                 version: r.version,
+//                 depsMap: r.vfs,
+//               };
+//             }
+//           )
+//           .catch((e: Error) => {
+//             const empty = new Map<string, string>();
+//             deleteItem(moduleName, storeModuleNameVersion);
+//             // // DEBUG:
+//             // .then(() => {
+//             //   console.log(
+//             //     `deleted ${moduleName} from storeModuleNameVersion`
+//             //   );
+//             // });
+
+//             console.log(
+//               `[fetchDependencies] Failed to acquire ${moduleName}@${version}`
+//             );
+
+//             console.error(e);
+//             return {
+//               moduleName: moduleName,
+//               version: version,
+//               depsMap: empty,
+//               error: e,
+//             };
+//           })
+//       );
+//     }
+//   });
+// };
+
+// export default agent;
+
+//  // Incase this was worker.
+//  // self.addEventListener('message', (e: MessageEvent<iRequestFetchLibs>) => {
+//  self.onmessage = (e: MessageEvent<iRequestFetchLibs>) => {
+//    const { payload, order } = e.data;
+//    if (order !== 'RESOLVE_DEPENDENCY') return;
+//    const { moduleName, version } = payload;
+
+//    // TODO: configは必要か検討
+//    const config = {
+//      typescript: ts,
+//      logger: console,
+//    };
+
+//    // DEBUG:
+//    console.log(`[fetchLibs.worker] Got request: ${moduleName}@${version}`);
+
+//    fetchTypeAgent(config, moduleName, version)
+//      .then(
+//        (r: {
+//          vfs: Map<string, string>;
+//          moduleName: string;
+//          version: string;
+//        }) => {
+//          self.postMessage({
+//            order: 'RESOLVE_DEPENDENCY',
+//            payload: {
+//              moduleName: r.moduleName,
+//              version: r.version,
+//              depsMap: r.vfs,
+//            },
+//          } as iResponseFetchLibs);
+//        }
+//      )
+//      .catch((e: Error) => {
+//        const emptyMap = new Map<string, string>();
+//        self.postMessage({
+//          order: 'RESOLVE_DEPENDENCY',
+//          payload: {
+//            depsMap: emptyMap,
+//          },
+//          error: e,
+//        } as iResponseFetchLibs);
+//      });
+//  };

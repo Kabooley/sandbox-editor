@@ -21,6 +21,17 @@ import React, {
     useRef,
     useContext,
 } from 'react';
+import {
+    isSameShallowObject,
+    getDiffOfTwoShallowObjects,
+    sortPropertiesByKey,
+    getValidSemver,
+} from '../utils';
+import {
+    useFiles,
+    useFilesDispatch,
+    Types as FilesActionTypes,
+} from './FilesContext';
 import type { iRequestFetchLibs, iResponseFetchLibs } from '../worker/types';
 
 type iTypingLibsContext = iDependencyState[];
@@ -50,6 +61,17 @@ interface iDependencyState {
     state: 'loading' | 'loaded';
 }
 
+const $FiveSec = 5000;
+const packageJsonNecessary = `
+{
+  "name": "empty package json template",
+  "version": "0.0.0",
+  "private": false,
+  "dependencies": {},
+  "scripts": {},
+  "devDependencies": {}
+}
+`;
 const TypingLibsDependenciesContext = createContext<iTypingLibsContext>([]);
 const TypingLibsCommandContext = createContext<iCommandContext>(() => null);
 
@@ -66,13 +88,26 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
      * Library paths related to requested module and
      * requested module name pair will be registered.
      * */
-    const relatedLibs = useRef<Map<string, string[]>>(
+    const setOfDependency = useRef<Map<string, string[]>>(
         new Map<string, string[]>()
     );
     /***
      * worker instance.
      * */
     const agent = useRef<Worker>();
+
+    const files = useFiles();
+    const dispatchFilesAction = useFilesDispatch();
+    const _packageJson = files.find((f) => f.getPath() === 'package.json');
+    const packageJson =
+        _packageJson !== undefined
+            ? _packageJson.getValue()
+            : packageJsonNecessary;
+    // Saves previous packageJson string
+    const [snapshot, setSnapshot] = useState<string>(packageJsonNecessary);
+    const [requestingDependencies, setRequestingDependencies] = useState<
+        iDependencyState[]
+    >([]);
 
     // Activate worker.
     useEffect(() => {
@@ -111,50 +146,127 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
         };
     }, [dependencies]);
 
-    // DEBUG:
     useEffect(() => {
-        if (relatedLibs.current.size) {
-            // DEBUG:
-            console.log('[TypingLibsContext] did update. current relatedLibs:');
-            for (const [key, value] of relatedLibs.current.entries()) {
-                console.log(`${key}:`);
-                console.log(value);
-            }
-        }
+        console.log('[TypingLibsContext] Updated packageJson');
+        console.log(packageJson);
 
-        console.log(
-            // {[path: string]: { content: string }}
-            monaco.languages.typescript.typescriptDefaults.getExtraLibs()
-        );
-    });
+        const timer = setTimeout(() => {
+            const { deleted, created, modifiedVal } = getDiffOfPackageJson();
+            if (deleted.length) {
+                deleted.forEach((d) => {
+                    const key = Object.keys(d)[0];
+
+                    console.log(`[TypingLibsContext] Delete ${key}@${d[key]}`);
+
+                    removeLibrary(key, d[key]);
+                });
+            }
+            if (created.length) {
+                created.forEach((d) => {
+                    const key = Object.keys(d)[0];
+
+                    console.log(`[TypingLibsContext] Fetch ${key}@${d[key]}`);
+
+                    requestFetchTypings(key, d[key]);
+                });
+            }
+            if (modifiedVal.length) {
+                modifiedVal.forEach((d) => {
+                    const key = Object.keys(d)[0];
+                    const { prev, current } = d[key];
+
+                    console.log(
+                        `[TypingLibsContext] modified. ${key}@${prev} --> ${key}@${current}`
+                    );
+
+                    requestFetchTypings(key, current);
+                });
+            }
+            // NOTE: 必ずsnapshotをとること
+            setSnapshot(packageJson);
+        }, $FiveSec);
+
+        return () => clearTimeout(timer);
+    }, [packageJson]);
+
+    // // DEBUG:
+    // useEffect(() => {
+    //     if (setOfDependency.current.size) {
+    //         // DEBUG:
+    //         console.log('[TypingLibsContext] did update. current setOfDependency:');
+    //         for (const [key, value] of setOfDependency.current.entries()) {
+    //             console.log(`${key}:`);
+    //             console.log(value);
+    //         }
+    //     }
+
+    //     console.log(
+    //         // {[path: string]: { content: string }}
+    //         monaco.languages.typescript.typescriptDefaults.getExtraLibs()
+    //     );
+    // });
 
     /**
      * Callback of onmessage event with agent worker.
      * */
     const handleWorkerMessage = (e: MessageEvent<iResponseFetchLibs>) => {
-        const { error } = e.data;
-        if (error) {
-            console.error(error);
-            // ひとまず
+        const { payload, error } = e.data;
+        const { moduleName, version, depsMap } = payload;
+        const isFailed = error !== undefined;
+        const isAlreadyExists = dependencies.find(
+            (dep) => dep.moduleName === moduleName
+        );
+
+        console.log(
+            `[TypingLibsContext][handleWorkerMessage] Response of ${moduleName}@${version}`
+        );
+
+        /***
+         * 取得失敗したら何もせず戻る
+         * TODO: 取得失敗したよの通知を出したい
+         * */
+        if (isFailed) {
+            console.log(
+                `[TypingLibsContext][handleWorkerMessage] Failed to install ${moduleName}@${version}`
+            );
+            setRequestingDependencies(
+                requestingDependencies.filter(
+                    (d) => d.moduleName !== moduleName
+                )
+            );
             return;
         }
-        const { depsMap, moduleName, version } = e.data.payload;
-        const moduleLists = dependencies.map((deps) => deps.moduleName);
-        const index = moduleLists.indexOf(moduleName);
 
-        if (index > -1) {
-            const updatedDeps = dependencies.filter(
-                (deps: iDependencyState, _index: number) => _index !== index
+        // --- update dependencies ---
+
+        let deps: iDependencyState[] = [];
+        // 同名別バージョンがインストールされた場合
+        // 上書きする
+        if (isAlreadyExists) {
+            const d = dependencies.filter(
+                (dep) => dep.moduleName !== moduleName
             );
             setDependencies([
-                ...updatedDeps,
+                ...d,
                 {
                     moduleName: moduleName,
                     version: version,
                     state: 'loaded',
                 },
             ]);
-        } else {
+
+            deps = [
+                ...d,
+                {
+                    moduleName: moduleName,
+                    version: version,
+                    state: 'loaded',
+                },
+            ];
+        }
+        // 新規がインストールされた場合
+        // 追加する
+        else {
             setDependencies([
                 ...dependencies,
                 {
@@ -163,8 +275,21 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
                     state: 'loaded',
                 },
             ]);
-        }
 
+            deps = [
+                ...dependencies,
+                {
+                    moduleName: moduleName,
+                    version: version,
+                    state: 'loaded',
+                },
+            ];
+        }
+        setRequestingDependencies(
+            requestingDependencies.filter((d) => d.moduleName !== moduleName)
+        );
+
+        // --- update monaco-editor addExtraLibs, TypingLibs ---
         // Register type def files to monaco addXtraLibs
         // key: /node_modules/typescript/lib/lib.webworker.iterable.d.ts
         // value: its file's code
@@ -173,46 +298,82 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
             addExtraLibs(value, key);
             paths.push(key);
         });
+        // --- update setOfDependencies ---
         // Save depsMap paths with the moduleName.
-        if (relatedLibs.current !== undefined) {
-            relatedLibs.current.set(`${moduleName}@${version}`, paths);
+        if (setOfDependency.current !== undefined) {
+            setOfDependency.current.set(`${moduleName}@${version}`, paths);
         }
+
+        console.log(
+            `[TypingLibsContext][handleWorkerMessage] Succeeded to install ${moduleName}@${version}`
+        );
+
+        reflectToPackageJson(deps);
     };
 
     /**
      * ProviderProps value of iCommandContext.
      *
-     * @param {string} moduleName -
-     * @param {string} version -
+     * @param {string} moduleName - Dependency name for which downloads are requested.
+     * @param {string} version - Dependency version for which downloads are requested
      *
+     * `moduleName`@`version`がキャッシュ済ではないかthis.dependenciesを確認する。
+     * キャッシュ済、かつstate: 'loaded'である場合はそのままreturnする。
+     * キャッシュされていない、または同名別バージョンモジュールでもstate: 'failed`ならば新規取得する。
+     *
+     * TODO: キャッシュは実際には`fetchDependency`が管理するIndexedDBの方で行っているのでこちらでキャッシュ済判断すべきでないかも
      * */
     const requestFetchTypings = (moduleName: string, version: string) => {
-        const isCached = dependencies.find((deps) => {
-            const operand1 = (deps.moduleName + deps.version).toLowerCase();
-            const operand2 = (moduleName + version).toLowerCase();
-
-            if (operand1.localeCompare(operand2) === 0) return true;
-            else return false;
-        });
-
-        if (isCached !== undefined) {
-            console.log(
-                `Requested module ${moduleName}@${version} is already installed`
-            );
-            return;
-        }
-
-        const updatedDeps: iDependencyState[] = [
-            ...dependencies,
-            {
-                moduleName: moduleName,
-                version: version,
-                state: 'loading',
-            },
-        ];
-        setDependencies(updatedDeps);
-
         if (agent.current !== undefined) {
+            let validVersion = getValidSemver(version);
+            if (!validVersion) validVersion = 'latest';
+
+            const cachedSameNameSameVersion = dependencies.find((deps) => {
+                const operand1 = (deps.moduleName + deps.version).toLowerCase();
+                const operand2 = (moduleName + validVersion).toLowerCase();
+
+                if (operand1.localeCompare(operand2) === 0) return true;
+                else return false;
+            });
+
+            const isLoading = requestingDependencies.find((deps) => {
+                const operand1 = (deps.moduleName + deps.version).toLowerCase();
+                const operand2 = (moduleName + validVersion).toLowerCase();
+
+                if (operand1.localeCompare(operand2) === 0) return true;
+                else return false;
+            });
+
+            // 同名同バージョンがローディング中の場合戻る
+            if (isLoading !== undefined) {
+                console.log(
+                    `[TypingLibsContext][requestFetchTypings] ${moduleName}@${validVersion} is now loading.`
+                );
+                return;
+            }
+            // 同名同バージョンがキャッシュされていた場合戻る
+            if (
+                cachedSameNameSameVersion !== undefined &&
+                cachedSameNameSameVersion.state === 'loaded'
+            ) {
+                console.log(
+                    `[TypingLibsContext][requestFetchTypings] ${moduleName}@${validVersion} is already exist.`
+                );
+                return;
+            }
+
+            // 同名同バージョンが`failed`だった場合改めて取得
+            // 同名別バージョンがキャッシュされていた場合改めて取得
+            // 新規リクエストの場合取得
+            setRequestingDependencies([
+                ...requestingDependencies,
+                {
+                    moduleName: moduleName,
+                    version: validVersion,
+                    state: 'loading',
+                },
+            ]);
+
             agent.current!.postMessage({
                 order: 'RESOLVE_DEPENDENCY',
                 payload: {
@@ -262,13 +423,14 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
      * Remove all libraries from monaco language service defaults.
      * */
     const removeLibrary = (moduleName: string, version: string) => {
-        if (relatedLibs.current.has(`${moduleName}@${version}`)) {
-            // DEBUG:
+        if (setOfDependency.current.has(`${moduleName}@${version}`)) {
             console.log(
                 `[TypingLibsContext] delete ${moduleName}@${version} related libraries`
             );
 
-            const paths = relatedLibs.current.get(`${moduleName}@${version}`);
+            const paths = setOfDependency.current.get(
+                `${moduleName}@${version}`
+            );
             paths?.forEach((path) => {
                 const cachedLib = typingLibs.current.get(path);
                 if (cachedLib) {
@@ -276,8 +438,11 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
                     cachedLib.ts.dispose();
                 }
             });
-            relatedLibs.current.delete(`${moduleName}@${version}`);
+            setOfDependency.current.delete(`${moduleName}@${version}`);
         }
+        setDependencies([
+            ...dependencies.filter((dep) => dep.moduleName !== moduleName),
+        ]);
     };
 
     /***
@@ -303,6 +468,129 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
                 defualt: {
                     return;
                 }
+        }
+    };
+
+    /***
+     * `packageJson`と`snapshot`の`dependencies`と`devDependencies`の差分内容を返す。
+     *
+     * JSONファイルを編集中の内容を常に監視する必要があるため、
+     * 編集途中の状況を想定してJSONとしてinvalidな状態のままの値を受け取ることを念頭に置かなくてはならない
+     *
+     * そのため、
+     * - JSON.parseがエラーを返す場合はreturnする。
+     * - 依存関係のバージョン、名前がおかしい場合はチェックしない（できない）。
+     *   この場合については実際にfetchする段階でエラーが発生するはずなのでその時点でユーザが気づけばよいとする。
+     * */
+    const getDiffOfPackageJson = () => {
+        try {
+            console.log(
+                '[TypingLibsContext][getDiffOfPackageJson] Getting diffs of package.json...'
+            );
+
+            // JSON構文エラーだとこのままcatchブロックへ移動する。
+            const { dependencies, devDependencies } = JSON.parse(packageJson);
+            const previous = JSON.parse(snapshot);
+
+            if (
+                !isSameShallowObject(dependencies, previous.dependencies) ||
+                !isSameShallowObject(devDependencies, previous.devDependencies)
+            ) {
+                const dependenciesDiff = getDiffOfTwoShallowObjects(
+                    dependencies,
+                    previous.dependencies
+                );
+                const devDependenciesDiff = getDiffOfTwoShallowObjects(
+                    devDependencies,
+                    previous.devDependencies
+                );
+
+                console.log(dependenciesDiff);
+                console.log(devDependenciesDiff);
+
+                return {
+                    deleted: dependenciesDiff.deleted.concat(
+                        devDependenciesDiff.deleted
+                    ),
+                    created: dependenciesDiff.created.concat(
+                        devDependenciesDiff.created
+                    ),
+                    modifiedVal: dependenciesDiff.modifiedVal.concat(
+                        devDependenciesDiff.modifiedVal
+                    ),
+                };
+            } else {
+                return {
+                    deleted: [],
+                    created: [],
+                    modifiedVal: [],
+                };
+            }
+        } catch (e) {
+            console.error(e);
+            return {
+                deleted: [],
+                created: [],
+                modifiedVal: [],
+            };
+        }
+    };
+
+    /***
+     * `_dependencies`の通りにpackage.jsonを更新する
+     *
+     * TODO: `dependencies`と`devDependencies`の区別がついていないからdevDependenciesのものがすべてdependenciesになる　どうする?
+     * */
+    const reflectToPackageJson = (_dependencies: iDependencyState[]) => {
+        try {
+            console.log(
+                '[TypingLibsContext][reflectToPackageJson] reflecting...'
+            );
+            // どちらもいつも空の配列になっているみたい
+            // 理由は多分setStateを非同期に呼び出しているからだと思う
+            // 非同期に呼び出しているから常に古いstateを参照していてアップデートされていない
+            //
+            // https://www.reddit.com/r/reactjs/comments/v9csv5/react_usestate_hooks_state_not_ready_after/
+            console.log(_dependencies);
+            console.log(dependencies);
+
+            const currentPackageJson = JSON.parse(packageJson);
+
+            const __dependencies: Record<string, string> = {};
+            _dependencies.forEach((rd) => {
+                __dependencies[rd.moduleName] = rd.version;
+            });
+
+            const devDependencies: Record<string, string> = {};
+
+            const updatedPackageJson = {
+                ...currentPackageJson,
+                dependencies: sortPropertiesByKey(__dependencies),
+                devDependencies: sortPropertiesByKey(devDependencies),
+            };
+
+            // setPackageJson(JSON.stringify(updatedPackageJson, null, 2));
+            const packageJsonString = JSON.stringify(
+                updatedPackageJson,
+                null,
+                2
+            );
+
+            console.log('[TypingLibsContext][reflectToPackageJson] reflect:');
+            console.log(packageJsonString);
+
+            dispatchFilesAction({
+                type: FilesActionTypes.Change,
+                payload: {
+                    targetFilePath: 'package.json',
+                    changeProp: {
+                        newValue: packageJsonString,
+                    },
+                },
+            });
+            setSnapshot(packageJsonString);
+        } catch (e) {
+            console.error(e);
         }
     };
 

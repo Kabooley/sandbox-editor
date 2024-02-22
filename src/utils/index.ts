@@ -13,3 +13,9 @@ export { moveInArray } from './moveInArray';
 export { removeAnItemFromArray } from './removeAnItemFromArray';
 // DEBUG:
 export { logArrayData } from './logArrayData';
+
+export { getDiffOfTwoShallowObjects } from './getDiffOfTwoShallowObjects';
+export { sortByModuleName } from './sortByModuleName';
+export { sortPropertiesByKey } from './sortPropertiesByKey';
+export { getValidSemver } from './getValidSemver';
+export { isSameShallowObject } from './isSameShallowObject';
