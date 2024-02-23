@@ -30,7 +30,7 @@ import {
     iRequestFetchLibs,
     iResponseFetchLibs,
 } from './types';
-import ts from 'typescript';
+import ts, { textChangeRangeIsUnchanged } from 'typescript';
 
 // --- types ---
 
@@ -200,6 +200,28 @@ const compareTwoModuleNameAndVersion = (
     compareWith
         .toLocaleLowerCase()
         .localeCompare((moduleName + '@' + version).toLocaleLowerCase());
+
+
+/***
+ * Return true if same module name but different version.
+ *
+ * @param {string} moduleName - Module's name to be compared.
+ * @param {string} version - Version to be compared.
+ * @param {string} module - String concist of module name and version and `@` to be sandwiched. e.g. `react@18.2.0`.
+ * */
+const isSameNameAnotherVersion = (
+    moduleName: string,
+    version: string,
+    module: string
+  ) => {
+    if (module.indexOf('@') === 0) {
+      const sub = module.slice(1).split('@');
+      return `@` + sub[0] === moduleName && sub[sub.length - 1] !== version;
+    } else {
+      const sub = module.split('@');
+      return sub[0] === moduleName && sub[1] !== version;
+    }
+  };
 
 /***
  * Check if parameter string includes any whitespaces.
@@ -561,6 +583,7 @@ self.onmessage = (e: MessageEvent<iRequestFetchLibs>) => {
     const { payload, order } = e.data;
     if (order !== 'RESOLVE_DEPENDENCY') return;
     const { moduleName, version } = payload;
+    let temporarilyEvacuateItem: { key: string; value: string } | null = null;
 
     // TODO: configは必要か検討
     const config = {
@@ -575,15 +598,15 @@ self.onmessage = (e: MessageEvent<iRequestFetchLibs>) => {
         moduleName,
         storeModuleNameVersion
     ).then((existItem) => {
-        // もしもmoduleName@versionがキャッシュ済であるならば
+        // `moduleName`@`version`がキャッシュ済である場合：
         if (
             existItem !== undefined &&
             !compareTwoModuleNameAndVersion(moduleName, version, existItem)
         ) {
             console.log(
                 `[fetchDependencies] return cached data of ${moduleName}@${version}`
-            );
-
+                );
+                
             // キャッシュ済のデータを返す
             return getItem<iStoreSetOfDependencyValue>(
                 moduleName + '@' + version,
@@ -598,68 +621,70 @@ self.onmessage = (e: MessageEvent<iRequestFetchLibs>) => {
                     },
                 } as iResponseFetchLibs);
             });
-        } else {
-            // キャッシュしていないならそのまま新規取得
-            // 新規モジュール取得、同名モジュール別バージョン取得の場合がある
-            //
-            // TODO: 新規モジュール取得と同名モジュール別バージョン取得の処理は完全に分けなくてはならない。そうしないと同名モジュール別バージョン取得の処理中にエラーが起こった場合、storeModuleNameVersionに登録されている同名モジュール前バージョンまで削除される。これの修正。
-            //
+        }
+        // 既存モジュール別バージョンリクエストの場合：
+        else if(
+            existItem !== undefined && isSameNameAnotherVersion(moduleName, version, existItem)
+        )
+        {
             return (
-                deleteItem(moduleName, storeModuleNameVersion)
-                    // storeSetOfDependencyは削除要求されても残す
-                    .then(() => fetchTypeAgent(config, moduleName, version))
-                    .then(
-                        (r: {
-                            vfs: Map<string, string>;
-                            moduleName: string;
-                            version: string;
-                        }) => {
-                            // 新規取得モジュールのファイル群はこのタイミングで保存する
-                            setItem(
-                                r.moduleName + '@' + r.version,
-                                r.vfs,
-                                storeSetOfDependency
-                            );
+                // 既存モジュールをいったん退避しておいてから別バージョンの取得処理に移る
+                // 取得中にエラーが発生した場合に備えて。
+                // (storeSetOfDependencyに登録されているアイテムは削除要求されても残す)
+                Promise.resolve(temporarilyEvacuateItem = { key: moduleName, value: existItem })
+                .then(() => deleteItem(moduleName, storeModuleNameVersion))
+                .then(() => fetchTypeAgent(config, moduleName, version))
+                .then(
+                    (r: {
+                        vfs: Map<string, string>;
+                        moduleName: string;
+                        version: string;
+                    }) => {
+                        setItem(
+                            r.moduleName + '@' + r.version,
+                            r.vfs,
+                            storeSetOfDependency
+                        );
+                        self.postMessage({
+                            order: 'RESOLVE_DEPENDENCY',
+                            payload: {
+                                moduleName: r.moduleName,
+                                version: r.version,
+                                depsMap: r.vfs,
+                            },
+                        } as iResponseFetchLibs);
+                    }
+                )
+                // 既存モジュール別バージョンリクエスト対応中にエラーが発生した場合：
+                // 既存モジュールを再登録する
+                // レスポンスには取得失敗を示す`error`と、既存モジュールを再登録したことを示す
+                // `restoredModuleVersion`を含める
+                .catch((e: Error) => {
+                    const emptyMap = new Map<string, string>();
+                    getItem<iStoreSetOfDependencyValue>(temporarilyEvacuateItem!.value, storeSetOfDependency)
+                    .then((item) => {
+                        if(item !== undefined) {
+                            return deleteItem(moduleName, storeModuleNameVersion)
+                            .then(() => setItem(moduleName, temporarilyEvacuateItem!.value))
+                            .then(() => true);
+                        }
+                        return deleteItem(moduleName, storeModuleNameVersion).then(() => false);
+                    })
+                    .then((didRestoreExistItem) => {
+                        if(didRestoreExistItem) {
+                            const splittedModule = temporarilyEvacuateItem!.value.split('@');
+                            const restoredModuleVersion = splittedModule[splittedModule.length - 1];
                             self.postMessage({
                                 order: 'RESOLVE_DEPENDENCY',
                                 payload: {
-                                    moduleName: r.moduleName,
-                                    version: r.version,
-                                    depsMap: r.vfs,
+                                    moduleName: moduleName,
+                                    version: version,
+                                    depsMap: emptyMap,
                                 },
+                                error: e,
+                                restoredModuleVersion: restoredModuleVersion
                             } as iResponseFetchLibs);
                         }
-                    )
-                    .catch((e: Error) => {
-                        const emptyMap = new Map<string, string>();
-
-                        // 取得失敗した依存関係がstoreに登録されたままの場合削除する
-                        // ただし同名別バージョンが削除されないようにバージョン一まで確認する
-                        getItem<iStoreModuleNameVersionValue>(
-                            moduleName,
-                            storeModuleNameVersion
-                        ).then((item) => {
-                            if (
-                                item !== undefined &&
-                                item === moduleName + '@' + version
-                            ) {
-                                return (
-                                    deleteItem(
-                                        moduleName,
-                                        storeModuleNameVersion
-                                    )
-                                        // DEBUG:
-                                        .then(() => {
-                                            console.log(
-                                                `[fetchDependencies] deleted ${moduleName} from storeModuleNameVersion`
-                                            );
-                                        })
-                                );
-                            }
-                        });
-
-                        console.error(e);
-
                         self.postMessage({
                             order: 'RESOLVE_DEPENDENCY',
                             payload: {
@@ -669,11 +694,123 @@ self.onmessage = (e: MessageEvent<iRequestFetchLibs>) => {
                             },
                             error: e,
                         } as iResponseFetchLibs);
-                    })
+
+                    });
+
+                    console.error(e);
+
+                    // self.postMessage({
+                    //     order: 'RESOLVE_DEPENDENCY',
+                    //     payload: {
+                    //         moduleName: moduleName,
+                    //         version: version,
+                    //         depsMap: emptyMap,
+                    //     },
+                    //     error: e,
+                    //     // TODO: 取得失敗したから既存バージョンに戻してのフラグ必要
+                    // } as iResponseFetchLibs);
+                })
             );
         }
     });
 };
+// // self.addEventListener('message', (e: MessageEvent<iRequestFetchLibs>) => {
+// self.onmessage = (e: MessageEvent<iRequestFetchLibs>) => {
+//     const { payload, order } = e.data;
+//     if (order !== 'RESOLVE_DEPENDENCY') return;
+//     const { moduleName, version } = payload;
+
+//     // TODO: configは必要か検討
+//     const config = {
+//         typescript: ts,
+//         logger: console,
+//     };
+
+//     // DEBUG:
+//     console.log(`[fetchLibs.worker] Got request: ${moduleName}@${version}`);
+
+//     getItem<iStoreModuleNameVersionValue>(
+//         moduleName,
+//         storeModuleNameVersion
+//     ).then((existItem) => {
+//         // もしもmoduleName@versionがキャッシュ済であるならば
+//         if (
+//             existItem !== undefined &&
+//             !compareTwoModuleNameAndVersion(moduleName, version, existItem)
+//         ) {
+//             // キャッシュ済のデータを返す
+//             console.log(
+//                 `[fetchDependencies] return cached data of ${moduleName}@${version}`
+//             );
+
+//             return getItem<iStoreSetOfDependencyValue>(
+//                 moduleName + '@' + version,
+//                 storeSetOfDependency
+//             ).then((vfs) => {
+//                 self.postMessage({
+//                     order: 'RESOLVE_DEPENDENCY',
+//                     payload: {
+//                         moduleName: moduleName,
+//                         version: version,
+//                         depsMap: vfs,
+//                     },
+//                 } as iResponseFetchLibs);
+//             });
+//         } else {
+//             // キャッシュしていないならそのまま新規取得
+//             // 新規モジュール取得、同名モジュール別バージョン取得の場合がある
+//             return (
+//                 deleteItem(moduleName, storeModuleNameVersion)
+//                     // storeSetOfDependencyは削除要求されても残す
+//                     .then(() => fetchTypeAgent(config, moduleName, version))
+//                     .then(
+//                         (r: {
+//                             vfs: Map<string, string>;
+//                             moduleName: string;
+//                             version: string;
+//                         }) => {
+//                             // 新規取得モジュールのファイル群はこのタイミングで保存する
+//                             setItem(
+//                                 r.moduleName + '@' + r.version,
+//                                 r.vfs,
+//                                 storeSetOfDependency
+//                             );
+//                             self.postMessage({
+//                                 order: 'RESOLVE_DEPENDENCY',
+//                                 payload: {
+//                                     moduleName: r.moduleName,
+//                                     version: r.version,
+//                                     depsMap: r.vfs,
+//                                 },
+//                             } as iResponseFetchLibs);
+//                         }
+//                     )
+//                     .catch((e: Error) => {
+//                         const emptyMap = new Map<string, string>();
+//                         deleteItem(moduleName, storeModuleNameVersion)
+//                             // DEBUG:
+//                             .then(() => {
+//                                 console.log(
+//                                     `[fetchDependencies] deleted ${moduleName} from storeModuleNameVersion`
+//                                 );
+//                             });
+
+//                         console.error(e);
+
+//                         self.postMessage({
+//                             order: 'RESOLVE_DEPENDENCY',
+//                             payload: {
+//                                 moduleName: moduleName,
+//                                 version: version,
+//                                 depsMap: emptyMap,
+//                             },
+//                             error: e,
+//                         } as iResponseFetchLibs);
+//                     })
+//             );
+//         }
+//     });
+// };
 
 // /***
 //  *
@@ -775,50 +912,3 @@ self.onmessage = (e: MessageEvent<iRequestFetchLibs>) => {
 //     }
 //   });
 // };
-
-// export default agent;
-
-//  // Incase this was worker.
-//  // self.addEventListener('message', (e: MessageEvent<iRequestFetchLibs>) => {
-//  self.onmessage = (e: MessageEvent<iRequestFetchLibs>) => {
-//    const { payload, order } = e.data;
-//    if (order !== 'RESOLVE_DEPENDENCY') return;
-//    const { moduleName, version } = payload;
-
-//    // TODO: configは必要か検討
-//    const config = {
-//      typescript: ts,
-//      logger: console,
-//    };
-
-//    // DEBUG:
-//    console.log(`[fetchLibs.worker] Got request: ${moduleName}@${version}`);
-
-//    fetchTypeAgent(config, moduleName, version)
-//      .then(
-//        (r: {
-//          vfs: Map<string, string>;
-//          moduleName: string;
-//          version: string;
-//        }) => {
-//          self.postMessage({
-//            order: 'RESOLVE_DEPENDENCY',
-//            payload: {
-//              moduleName: r.moduleName,
-//              version: r.version,
-//              depsMap: r.vfs,
-//            },
-//          } as iResponseFetchLibs);
-//        }
-//      )
-//      .catch((e: Error) => {
-//        const emptyMap = new Map<string, string>();
-//        self.postMessage({
-//          order: 'RESOLVE_DEPENDENCY',
-//          payload: {
-//            depsMap: emptyMap,
-//          },
-//          error: e,
-//        } as iResponseFetchLibs);
-//      });
-//  };
