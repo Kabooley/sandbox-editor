@@ -50,6 +50,8 @@ const TabsAndActionsContainer = ({
 }: iProps) => {
     // Dragging Tab. Not slider.
     const [dragging, setDragging] = useState<boolean>(false);
+    const [displayThreeDotsMenu, setDisplayThreeDotsMenu] =
+        useState<boolean>(false);
     const dispatch = useFilesDispatch();
     const dispatchLayout = useLayoutDispatch();
     const refTabArea = useRef<HTMLDivElement>(null);
@@ -211,6 +213,7 @@ const TabsAndActionsContainer = ({
             e.preventDefault();
             // TODO: implement this.
             // handleThreeDotsMenuOpen(e);
+            setDisplayThreeDotsMenu(!displayThreeDotsMenu);
         };
         return (
             <Action
@@ -219,6 +222,27 @@ const TabsAndActionsContainer = ({
                 altMessage="Toggle tabs action menu"
             />
         );
+    };
+
+    const renderThreeDotsMenu = () => {
+        return displayThreeDotsMenu ? (
+            <nav
+                style={{
+                    position: 'fixed',
+                    top: '20px',
+                    left: '100px',
+                    opacity: '1',
+                }}
+                className="three-dots-menu"
+            >
+                <div
+                    className="three-dots-menu__action"
+                    onClick={/* TODO: openingフラグの付いたファイルをすべて閉じて */}
+                >
+                    Close all
+                </div>
+            </nav>
+        ) : null;
     };
 
     const actions = [renderActionThreeDots];
