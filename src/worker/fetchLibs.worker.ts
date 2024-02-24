@@ -201,7 +201,6 @@ const compareTwoModuleNameAndVersion = (
         .toLocaleLowerCase()
         .localeCompare((moduleName + '@' + version).toLocaleLowerCase());
 
-
 /***
  * Return true if same module name but different version.
  *
@@ -213,15 +212,15 @@ const isSameNameAnotherVersion = (
     moduleName: string,
     version: string,
     module: string
-  ) => {
+) => {
     if (module.indexOf('@') === 0) {
-      const sub = module.slice(1).split('@');
-      return `@` + sub[0] === moduleName && sub[sub.length - 1] !== version;
+        const sub = module.slice(1).split('@');
+        return `@` + sub[0] === moduleName && sub[sub.length - 1] !== version;
     } else {
-      const sub = module.split('@');
-      return sub[0] === moduleName && sub[1] !== version;
+        const sub = module.split('@');
+        return sub[0] === moduleName && sub[1] !== version;
     }
-  };
+};
 
 /***
  * Check if parameter string includes any whitespaces.
@@ -605,8 +604,8 @@ self.onmessage = (e: MessageEvent<iRequestFetchLibs>) => {
         ) {
             console.log(
                 `[fetchDependencies] return cached data of ${moduleName}@${version}`
-                );
-                
+            );
+
             // キャッシュ済のデータを返す
             return getItem<iStoreSetOfDependencyValue>(
                 moduleName + '@' + version,
@@ -623,93 +622,119 @@ self.onmessage = (e: MessageEvent<iRequestFetchLibs>) => {
             });
         }
         // 既存モジュール別バージョンリクエストの場合：
-        else if(
-            existItem !== undefined && isSameNameAnotherVersion(moduleName, version, existItem)
-        )
-        {
+        else if (
+            existItem !== undefined &&
+            isSameNameAnotherVersion(moduleName, version, existItem)
+        ) {
             return (
                 // 既存モジュールをいったん退避しておいてから別バージョンの取得処理に移る
                 // 取得中にエラーが発生した場合に備えて。
                 // (storeSetOfDependencyに登録されているアイテムは削除要求されても残す)
-                Promise.resolve(temporarilyEvacuateItem = { key: moduleName, value: existItem })
-                .then(() => deleteItem(moduleName, storeModuleNameVersion))
-                .then(() => fetchTypeAgent(config, moduleName, version))
-                .then(
-                    (r: {
-                        vfs: Map<string, string>;
-                        moduleName: string;
-                        version: string;
-                    }) => {
-                        setItem(
-                            r.moduleName + '@' + r.version,
-                            r.vfs,
-                            storeSetOfDependency
-                        );
-                        self.postMessage({
-                            order: 'RESOLVE_DEPENDENCY',
-                            payload: {
-                                moduleName: r.moduleName,
-                                version: r.version,
-                                depsMap: r.vfs,
-                            },
-                        } as iResponseFetchLibs);
-                    }
-                )
-                // 既存モジュール別バージョンリクエスト対応中にエラーが発生した場合：
-                // 既存モジュールを再登録する
-                // レスポンスには取得失敗を示す`error`と、既存モジュールを再登録したことを示す
-                // `restoredModuleVersion`を含める
-                .catch((e: Error) => {
-                    const emptyMap = new Map<string, string>();
-                    getItem<iStoreSetOfDependencyValue>(temporarilyEvacuateItem!.value, storeSetOfDependency)
-                    .then((item) => {
-                        if(item !== undefined) {
-                            return deleteItem(moduleName, storeModuleNameVersion)
-                            .then(() => setItem(moduleName, temporarilyEvacuateItem!.value))
-                            .then(() => true);
-                        }
-                        return deleteItem(moduleName, storeModuleNameVersion).then(() => false);
+                Promise.resolve(
+                    (temporarilyEvacuateItem = {
+                        key: moduleName,
+                        value: existItem,
                     })
-                    .then((didRestoreExistItem) => {
-                        if(didRestoreExistItem) {
-                            const splittedModule = temporarilyEvacuateItem!.value.split('@');
-                            const restoredModuleVersion = splittedModule[splittedModule.length - 1];
+                )
+                    .then(() => deleteItem(moduleName, storeModuleNameVersion))
+                    .then(() => fetchTypeAgent(config, moduleName, version))
+                    .then(
+                        (r: {
+                            vfs: Map<string, string>;
+                            moduleName: string;
+                            version: string;
+                        }) => {
+                            setItem(
+                                r.moduleName + '@' + r.version,
+                                r.vfs,
+                                storeSetOfDependency
+                            );
                             self.postMessage({
                                 order: 'RESOLVE_DEPENDENCY',
                                 payload: {
-                                    moduleName: moduleName,
-                                    version: version,
-                                    depsMap: emptyMap,
+                                    moduleName: r.moduleName,
+                                    version: r.version,
+                                    depsMap: r.vfs,
                                 },
-                                error: e,
-                                restoredModuleVersion: restoredModuleVersion
                             } as iResponseFetchLibs);
                         }
-                        self.postMessage({
-                            order: 'RESOLVE_DEPENDENCY',
-                            payload: {
-                                moduleName: moduleName,
-                                version: version,
-                                depsMap: emptyMap,
-                            },
-                            error: e,
-                        } as iResponseFetchLibs);
+                    )
+                    // 既存モジュール別バージョンリクエスト対応中にエラーが発生した場合：
+                    // 既存モジュールを再登録する
+                    // レスポンスには取得失敗を示す`error`と、既存モジュールを再登録したことを示す
+                    // `restoredModuleVersion`を含める
+                    .catch((e: Error) => {
+                        const emptyMap = new Map<string, string>();
+                        getItem<iStoreSetOfDependencyValue>(
+                            temporarilyEvacuateItem!.value,
+                            storeSetOfDependency
+                        )
+                            .then((item) => {
+                                if (item !== undefined) {
+                                    return deleteItem(
+                                        moduleName,
+                                        storeModuleNameVersion
+                                    )
+                                        .then(() =>
+                                            setItem(
+                                                moduleName,
+                                                temporarilyEvacuateItem!.value,
+                                                storeModuleNameVersion
+                                            )
+                                        )
+                                        .then(() => item);
+                                }
+                                return deleteItem(
+                                    moduleName,
+                                    storeModuleNameVersion
+                                ).then(() => null);
+                            })
+                            .then((didRestoreExistItem) => {
+                                if (didRestoreExistItem) {
+                                    const splittedModule =
+                                        temporarilyEvacuateItem!.value.split(
+                                            '@'
+                                        );
+                                    const restoredModuleVersion =
+                                        splittedModule[
+                                            splittedModule.length - 1
+                                        ];
+                                    self.postMessage({
+                                        order: 'RESOLVE_DEPENDENCY',
+                                        payload: {
+                                            moduleName: moduleName,
+                                            version: version,
+                                            depsMap: emptyMap,
+                                        },
+                                        error: e,
+                                        restoredModuleVersion:
+                                            restoredModuleVersion,
+                                    } as iResponseFetchLibs);
+                                }
+                                self.postMessage({
+                                    order: 'RESOLVE_DEPENDENCY',
+                                    payload: {
+                                        moduleName: moduleName,
+                                        version: version,
+                                        depsMap: emptyMap,
+                                    },
+                                    error: e,
+                                } as iResponseFetchLibs);
+                            });
 
-                    });
+                        console.error(e);
 
-                    console.error(e);
-
-                    // self.postMessage({
-                    //     order: 'RESOLVE_DEPENDENCY',
-                    //     payload: {
-                    //         moduleName: moduleName,
-                    //         version: version,
-                    //         depsMap: emptyMap,
-                    //     },
-                    //     error: e,
-                    //     // TODO: 取得失敗したから既存バージョンに戻してのフラグ必要
-                    // } as iResponseFetchLibs);
-                })
+                        // self.postMessage({
+                        //     order: 'RESOLVE_DEPENDENCY',
+                        //     payload: {
+                        //         moduleName: moduleName,
+                        //         version: version,
+                        //         depsMap: emptyMap,
+                        //     },
+                        //     error: e,
+                        //     // TODO: 取得失敗したから既存バージョンに戻してのフラグ必要
+                        // } as iResponseFetchLibs);
+                    })
             );
         }
     });

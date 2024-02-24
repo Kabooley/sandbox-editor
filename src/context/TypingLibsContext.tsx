@@ -222,7 +222,7 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
      * Callback of onmessage event with agent worker.
      * */
     const handleWorkerMessage = (e: MessageEvent<iResponseFetchLibs>) => {
-        const { payload, error } = e.data;
+        const { payload, error, restoredModuleVersion } = e.data;
         const { moduleName, version, depsMap } = payload;
         const isFailed = error !== undefined;
         const isAlreadyExists = dependencies.find(
@@ -233,20 +233,36 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
             `[TypingLibsContext][handleWorkerMessage] Response of ${moduleName}@${version}`
         );
 
-        /***
-         * 取得失敗したら何もせず戻る
-         * TODO: 取得失敗通知を出したい
-         * */
-        if (isFailed) {
-            console.log(
-                `[TypingLibsContext][handleWorkerMessage] Failed to install ${moduleName}@${version}`
-            );
+        // 取得失敗で既存依存関係を維持する場合:
+        // TODO: 取得失敗の通知を出す
+        if (isFailed && restoredModuleVersion !== undefined) {
+            setDependencies([
+                ...dependencies.filter((dep) => dep.moduleName !== moduleName),
+                {
+                    moduleName: moduleName,
+                    version: restoredModuleVersion,
+                    state: 'loaded',
+                },
+            ]);
             setRequestingDependencies(
                 requestingDependencies.filter(
                     (d) => d.moduleName !== moduleName
                 )
             );
             return;
+        }
+        // 取得失敗で既存依存関係がない場合:
+        // TODO: 取得失敗の通知を出す
+        else if (isFailed) {
+            setRequestingDependencies(
+                requestingDependencies.filter(
+                    (d) => d.moduleName !== moduleName
+                )
+            );
+            return;
+        }
+        // 取得成功の場合:
+        else if (!isFailed) {
         }
 
         // --- update dependencies ---
@@ -359,6 +375,10 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
                 else return false;
             });
 
+            const existAnotherVersion = dependencies.find((dep) => {
+                return dep.moduleName === moduleName && dep.version !== version;
+            });
+
             // 同名同バージョンがローディング中の場合戻る
             if (isLoading !== undefined) {
                 console.log(
@@ -377,15 +397,16 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
                 return;
             }
 
-            // 同名同バージョンが`failed`だった場合改めて取得
-            // 同名別バージョンがキャッシュされていた場合改めて取得
-            // 新規リクエストの場合取得
+            // - 同名同バージョンが`failed`だった場合改めて取得
+            // - 同名別バージョンがキャッシュされていた場合改めて取得
+            // - 新規リクエストの場合取得
             setRequestingDependencies([
                 ...requestingDependencies,
                 {
                     moduleName: moduleName,
                     version: validVersion,
                     state: 'loading',
+                    existVersion: existAnotherVersion.version,
                 },
             ]);
 

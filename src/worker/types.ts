@@ -75,6 +75,7 @@ export interface iResponseFetchLibs extends iResponse {
         version: string;
         depsMap: Map<string, string>;
     };
+    restoredModuleVersion?: string | undefined;
 }
 
 interface Logger {
