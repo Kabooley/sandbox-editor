@@ -60,6 +60,9 @@ interface iDependencyState {
     version: string;
     state: 'loading' | 'loaded';
 }
+interface iRequestingDependency extends iDependencyState {
+    existVersion?: string;
+}
 
 const $FiveSec = 5000;
 const packageJsonNecessary = `
@@ -107,7 +110,7 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
     const [snapshot, setSnapshot] = useState<string>(packageJsonNecessary);
     // Dependency requested to be fetched will be added.
     const [requestingDependencies, setRequestingDependencies] = useState<
-        iDependencyState[]
+        iRequestingDependency[]
     >([]);
 
     // Activate worker.
@@ -151,7 +154,14 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
                 );
             }
         };
-    }, [dependencies]);
+        // NOTE: 依存関係にはhandleWorkerMessageで参照するすべてのReactiveな値を含める
+    }, [
+        dependencies,
+        requestingDependencies,
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        reflectToPackageJson,
+    ]);
 
     /***
      * package.jsonファイルの変更内容を読取り、変更内容に応じて依存関係を更新する。
@@ -201,145 +211,142 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
         return () => clearTimeout(timer);
     }, [packageJson]);
 
-    // // DEBUG:
-    // useEffect(() => {
-    //     if (setOfDependency.current.size) {
-    //         // DEBUG:
-    //         console.log('[TypingLibsContext] did update. current setOfDependency:');
-    //         for (const [key, value] of setOfDependency.current.entries()) {
-    //             console.log(`${key}:`);
-    //             console.log(value);
-    //         }
-    //     }
-
-    //     console.log(
-    //         // {[path: string]: { content: string }}
-    //         monaco.languages.typescript.typescriptDefaults.getExtraLibs()
-    //     );
-    // });
+    // DEBUG:
+    useEffect(() => {
+        console.log('[TypingLibsContext] did update.');
+        console.log(dependencies);
+        console.log(requestingDependencies);
+        console.log(setOfDependency);
+        console.log(
+            monaco.languages.typescript.typescriptDefaults.getExtraLibs()
+        );
+    });
 
     /**
      * Callback of onmessage event with agent worker.
+     *
+     * NOTE: 既存依存関係が存在するが別バージョンをリクエストされていた時、そのリクエストが失敗した場合に備えて既存依存関係を再度リクエストする処理を行う。
      * */
     const handleWorkerMessage = (e: MessageEvent<iResponseFetchLibs>) => {
-        const { payload, error, restoredModuleVersion } = e.data;
+        const { payload, error } = e.data;
         const { moduleName, version, depsMap } = payload;
         const isFailed = error !== undefined;
         const isAlreadyExists = dependencies.find(
             (dep) => dep.moduleName === moduleName
         );
+        // const requestedDependency = requestingDependencies.find(
+        //     (rd) => rd.moduleName === moduleName
+        // );
 
-        console.log(
-            `[TypingLibsContext][handleWorkerMessage] Response of ${moduleName}@${version}`
-        );
+        // console.log(
+        //     `[TypingLibsContext][handleWorkerMessage] Response of ${moduleName}@${version}`
+        // );
+        // console.log(requestingDependencies);
 
-        // 取得失敗で既存依存関係を維持する場合:
-        // TODO: 取得失敗の通知を出す
-        if (isFailed && restoredModuleVersion !== undefined) {
-            setDependencies([
-                ...dependencies.filter((dep) => dep.moduleName !== moduleName),
-                {
-                    moduleName: moduleName,
-                    version: restoredModuleVersion,
-                    state: 'loaded',
-                },
-            ]);
+        // // 依存関係取得失敗したけど、既存バージョンが存在する場合：
+        // // 既存バージョンの再取得をリクエストする
+        // if (isFailed && requestedDependency?.existVersion !== undefined) {
+        //     console.log(
+        //         `[TypingLibsContext][handleWorkerMessage] Failed to fetch ${moduleName}@${version}. Re request ${moduleName}@${requestedDependency?.existVersion}.`
+        //     );
+
+        //     setRequestingDependencies(
+        //         requestingDependencies.filter(
+        //             (d) => d.moduleName !== moduleName
+        //         )
+        //     );
+        //     requestFetchTypings(
+        //         moduleName,
+        //         requestedDependency?.existVersion,
+        //         true
+        //     );
+        //     return;
+        // }
+        // // 新規取得が失敗した場合：
+        // else if (isFailed && requestedDependency === undefined) {
+        //     console.log(
+        //         `[TypingLibsContext][handleWorkerMessage] Failed to fetch ${moduleName}@${version}.`
+        //     );
+        //     setRequestingDependencies(
+        //         requestingDependencies.filter(
+        //             (d) => d.moduleName !== moduleName
+        //         )
+        //     );
+        //     return;
+        // }
+
+        if (isFailed) {
+            console.log(
+                `[TypingLibsContext][handleWorkerMessage] Failed to install ${moduleName}@${version}`
+            );
+
             setRequestingDependencies(
                 requestingDependencies.filter(
                     (d) => d.moduleName !== moduleName
                 )
             );
-            return;
-        }
-        // 取得失敗で既存依存関係がない場合:
-        // TODO: 取得失敗の通知を出す
-        else if (isFailed) {
-            setRequestingDependencies(
-                requestingDependencies.filter(
-                    (d) => d.moduleName !== moduleName
-                )
-            );
+            reflectToPackageJson(dependencies);
             return;
         }
         // 取得成功の場合:
-        else if (!isFailed) {
-        }
-
-        // --- update dependencies ---
-
-        let updatedDependencies: iDependencyState[] = [];
-        // 同名別バージョンがインストールされた場合
-        // 上書きする
-        if (isAlreadyExists) {
-            const d = dependencies.filter(
-                (dep) => dep.moduleName !== moduleName
-            );
-            // setDependencies([
-            //     ...d,
-            //     {
-            //         moduleName: moduleName,
-            //         version: version,
-            //         state: 'loaded',
-            //     },
-            // ]);
-
-            updatedDependencies = [
-                ...d,
-                {
-                    moduleName: moduleName,
-                    version: version,
-                    state: 'loaded',
-                },
-            ];
-        }
-        // 新規がインストールされた場合
-        // 追加する
         else {
-            // setDependencies([
-            //     ...dependencies,
-            //     {
-            //         moduleName: moduleName,
-            //         version: version,
-            //         state: 'loaded',
-            //     },
-            // ]);
+            console.log(
+                `[TypingLibsContext][handleWorkerMessage] Succeeded to install ${moduleName}@${version}`
+            );
 
-            updatedDependencies = [
-                ...dependencies,
-                {
-                    moduleName: moduleName,
-                    version: version,
-                    state: 'loaded',
-                },
-            ];
+            let updatedDependencies: iDependencyState[] = [];
+            // 同名別バージョンがインストールされた場合
+            // 上書きする
+            if (isAlreadyExists) {
+                const d = dependencies.filter(
+                    (dep) => dep.moduleName !== moduleName
+                );
+                updatedDependencies = [
+                    ...d,
+                    {
+                        moduleName: moduleName,
+                        version: version,
+                        state: 'loaded',
+                    },
+                ];
+            }
+            // 新規がインストールされた場合
+            // 追加する
+            else {
+                updatedDependencies = [
+                    ...dependencies,
+                    {
+                        moduleName: moduleName,
+                        version: version,
+                        state: 'loaded',
+                    },
+                ];
+            }
+            setRequestingDependencies(
+                requestingDependencies.filter(
+                    (d) => d.moduleName !== moduleName
+                )
+            );
+            setDependencies([...updatedDependencies]);
+            // NOTE: この呼出時点でまだsetDependencies()の反映が完了していない
+            // そのため更新されたdependenciesを必ず渡すこと
+            reflectToPackageJson(updatedDependencies);
+
+            // --- update monaco-editor addExtraLibs, TypingLibs ---
+            // Register type def files to monaco addXtraLibs
+            // key: /node_modules/typescript/lib/lib.webworker.iterable.d.ts
+            // value: its file's code
+            const paths: string[] = [];
+            depsMap.forEach((value, key) => {
+                addExtraLibs(value, key);
+                paths.push(key);
+            });
+            // --- update setOfDependencies ---
+            // Save depsMap paths with the moduleName.
+            if (setOfDependency.current !== undefined) {
+                setOfDependency.current.set(`${moduleName}@${version}`, paths);
+            }
         }
-        setDependencies([...updatedDependencies]);
-        setRequestingDependencies(
-            requestingDependencies.filter((d) => d.moduleName !== moduleName)
-        );
-
-        // --- update monaco-editor addExtraLibs, TypingLibs ---
-        // Register type def files to monaco addXtraLibs
-        // key: /node_modules/typescript/lib/lib.webworker.iterable.d.ts
-        // value: its file's code
-        const paths: string[] = [];
-        depsMap.forEach((value, key) => {
-            addExtraLibs(value, key);
-            paths.push(key);
-        });
-        // --- update setOfDependencies ---
-        // Save depsMap paths with the moduleName.
-        if (setOfDependency.current !== undefined) {
-            setOfDependency.current.set(`${moduleName}@${version}`, paths);
-        }
-
-        console.log(
-            `[TypingLibsContext][handleWorkerMessage] Succeeded to install ${moduleName}@${version}`
-        );
-
-        // NOTE: この呼出時点でまだsetDependencies()の反映が完了していない
-        // そのため更新されたdependenciesを必ず渡すこと
-        reflectToPackageJson(updatedDependencies);
     };
 
     /**
@@ -353,6 +360,7 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
      * キャッシュされていない、または同名別バージョンモジュールでもstate: 'failed`ならば新規取得する。
      *
      * TODO: キャッシュは実際には`fetchDependency`が管理するIndexedDBの方で行っているのでこちらでキャッシュ済判断すべきでないかも
+     * TODO: `forced`が機能しているか検証。forcedが指定された場合必ずリクエストする
      * */
     const requestFetchTypings = (moduleName: string, version: string) => {
         if (agent.current !== undefined) {
@@ -378,6 +386,10 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
             const existAnotherVersion = dependencies.find((dep) => {
                 return dep.moduleName === moduleName && dep.version !== version;
             });
+
+            console.log(
+                `[TypingLibsContext][requestFetchTypings] requested ${moduleName}@${validVersion}.`
+            );
 
             // 同名同バージョンがローディング中の場合戻る
             if (isLoading !== undefined) {
@@ -406,15 +418,18 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
                     moduleName: moduleName,
                     version: validVersion,
                     state: 'loading',
-                    existVersion: existAnotherVersion.version,
+                    existVersion:
+                        existAnotherVersion !== undefined
+                            ? existAnotherVersion.version
+                            : undefined,
                 },
             ]);
 
             agent.current!.postMessage({
                 order: 'RESOLVE_DEPENDENCY',
                 payload: {
-                    moduleName,
-                    version,
+                    moduleName: moduleName,
+                    version: validVersion,
                 },
             } as iRequestFetchLibs);
         }

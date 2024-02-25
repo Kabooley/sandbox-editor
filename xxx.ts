@@ -568,14 +568,8 @@ self.onmessage = (e: MessageEvent<iRequestFetchLibs>) => {
         logger: console,
     };
 
-    let temporaryEvacuateExistDependency:
-        | { moduleName: string; version: string }
-        | undefined = undefined;
-
     // DEBUG:
-    console.log(
-        `[fetchLibs.worker][onmessage] Got request: ${moduleName}@${version}`
-    );
+    console.log(`[fetchLibs.worker] Got request: ${moduleName}@${version}`);
 
     getItem<iStoreModuleNameVersionValue>(
         moduleName,
@@ -587,7 +581,7 @@ self.onmessage = (e: MessageEvent<iRequestFetchLibs>) => {
             !compareTwoModuleNameAndVersion(moduleName, version, existItem)
         ) {
             console.log(
-                `[fetchLibs.worker][onmessage] return cached data of ${moduleName}@${version}`
+                `[fetchDependencies] return cached data of ${moduleName}@${version}`
             );
 
             // キャッシュ済のデータを返す
@@ -605,27 +599,13 @@ self.onmessage = (e: MessageEvent<iRequestFetchLibs>) => {
                 } as iResponseFetchLibs);
             });
         } else {
-            console.log(
-                `[fetchLibs.worker][onmessage] Start fetching ${moduleName}@${version}`
-            );
-
             // キャッシュしていないならそのまま新規取得
             // 新規モジュール取得、同名モジュール別バージョン取得の場合がある
             //
             // TODO: 新規モジュール取得と同名モジュール別バージョン取得の処理は完全に分けなくてはならない。そうしないと同名モジュール別バージョン取得の処理中にエラーが起こった場合、storeModuleNameVersionに登録されている同名モジュール前バージョンまで削除される。これの修正。
             //
             return (
-                new Promise<void>((resolve) => {
-                    if (existItem !== undefined) {
-                        temporaryEvacuateExistDependency = {
-                            moduleName: moduleName,
-                            version: existItem!.split('@').slice(-1)[0],
-                        };
-                    }
-                    return resolve();
-                })
-                    // 一旦削除しておかないと後の処理で「ダウンロード済」判定されるのでここで削除しておかなくてはならない
-                    .then(() => deleteItem(moduleName, storeModuleNameVersion))
+                deleteItem(moduleName, storeModuleNameVersion)
                     // storeSetOfDependencyは削除要求されても残す
                     .then(() => fetchTypeAgent(config, moduleName, version))
                     .then(
@@ -648,51 +628,35 @@ self.onmessage = (e: MessageEvent<iRequestFetchLibs>) => {
                                     depsMap: r.vfs,
                                 },
                             } as iResponseFetchLibs);
-
-                            console.log(
-                                `[fetchLibs.worker][onmessage] Succeed to fetch ${moduleName}@${version}`
-                            );
                         }
                     )
                     .catch((e: Error) => {
-                        console.log(
-                            `[fetchLibs.worker][onmessage] Failed to fetch ${moduleName}@${version}`
-                        );
-
                         const emptyMap = new Map<string, string>();
 
-                        // 取得失敗。既存依存関係が存在するならばその依存関係をstoreModuleNameVersionへ再登録処理を行う。
-                        //
-                        // temporaryEvacuateExistDependencyに依存関係が保存されているか？
-                        // --> NO: 念のためdeleteItem(moduleName, storeModuleNameVersion)しておく。
-                        // --> YES:
-                        //              deleteItem(moduleName, storeModuleNameVersion)
-                        //              getItem(moduleName, storeSetOfDependency)
-                        //              not undefinedならsetItem(moduleName, temporaryEvacuateExistDependencyの依存関係@versionで, storeModuleNameVersion)
-                        if (temporaryEvacuateExistDependency !== undefined) {
-                            const reregisterItem =
-                                temporaryEvacuateExistDependency!.moduleName +
-                                '@' +
-                                temporaryEvacuateExistDependency!.version;
-                            deleteItem(moduleName, storeModuleNameVersion)
-                                .then(() =>
-                                    getItem(
-                                        reregisterItem,
-                                        storeSetOfDependency
+                        // 取得失敗した依存関係がstoreに登録されたままの場合削除する
+                        // ただし同名別バージョンが削除されないようにバージョン一まで確認する
+                        getItem<iStoreModuleNameVersionValue>(
+                            moduleName,
+                            storeModuleNameVersion
+                        ).then((item) => {
+                            if (
+                                item !== undefined &&
+                                item === moduleName + '@' + version
+                            ) {
+                                return (
+                                    deleteItem(
+                                        moduleName,
+                                        storeModuleNameVersion
                                     )
-                                )
-                                .then((item) => {
-                                    if (item !== undefined) {
-                                        return setItem(
-                                            moduleName,
-                                            reregisterItem,
-                                            storeModuleNameVersion
-                                        );
-                                    }
-                                });
-                        } else {
-                            deleteItem(moduleName, storeModuleNameVersion);
-                        }
+                                        // DEBUG:
+                                        .then(() => {
+                                            console.log(
+                                                `[fetchDependencies] deleted ${moduleName} from storeModuleNameVersion`
+                                            );
+                                        })
+                                );
+                            }
+                        });
 
                         console.error(e);
 

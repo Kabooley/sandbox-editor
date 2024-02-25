@@ -262,8 +262,7 @@ codesandbox(新しくなった奴)の依存関係リストのリスト要素
 }
 ```
 
-
-今DependencyListの出力しているコード
+今 DependencyList の出力しているコード
 
 ```HTML
 
@@ -319,8 +318,9 @@ codesandbox(新しくなった奴)の依存関係リストのリスト要素
     align-items: center;
     flex-direction: row;
 }
- 
+
 ```
+
 ## Navigationbar の削除と sidebar の一本化
 
 TODO: navigationbar をやめる。explorer と dependencylist を一体化させる（今の codesandbox のレイアウトみたいに完全に VSCode ライクに）
@@ -403,3 +403,114 @@ monaco の addExtraLibs は別々に稼働させても問題ないのか確認�
 ## React Context API: Avoid extra rerendering
 
 https://legacy.reactjs.org/docs/context.html#caveats
+
+## 既存依存関係の別バージョン取得・取得失敗時に既存依存関係に戻す処理
+
+state の更新の反映タイミングがちぐはぐなせいでちょっと挙動がおかしい。
+
+```sequence
+' TypingLibsContext.tsx
+
+dependencies: [
+    { moduleName: "react", version: "18.2.0", state: 'loaded' }
+];
+requestingDependencies: [];
+
+/' 存在しないバージョンなどリクエストされたとする '/
+-> requestFetchTypings: 'react', '30.0.0'
+
+dependencies: [
+    { moduleName: "react", version: "18.2.0", state: 'loaded' }
+];
+requestingDependencies: [
+    { moduleName: "react", version: "30.0.0", state: 'loading', existVersion: '18.2.0' }
+];
+
+requestFetchTypings -> worker.postMessage: { moduleName: 'react', version: '30.0.0' }
+
+/' Errorインスタンスと空のMapオブジェクトが返される '/
+woreker.postMessage -> handleWorkerMessge: { payload: { moduleName: 'react', version: '30.0.0', vfsMap: Map(0) }, error: ErrorInstance }
+
+handleWorkerMessage -> setRequestingDependencies:
+
+/' reqestingDependenciesからversion: 30.0.0のreactが削除されて... '/
+dependencies: [
+    { moduleName: "react", version: "18.2.0", state: 'loaded' }
+];
+requestingDependencies: [];
+
+handleWorkerMessage -> requestFetchTypings: { moduleName: 'react', version: '18.2.0' }
+
+/' 既存依存関係のreactのバージョンを追加する.. '/
+dependencies: [
+    { moduleName: "react", version: "18.2.0", state: 'loaded' }
+];
+requestingDependencies: [
+    { moduleName: "react", version: "18.2.0", state: 'loading' }
+];
+
+requestFetchTypings -> worker.postMessage: { moduleName: 'react', version: '18.2.0' }
+
+
+woreker.postMessage -> handleWorkerMessge: { payload: { moduleName: 'react', version: '18.2.0', vfsMap: Map(6) }, error: undefined }
+
+/' 既存依存関係がdependenciesにあっても再取得後は上書きする '/
+dependencies: [
+    { moduleName: "react", version: "18.2.0", state: 'loaded' }
+];
+requestingDependencies: [];
+
+handlwWorkerMessage -> reflectToPackageJson: dependencies
+handlwWorkerMessage -> addExtraLibs: vfsMap
+handlwWorkerMessage -> setOfDependency.set: { 'react@18.2.0', vfsMap }
+
+```
+
+実際
+
+```bash
+# package.jsonが更新されてreactバージョンが18.2.0から30.2.0に変更された
+# -- 更新 --
+# この時点のdependencies:
+[{ moduleName: "react", version: "18.2.0", state: "loaded" }]
+# この時点のdevDependencies:
+[]
+
+# useEffect(,[packageJson]) -> requestFetchTypings('react', '30.2.0')
+# requestFetchTypings('react', '30.2.0') -> worker.postMessages('react', '30.2.0')
+# -- 更新 --
+# この時点のdependencies:
+[{ moduleName: "react", version: "18.2.0", state: "loaded" }]
+# この時点のdevDependencies:
+[{ moduleName: "react", version: "30.2.0", state: "loading", existVersion: "18.2.0" }]
+
+# In worker `react` removed from 'storeModuleNameVersion`...
+
+# handleWorkerMessageがレスポンスを取得
+# requestFetchTypings('react', '18.2.0', forced: true)
+# -- 更新 --
+# この時点のdependencies:
+[{ moduleName: "react", version: "18.2.0", state: "loaded" }]
+# この時点のdevDependencies:
+[]
+
+# どのタイミングなのかわからん
+# -- 更新 --
+# この時点のdependencies:
+[{ moduleName: "react", version: "18.2.0", state: "loaded" }]
+# この時点のdevDependencies:
+[
+    { moduleName: "react", version: "30.2.0", state: "loading", existVersion: "18.2.0" },
+    { moduleName: "react", version: "18.2.0", state: "loading", existVersion: undefined }
+]
+# NOTE: いきなり2つに増えているのでいずれかの関数が古いstateを参照し続けているみたい
+
+```
+
+わかったこと：
+
+-   既存依存関係の別バージョン取得失敗しても、既存依存関係は dependencies, ExtraLisb, setOfDependency に残ったまま変更も削除もされていない
+
+なので単純に取得失敗ならば何もしなくていい（requestingDependencies は更新する必要があるかもだけど、単純にこの state が不要の可能性もある）
+
+となると問題は、取得失敗時に worker の方の storeOfModuleNameVersion の方でリクエストしたモジュールが削除されてしまうことである。
