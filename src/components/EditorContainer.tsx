@@ -80,12 +80,10 @@ class EditorContainer extends React.Component<iProps, iState> {
     }
 
     componentDidMount() {
-        // DEBUG:
-        console.log('[EditorContainer] did mount');
+        // console.log('[EditorContainer] did mount');
 
         const {
-            files,
-            // addTypings
+            files
         } = this.props;
 
         const selectedFile = files.find((f) => f.isSelected());
@@ -113,8 +111,7 @@ class EditorContainer extends React.Component<iProps, iState> {
     }
 
     componentDidUpdate(prevProp: iProps, prevState: iState) {
-        // DEBUG:
-        console.log('[EditorContainer][componentDidUpdate]');
+        // console.log('[EditorContainer][componentDidUpdate]');
 
         const { files } = this.props;
 
@@ -128,10 +125,10 @@ class EditorContainer extends React.Component<iProps, iState> {
                 });
         }
 
-        console.log('[EditorContainer] did update. getExtraLibs:');
+        // console.log('[EditorContainer] did update. getExtraLibs:');
         const currentLibs =
             monaco.languages.typescript.typescriptDefaults.getExtraLibs();
-        console.log(currentLibs);
+        // console.log(currentLibs);
     }
 
     componentWillUnmount() {
@@ -170,8 +167,7 @@ class EditorContainer extends React.Component<iProps, iState> {
      * Send all files to bundle.worker to bundle them.
      * */
     _onBundle() {
-        // DEBUG:
-        console.log('[EditorContainer][on bundle]');
+        // console.log('[EditorContainer][on bundle]');
 
         this._bundleWorker &&
             this._bundleWorker.postMessage({
@@ -200,7 +196,7 @@ class EditorContainer extends React.Component<iProps, iState> {
     _onDidChangeModel(oldModelPath: string, newModelPath: string) {}
 
     _onChangeSelectedTab(selected: string) {
-        console.log(`[EditorContainer] on change selected tab: ${selected}`);
+        // console.log(`[EditorContainer] on change selected tab: ${selected}`);
         this.props.dispatchFiles({
             type: filesContextTypes.ChangeSelectedFile,
             payload: { selectedFilePath: selected },
@@ -208,8 +204,7 @@ class EditorContainer extends React.Component<iProps, iState> {
     }
 
     _addTypings(code: string, path: string) {
-        // DEBUG:
-        console.log('[EditorContainer][_addTypings]');
+        // console.log('[EditorContainer][_addTypings]');
 
         // this.props.addTypings(code, path);
         this.addExtraLibs(code, path);
@@ -235,8 +230,7 @@ class EditorContainer extends React.Component<iProps, iState> {
      * Reset code if passed path has already been registered.
      * */
     addExtraLibs(code: string, path: string) {
-        // DEBUG:
-        console.log(`[EditorContainer] Add extra Library: ${path}`);
+        // console.log(`[EditorContainer] Add extra Library: ${path}`);
 
         // const cachedLib = typingLibs.current.get(path);
         // if (cachedLib) {

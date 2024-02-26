@@ -92,9 +92,15 @@ if(rootElement) {
       ],
       "main": "src/index.tsx",
       "dependencies": {
-        "react": "18.2.0"
+        "loader-utils": "3.2.1",
+        "react": "18.2.0",
+        "react-dom": "18.2.0",
+        "react-scripts": "5.0.1"
       },
       "devDependencies": {
+        "@types/react": "18.0.25",
+        "@types/react-dom": "18.0.9",
+        "typescript": "4.4.2"
       },
       "scripts": {
         "start": "react-scripts start",
@@ -111,45 +117,6 @@ if(rootElement) {
     }`,
         isFolder: false,
     },
-    // {
-    //     path: 'package.json',
-    //     language: 'json',
-    //     value: `{
-    //   "name": "react-typescript",
-    //   "version": "1.0.0",
-    //   "description": "React and TypeScript example starter project",
-    //   "keywords": [
-    //     "typescript",
-    //     "react",
-    //     "starter"
-    //   ],
-    //   "main": "src/index.tsx",
-    //   "dependencies": {
-    //     "loader-utils": "3.2.1",
-    //     "react": "18.2.0",
-    //     "react-dom": "18.2.0",
-    //     "react-scripts": "5.0.1"
-    //   },
-    //   "devDependencies": {
-    //     "@types/react": "18.0.25",
-    //     "@types/react-dom": "18.0.9",
-    //     "typescript": "4.4.2"
-    //   },
-    //   "scripts": {
-    //     "start": "react-scripts start",
-    //     "build": "react-scripts build",
-    //     "test": "react-scripts test --env=jsdom",
-    //     "eject": "react-scripts eject"
-    //   },
-    //   "browserslist": [
-    //     ">0.2%",
-    //     "not dead",
-    //     "not ie <= 11",
-    //     "not op_mini all"
-    //   ]
-    // }`,
-    //     isFolder: false,
-    // },
     {
         path: 'tsconfig.json',
         language: 'json',

@@ -169,8 +169,8 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
      *
      * */
     useEffect(() => {
-        console.log('[TypingLibsContext] Updated packageJson');
-        console.log(packageJson);
+        // console.log('[TypingLibsContext] Updated packageJson');
+        // console.log(packageJson);
 
         const timer = setTimeout(() => {
             const { deleted, created, modifiedVal } = getDiffOfPackageJson();
@@ -178,7 +178,7 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
                 deleted.forEach((d) => {
                     const key = Object.keys(d)[0];
 
-                    console.log(`[TypingLibsContext] Delete ${key}@${d[key]}`);
+                    // console.log(`[TypingLibsContext] Delete ${key}@${d[key]}`);
 
                     removeLibrary(key, d[key]);
                 });
@@ -187,7 +187,7 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
                 created.forEach((d) => {
                     const key = Object.keys(d)[0];
 
-                    console.log(`[TypingLibsContext] Fetch ${key}@${d[key]}`);
+                    // console.log(`[TypingLibsContext] Fetch ${key}@${d[key]}`);
 
                     requestFetchTypings(key, d[key]);
                 });
@@ -197,9 +197,9 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
                     const key = Object.keys(d)[0];
                     const { prev, current } = d[key];
 
-                    console.log(
-                        `[TypingLibsContext] modified. ${key}@${prev} --> ${key}@${current}`
-                    );
+                    // console.log(
+                    //     `[TypingLibsContext] modified. ${key}@${prev} --> ${key}@${current}`
+                    // );
 
                     requestFetchTypings(key, current);
                 });
@@ -211,16 +211,16 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
         return () => clearTimeout(timer);
     }, [packageJson]);
 
-    // DEBUG:
-    useEffect(() => {
-        console.log('[TypingLibsContext] did update.');
-        console.log(dependencies);
-        console.log(requestingDependencies);
-        console.log(setOfDependency);
-        console.log(
-            monaco.languages.typescript.typescriptDefaults.getExtraLibs()
-        );
-    });
+    // // DEBUG:
+    // useEffect(() => {
+    //     console.log('[TypingLibsContext] did update.');
+    //     console.log(dependencies);
+    //     console.log(requestingDependencies);
+    //     console.log(setOfDependency);
+    //     console.log(
+    //         monaco.languages.typescript.typescriptDefaults.getExtraLibs()
+    //     );
+    // });
 
     /**
      * Callback of onmessage event with agent worker.
@@ -276,9 +276,9 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
         // }
 
         if (isFailed) {
-            console.log(
-                `[TypingLibsContext][handleWorkerMessage] Failed to install ${moduleName}@${version}`
-            );
+            // console.log(
+            //     `[TypingLibsContext][handleWorkerMessage] Failed to install ${moduleName}@${version}`
+            // );
 
             setRequestingDependencies(
                 requestingDependencies.filter(
@@ -290,9 +290,9 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
         }
         // 取得成功の場合:
         else {
-            console.log(
-                `[TypingLibsContext][handleWorkerMessage] Succeeded to install ${moduleName}@${version}`
-            );
+            // console.log(
+            //     `[TypingLibsContext][handleWorkerMessage] Succeeded to install ${moduleName}@${version}`
+            // );
 
             let updatedDependencies: iDependencyState[] = [];
             // 同名別バージョンがインストールされた場合
@@ -387,15 +387,15 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
                 return dep.moduleName === moduleName && dep.version !== version;
             });
 
-            console.log(
-                `[TypingLibsContext][requestFetchTypings] requested ${moduleName}@${validVersion}.`
-            );
+            // console.log(
+            //     `[TypingLibsContext][requestFetchTypings] requested ${moduleName}@${validVersion}.`
+            // );
 
             // 同名同バージョンがローディング中の場合戻る
             if (isLoading !== undefined) {
-                console.log(
-                    `[TypingLibsContext][requestFetchTypings] ${moduleName}@${validVersion} is now loading.`
-                );
+                // console.log(
+                //     `[TypingLibsContext][requestFetchTypings] ${moduleName}@${validVersion} is now loading.`
+                // );
                 return;
             }
             // 同名同バージョンがキャッシュされていた場合戻る
@@ -403,9 +403,9 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
                 cachedSameNameSameVersion !== undefined &&
                 cachedSameNameSameVersion.state === 'loaded'
             ) {
-                console.log(
-                    `[TypingLibsContext][requestFetchTypings] ${moduleName}@${validVersion} is already exist.`
-                );
+                // console.log(
+                //     `[TypingLibsContext][requestFetchTypings] ${moduleName}@${validVersion} is already exist.`
+                // );
                 return;
             }
 
@@ -474,9 +474,9 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
      * */
     const removeLibrary = (moduleName: string, version: string) => {
         if (setOfDependency.current.has(`${moduleName}@${version}`)) {
-            console.log(
-                `[TypingLibsContext] delete ${moduleName}@${version} related libraries`
-            );
+            // console.log(
+            //     `[TypingLibsContext] delete ${moduleName}@${version} related libraries`
+            // );
 
             const paths = setOfDependency.current.get(
                 `${moduleName}@${version}`
@@ -534,9 +534,9 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
      * */
     const getDiffOfPackageJson = () => {
         try {
-            console.log(
-                '[TypingLibsContext][getDiffOfPackageJson] Getting diffs of package.json...'
-            );
+            // console.log(
+            //     '[TypingLibsContext][getDiffOfPackageJson] Getting diffs of package.json...'
+            // );
 
             // JSON構文エラーだとこのままcatchブロックへ移動する。
             const { dependencies, devDependencies } = JSON.parse(packageJson);
@@ -555,8 +555,8 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
                     previous.devDependencies
                 );
 
-                console.log(dependenciesDiff);
-                console.log(devDependenciesDiff);
+                // console.log(dependenciesDiff);
+                // console.log(devDependenciesDiff);
 
                 return {
                     deleted: dependenciesDiff.deleted.concat(
@@ -593,11 +593,11 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
      * */
     const reflectToPackageJson = (_dependencies: iDependencyState[]) => {
         try {
-            console.log(
-                '[TypingLibsContext][reflectToPackageJson] reflecting...'
-            );
-            console.log(_dependencies);
-            console.log(dependencies);
+            // console.log(
+            //     '[TypingLibsContext][reflectToPackageJson] reflecting...'
+            // );
+            // console.log(_dependencies);
+            // console.log(dependencies);
 
             const currentPackageJson = JSON.parse(packageJson);
 
@@ -621,8 +621,8 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
                 2
             );
 
-            console.log('[TypingLibsContext][reflectToPackageJson] reflect:');
-            console.log(packageJsonString);
+            // console.log('[TypingLibsContext][reflectToPackageJson] reflect:');
+            // console.log(packageJsonString);
 
             dispatchFilesAction({
                 type: FilesActionTypes.Change,

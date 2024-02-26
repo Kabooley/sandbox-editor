@@ -586,9 +586,9 @@ self.onmessage = (e: MessageEvent<iRequestFetchLibs>) => {
             existItem !== undefined &&
             !compareTwoModuleNameAndVersion(moduleName, version, existItem)
         ) {
-            console.log(
-                `[fetchLibs.worker][onmessage] return cached data of ${moduleName}@${version}`
-            );
+            // console.log(
+            //     `[fetchLibs.worker][onmessage] return cached data of ${moduleName}@${version}`
+            // );
 
             // キャッシュ済のデータを返す
             return getItem<iStoreSetOfDependencyValue>(
@@ -605,9 +605,9 @@ self.onmessage = (e: MessageEvent<iRequestFetchLibs>) => {
                 } as iResponseFetchLibs);
             });
         } else {
-            console.log(
-                `[fetchLibs.worker][onmessage] Start fetching ${moduleName}@${version}`
-            );
+            // console.log(
+            //     `[fetchLibs.worker][onmessage] Start fetching ${moduleName}@${version}`
+            // );
 
             // キャッシュしていないならそのまま新規取得
             // 新規モジュール取得、同名モジュール別バージョン取得の場合がある
@@ -649,15 +649,15 @@ self.onmessage = (e: MessageEvent<iRequestFetchLibs>) => {
                                 },
                             } as iResponseFetchLibs);
 
-                            console.log(
-                                `[fetchLibs.worker][onmessage] Succeed to fetch ${moduleName}@${version}`
-                            );
+                            // console.log(
+                            //     `[fetchLibs.worker][onmessage] Succeed to fetch ${moduleName}@${version}`
+                            // );
                         }
                     )
                     .catch((e: Error) => {
-                        console.log(
-                            `[fetchLibs.worker][onmessage] Failed to fetch ${moduleName}@${version}`
-                        );
+                        // console.log(
+                        //     `[fetchLibs.worker][onmessage] Failed to fetch ${moduleName}@${version}`
+                        // );
 
                         const emptyMap = new Map<string, string>();
 
