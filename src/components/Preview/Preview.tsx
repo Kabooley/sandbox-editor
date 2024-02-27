@@ -5,6 +5,7 @@
  * ******************************************************/
 import React, { useRef, useEffect } from 'react';
 import { useBundledCode } from '../../context/BundleContext';
+import { useLayoutState } from '../../context/LayoutContext';
 
 // const allowedOrigin = "http://localhost:8080";
 
@@ -42,6 +43,7 @@ const html: string = `
 const Preview = () => {
     const bundledCode = useBundledCode();
     const _refIframe = useRef<HTMLIFrameElement>(null);
+    const { pointerEventsOnPreviewIframe } = useLayoutState();
 
     useEffect(() => {
         // DEBUG:
@@ -55,6 +57,14 @@ const Preview = () => {
                 );
         }, 50);
     }, [bundledCode]);
+
+    // TODO: この処理をuseEffectへ移動すること。レンダリング中にref（DOM）へアクセスしないこと！
+    if (!pointerEventsOnPreviewIframe && _refIframe.current) {
+        _refIframe.current.style.pointerEvents = 'none';
+    }
+    if (pointerEventsOnPreviewIframe && _refIframe.current) {
+        _refIframe.current.style.pointerEvents = 'auto';
+    }
 
     return (
         <div className="preview-container">

@@ -1,24 +1,48 @@
-import React, { useState, useRef } from "react";
-import { ResizableBox } from "react-resizable";
+import React, { useState, useEffect } from "react";
+import { Resizable } from "react-resizable";
 import type { ResizeCallbackData } from "react-resizable";
-import EditorContext from "../context/BundledConsumer";
-
+import { useWindowSize } from "../hooks";
+import EditorContext from "../context/EditorContext";
+import { useLayoutDispatch, useLayoutState } from "../context/LayoutContext";
+import { Types as LayoutContextActionType } from "../context/LayoutContext";
+import { $heightOfHeader, $heightOfFooter, $initialLayout } from "../constants";
 
 const EditorSection = (): JSX.Element => {
-  const [editorSectionWidth, setEditorSectionWidth] = useState<number>(500);
+  const [height, setHeight] = useState(
+    window.innerHeight - $heightOfHeader - $heightOfFooter
+  );
+  const { editorWidth, isPreviewDisplay } = useLayoutState();
+  const dispatch = useLayoutDispatch();
+  const { innerHeight } = useWindowSize();
+  const { minimumWidth, maximumWidth } = $initialLayout.editorLayout;
+
+  useEffect(() => {
+    setHeight(innerHeight - $heightOfHeader - $heightOfFooter);
+  }, [innerHeight]);
 
   const onEditorSecResize: (
     e: React.SyntheticEvent,
     data: ResizeCallbackData
   ) => any = (event, { node, size, handle }) => {
-    setEditorSectionWidth(size.width);
+    // NOTE: previewが非表示のときはリサイズ無効にする
+    if (!isPreviewDisplay) return;
+    dispatch({
+      type: LayoutContextActionType.UpdateEditorWidth,
+      payload: {
+        width: size.width,
+      },
+    });
   };
 
+  const _minimumWidth = isPreviewDisplay ? minimumWidth : editorWidth;
+  const _maximumWidth = isPreviewDisplay ? maximumWidth : editorWidth;
+
   return (
-    <ResizableBox
-      width={editorSectionWidth}
-      height={Infinity}
-      minConstraints={[200, Infinity]}
+    <Resizable
+      width={editorWidth}
+      height={height}
+      minConstraints={[_minimumWidth, height]}
+      maxConstraints={[_maximumWidth, height]}
       onResize={onEditorSecResize}
       resizeHandles={["e"]}
       handle={(h, ref) => (
@@ -27,12 +51,14 @@ const EditorSection = (): JSX.Element => {
     >
       <div
         className="editor-section"
-        style={{ width: editorSectionWidth }}
+        style={{
+          width: editorWidth,
+        }}
       >
-        <EditorContext />
+        <EditorContext width={editorWidth} />
       </div>
-    </ResizableBox>
+    </Resizable>
   );
 };
-  
+
 export default EditorSection;

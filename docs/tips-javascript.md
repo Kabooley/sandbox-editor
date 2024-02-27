@@ -58,3 +58,24 @@ not debounced の例だと常にイベントが発生すると呼び出される
 ## Compare two objects
 
 https://stackoverflow.com/questions/1068834/object-comparison-in-javascript
+
+## Modify a property of element which is one element in the array of objects
+
+あるオブジェクトからなる配列で、その配列要素の一つのプロパティを変更したい。
+
+他の要素は変更せず、その新しい配列を取得したいとき。
+
+検証：
+
+- Array.prototype.map()はオブジェクトからなる配列を`obs.map(o => o)`したときにoはもとの要素の参照か？完全なコピーか？
+
+参考：
+
+https://stackoverflow.com/a/23481096/22007575
+
+解決策：
+
+オブジェクトのプロパティの深度がどのくらい深いかによる。
+
+それはspread構文を使えるかどうかにかかっているから。
+

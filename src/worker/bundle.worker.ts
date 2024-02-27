@@ -1,15 +1,16 @@
 import * as esbuild from 'esbuild-wasm';
-import { fetchPlugins, unpkgPathPlugin } from '../Bundle';
+// import { fetchPlugins, unpkgPathPlugin } from '../Bundle';
+import { virtualTreePlugin } from '../Bundle/plugins/virtualTreePlugin';
 import type { iOrderBundle } from './types';
 
 /**
- * This must be same as 
+ * This must be same as
  * iBundledState.payload object.
- * */ 
+ * */
 interface iBuildResult {
     bundledCode: string;
     err: Error | null;
-};
+}
 
 const initializeOptions: esbuild.InitializeOptions = {
     // wasmURL:  '/esbuild.wasm',
@@ -20,10 +21,13 @@ const initializeOptions: esbuild.InitializeOptions = {
 let isInitialized: boolean = false;
 
 /**
- * @param { string } rawCode - The code that user typed and submitted.
+ * @param { Record<string, string> } tree - File tree that about to bundled.
  *
  * */
-const bundler = async (rawCode: string): Promise<iBuildResult> => {
+const bundler = async (
+    entryPoint: string,
+    tree: Record<string, string>
+): Promise<iBuildResult> => {
     try {
         // 必ずesbuildAPIを使い始める前に一度だけ呼出す
         if (!isInitialized) {
@@ -33,18 +37,23 @@ const bundler = async (rawCode: string): Promise<iBuildResult> => {
         }
 
         const buildOptions: esbuild.BuildOptions = {
-            entryPoints: ['index.js'],
+            entryPoints: [entryPoint],
             // explicitly specify bundle: true
             bundle: true,
             // To not to write result in filesystem.
             write: false,
             // To use plugins which solves import modules.
-            plugins: [fetchPlugins(rawCode), unpkgPathPlugin()],
+            // plugins: [fetchPlugins(rawCode), unpkgPathPlugin()],
+            plugins: [virtualTreePlugin(tree)],
         };
 
         const result = await esbuild.build(buildOptions);
 
         if (result === undefined) throw new Error();
+
+        // // DEBUG:
+        // console.log('[bundle.worker] result:');
+        // console.log(result);
 
         return {
             bundledCode: result.outputFiles![0].text,
@@ -65,27 +74,22 @@ const bundler = async (rawCode: string): Promise<iBuildResult> => {
  *
  * */
 self.onmessage = (e: MessageEvent<iOrderBundle>): void => {
-    // DEBUG:
-    console.log('[bundle.worker.ts] got message on onmessage()');
-    console.log(e);
-
-    // Filter necessary message
     if (e.data.order !== 'bundle') return;
 
-    // DEBUG:
-    console.log('[bundle.worker.ts] start bundle process...');
+    // // DEBUG:
+    // console.log('[bundle.worker.ts] start bundle process...');
 
-    const { rawCode } = e.data;
+    const { entryPoint, tree } = e.data;
 
-    if (rawCode) {
-        bundler(rawCode)
+    if (entryPoint && tree) {
+        bundler(entryPoint, tree)
             .then((result: iBuildResult) => {
                 if (result.err instanceof Error) throw result.err;
 
-                // DEBUG:
-                console.log('[budle.worker.ts] sending bundled code');
+                // // DEBUG:
+                // console.log('[budle.worker.ts] sending bundled code');
 
-                // NOTE: Follow iOrderBundleResult type 
+                // NOTE: Follow iOrderBundleResult type
                 // which defined in `./types.ts`.
                 self.postMessage({
                     bundledCode: result.bundledCode,
@@ -93,9 +97,6 @@ self.onmessage = (e: MessageEvent<iOrderBundle>): void => {
                 });
             })
             .catch((e) => {
-                // DEBUG:
-                console.log('[budle.worker.ts] sending Error');
-
                 self.postMessage({
                     bundledCode: '',
                     err: e,
@@ -103,3 +104,12 @@ self.onmessage = (e: MessageEvent<iOrderBundle>): void => {
             });
     }
 };
+
+// workerが正常に生成されているのかの確認
+// `self`は`DedicatedWebWorkerGlobalScope`になっていないとならない
+// もしも`self`が`Window`である場合、それは破棄されなくてはならない
+// ReactはStrictModeだとuseEffectを2度実行するのでuseEffectでworkerを生成すると2度生成することになる
+// この内globalがwindowになる方を破棄するはず
+// console.log('[bundle.worker.ts]...');
+// console.log(self);
+// console.log(self.importScripts);

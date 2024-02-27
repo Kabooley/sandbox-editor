@@ -1,0 +1,122 @@
+/*
+  - activeでないtabは.tabs-areaのbackground-colorと同化させる
+  - tab:hover  $monaco-group-tab-color-secondary
+  - tab:active  $monaco-group-tab-color-primary
+  - actions ... > img:hover $monaco-group-tab-color-tertiary
+*/
+
+// $monaco-group-tab-height: 35px;
+$monaco-group-tab-height: 28px;
+$monaco-group-tab-font-size: 13px;
+// .tab background
+$monaco-group-tab-bgcolor-primary: rgb(29, 29, 29);
+$monaco-group-tab-bgcolor-secondary: rgba(229, 229, 229, 0.1);
+$monaco-group-tab-bgcolor-tertiary: rgba(90, 93, 94, 0.31);
+// .tab font color
+$monaco-group-tab-color-primary: rgba(229, 229, 229, 0.8);
+$monaco-group-tab-color-secondary: rgba(153, 153, 153, 0.5);
+$monaco-group-tab-color-tertiary: rgba(90, 93, 94, 0.31);
+
+.scrollable-tabs {
+    //   position: relative;
+    height: $monaco-group-tab-height;
+    overflow: hidden;
+
+    // NOTE: .tabs-actionのため
+    display: flex;
+}
+
+.tabs-area {
+    display: flex;
+    height: 100%;
+    // div.tabが少ないなら100%。div.tabが増えてきたらそれに合わせるようにしたい
+    width: 100%;
+    //   min-height: 2.4rem;
+    //   background-color: rgb(21, 21, 21);
+    //   --title-border-bottom-color: rgb(52, 52, 52);
+    //   font-size: 14px;
+    //   position: relative;
+}
+
+.tab {
+    box-sizing: border-box;
+    cursor: pointer;
+    display: flex;
+    height: 100%;
+    padding-left: 10px;
+    position: relative;
+    white-space: nowrap;
+    padding-right: 3px;
+    background-color: transparent;
+    color: $monaco-group-tab-color-secondary;
+
+    &:hover {
+        background-color: $monaco-group-tab-bgcolor-secondary;
+    }
+    &.active {
+        background-color: $monaco-group-tab-bgcolor-primary;
+        color: $monaco-group-tab-color-primary;
+    }
+
+    & > .monaco-icon-label {
+        display: flex;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        //
+        line-height: $monaco-group-tab-height;
+        margin-bottom: auto;
+        margin-top: auto;
+        //
+        align-items: center;
+
+        & > .codicon {
+            cursor: pointer;
+            padding-right: 6px;
+            margin-top: 2px;
+        }
+
+        .monaco-icon-label__container {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex: 1;
+            //
+            box-sizing: content-box;
+            //
+            margin-right: 4px;
+
+            & > span {
+                cursor: pointer;
+                white-space: nowrap;
+
+                &.label-name {
+                    font-size: $monaco-group-tab-font-size;
+                }
+
+                // font-size: $monaco-group-tab-font-size * 0.9 px
+                &.label-description {
+                    opacity: 0.7;
+                    margin-left: 8px;
+                    font-size: 11px;
+                    white-space: pre;
+                }
+            }
+        }
+    }
+
+    & > .actions {
+        display: block;
+
+        & > .actions-bar > .actions-container > .action-item > img:hover {
+            background-color: $monaco-group-tab-bgcolor-tertiary;
+        }
+    }
+}
+
+// ScrollableElementに渡すwidthをtabs-actions分引かなくてはならない
+.tabs-actions {
+    display: flex;
+
+    & > .actions-bar {
+    }
+}

@@ -1,0 +1,49 @@
+// 一旦_fileExplorer.scssから`TreeItem`をコピペ
+// - space-between
+// + position: relative;
+.depedency-list-tree-item {
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    cursor: pointer;
+    overflow-x: hidden;
+    position: relative;
+
+    &:hover &--function {
+        opacity: 1;
+    }
+
+    & > span {
+        padding-left: calc(1rem - 2px);
+        border-right: 2px solid transparent;
+        min-height: 28px;
+        border-top-color: transparent;
+        border-bottom-color: transparent;
+        border-left-color: transparent;
+        white-space: nowrap;
+    }
+
+    &--function {
+        display: flex;
+        flex-flow: row nowrap;
+        opacity: 0;
+
+        & > div {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 0.8rem;
+            width: $pane-font-size;
+            height: $pane-font-size;
+        }
+    }
+
+    & > div {
+        padding-left: 1rem;
+    }
+}
+
+.treeColumn:hover.dependency-list-column-functions {
+    opacity: 1;
+    background-color: red;
+}

@@ -1,6 +1,12 @@
+/****************************************
+TODO: 整理して！
+*****************************************/
 
 $color-white: #fff;
 $color-black: #000;
+
+// body
+$color-background-dark: rgb(14, 14, 14);
 
 $color-bg-dark: rgb(21, 21, 21);
 $color-font: #999;
@@ -8,10 +14,60 @@ $color-font: #999;
 // headerやfileexplorerなどの領域を区切るborderの色
 $color-border: rgb(52, 52, 52);
 
-
 // FONT
 $default-font-size: 1.6rem;
 
+// PANE
+$pane-font-size: 1.4rem;
+$pane-min-width: 19rem;
+$pane-max-width: 40rem;
+
+// ----
+
+// layout/main
+$color-border: rgb(52, 52, 52);
+
+// --- header ---
+$--height-header-section: 48px;
+
+// --- pane ---
+
+$color-hovered-item-primary: #0f2c60;
+$color-hovered-item-secondary: #16408c;
+$color-focused-border: #ea00d9;
+$color-text-primary: #e5e5e5;
+$color-text-secondary: rgb(153, 153, 153);
+$height-pane-header: 24px;
+$pane-font-size: 13px;
+$pane-font-size-secondary: 12px;
+
+// --- footer ---
+$--height-footer-section: 22px;
+// Background color
+$bg-color-footer-primary: rgb(52, 52, 52);
+// :hover
+$bg-color-footer-secodary: #565656;
+// :active
+// $bg-color-footer-tertiary:
+// font
+$font-color-foooter-primary: #999999;
+// hover
+$font-color-foooter-secondary: #ccc;
+// active
+$font-color-foooter-tertiary: #ccc;
+
+// active
+$font-color-primary: #fff;
+// hover
+$font-color-secondary: #ddd;
+// inactive, not hovering
+$font-color-tertiary: #999999;
+// toggle switch
+$--color-primary: #0954a5;
+$--color-border: #3a3f42;
+$--color-background: rgb(46, 39, 55);
+
+// naming example...
 
 // COLORS
 // $color-primary: #55c57a;
@@ -30,7 +86,6 @@ $default-font-size: 1.6rem;
 // $color-grey-dark: #777;
 // $color-grey-dark-2: #999;
 // $color-grey-dark-3: #333;
-
 
 // // GRID
 // $grid-width: 114rem;

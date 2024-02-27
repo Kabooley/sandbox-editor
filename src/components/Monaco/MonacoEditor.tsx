@@ -1,9 +1,9 @@
 /***********************************************************
- * 
+ *
  * Props:
  * - files: addExtraLib、createModelするため常に全てのファイルが必要
  * - path: 現在開いているファイルのpath。このpathを基にsetModel()する。
- * 
+ *
  * *********************************************************/
 import React from 'react';
 import * as monaco from 'monaco-editor';
@@ -108,9 +108,6 @@ const compilerOptions: monaco.languages.typescript.CompilerOptions = {
     resolveJsonModule: true,
     strict: true,
     target: monaco.languages.typescript.ScriptTarget.ESNext,
-    //   paths: {
-    //     '*': ['*', '*.native', '*.ios', '*.android'],
-    //   },
 };
 
 monaco.languages.typescript.typescriptDefaults.setCompilerOptions(
@@ -144,12 +141,6 @@ const editorStates = new Map<
     monaco.editor.ICodeEditorViewState | undefined | null
 >();
 
-/***
- * NOTE: To use webworker with React 18, class component is required.
- *
- * fetchLibssworker will be placed this component.
- *
- * */
 export default class MonacoEditor extends React.Component<iProps, iState> {
     _refEditorNode = React.createRef<HTMLDivElement>();
     _refEditor: Monaco.editor.IStandaloneCodeEditor | null = null;
@@ -157,10 +148,10 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
 
     constructor(props: iProps) {
         super(props);
-
-        // NOTE: Bind method which pass `this` to any callbacks.
         this._handleEditFile = this._handleEditFile.bind(this);
         this._handleChangeModel = this._handleChangeModel.bind(this);
+        this._handleChangeMarkers =
+            this._handleChangeMarkers.bind(this);
     }
 
     /***
@@ -191,6 +182,9 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
         );
         this._disposables.push(
             editor.onDidChangeModel(this._handleChangeModel)
+        );
+        this._disposables.push(
+            monaco.editor.onDidChangeMarkers(this._handleChangeMarkers)
         );
 
         // Set current path's model to editor.
@@ -279,7 +273,8 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
             model = monaco.editor.createModel(
                 value,
                 language,
-                new monaco.Uri().with({ path })
+                // new monaco.Uri().with({ path })
+                monaco.Uri.from({ scheme: 'file', path })
             );
             model.updateOptions({
                 tabSize: 2,
@@ -352,6 +347,17 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
     _handleResize = () => {
         return this._refEditor && this._refEditor.layout();
     };
+
+    _handleChangeMarkers() {
+        const model = this._refEditor && this._refEditor.getModel();
+        if (model === null) return;
+        const uri = model.uri;
+        const markers = monaco.editor.getModelMarkers({ resource: uri });
+
+        // DEBUG:
+        console.log(`[MonacoEditor][_handleChangeMarkers] ${uri}`);
+        console.log(markers);
+    }
 
     render() {
         return (
