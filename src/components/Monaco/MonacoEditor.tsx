@@ -150,8 +150,7 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
         super(props);
         this._handleEditFile = this._handleEditFile.bind(this);
         this._handleChangeModel = this._handleChangeModel.bind(this);
-        this._handleChangeMarkers =
-            this._handleChangeMarkers.bind(this);
+        this._handleChangeMarkers = this._handleChangeMarkers.bind(this);
     }
 
     /***
@@ -215,13 +214,20 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
         // const previousFile = prevProps.files.find(f => f.getPath() === prevProps.path);
 
         if (this._refEditor) {
+            console.log(`[MonacoEditor][did update] Selecting ${path}`);
+
             this._refEditor.updateOptions(options);
 
             const model = this._refEditor.getModel();
             const value = selectedFile?.getValue();
 
             // Change model and save view state if path is changed
-            if (path === prevProps.path) {
+            // if (path === prevProps.path) {
+            if (path !== prevProps.path) {
+                console.log(
+                    `[MonacoEditor][did update] ${path} !== ${prevProps.path}`
+                );
+
                 // Save the editor state for the previous file so we can restore it when it's re-opened
                 editorStates.set(
                     prevProps.path,
@@ -230,6 +236,8 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
 
                 selectedFile && this._openFile(selectedFile, true);
             } else if (model && value !== model.getValue()) {
+                console.log(`[MonacoEditor][did update] excuteEdits ${path}`);
+
                 // @ts-ignore
                 this._refEditor.executeEdits(null, [
                     {
@@ -251,6 +259,17 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
         monaco.editor.getModels().forEach((m) => m.dispose());
     }
 
+    /***
+     * 渡されたfileをmonaco-editorのmodelとして登録する。
+     *
+     * @param {File} file - model登録するFile.
+     *
+     * 引数のfileの`monaco.editor.ITextModel`を生成する。
+     * modelが生成済の場合、modelの変更内容をmodelに反映させる。
+     * monaco-editorはmodelを生成すれば内部的にmodelを保存してくれて、
+     * あとでmonaco.editor.getModels()などから取り出すことができる。
+     *
+     * */
     _initializeFile = (file: File) => {
         const path = file.getPath();
         const language = file.getLanguage();
@@ -327,14 +346,22 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
         const { oldModelUrl, newModelUrl } = e;
 
         // DEBUG:
-        console.log('[MonacoEditor] _handleChangeModel ');
-        console.log(`old model url: ${oldModelUrl}`);
-        console.log(`new model url: ${newModelUrl}`);
+        console.log(
+            `[MonacoEditor][_handleChangeModel] old model url: ${oldModelUrl}`
+        );
+        console.log(
+            `[MonacoEditor][_handleChangeModel] new model url: ${newModelUrl}`
+        );
 
         if (oldModelUrl) {
             const model = monaco.editor
                 .getModels()
                 .find((m) => m.uri === oldModelUrl);
+
+            // DEBUG:
+            console.log(
+                `[MonacoEditor][_handleChangeModel] old model url: ${oldModelUrl}`
+            );
 
             model &&
                 this.props.onDidChangeModel(

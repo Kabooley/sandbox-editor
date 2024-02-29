@@ -15,7 +15,6 @@ import type { iOrderBundleResult } from '../worker/types';
 import type { File } from '../data/files';
 import type { iFilesActions } from '../context/FilesContext';
 import type { iBundledCodeActions } from '../context/BundleContext';
-// import type { iTypingLibsContext } from '../context/TypingLibsContext';
 import type { iOrderBundle } from '../worker/types';
 import { Types as bundledContextTypes } from '../context/BundleContext';
 import { Types as filesContextTypes } from '../context/FilesContext';
@@ -82,9 +81,7 @@ class EditorContainer extends React.Component<iProps, iState> {
     componentDidMount() {
         // console.log('[EditorContainer] did mount');
 
-        const {
-            files
-        } = this.props;
+        const { files } = this.props;
 
         const selectedFile = files.find((f) => f.isSelected());
         selectedFile &&
@@ -126,8 +123,8 @@ class EditorContainer extends React.Component<iProps, iState> {
         }
 
         // console.log('[EditorContainer] did update. getExtraLibs:');
-        const currentLibs =
-            monaco.languages.typescript.typescriptDefaults.getExtraLibs();
+        // const currentLibs =
+        //     monaco.languages.typescript.typescriptDefaults.getExtraLibs();
         // console.log(currentLibs);
     }
 
@@ -193,10 +190,33 @@ class EditorContainer extends React.Component<iProps, iState> {
             });
     }
 
-    _onDidChangeModel(oldModelPath: string, newModelPath: string) {}
+    // _onDidChangeModel(oldModelPath: string, newModelPath: string) {
+    //     console.log(`[EditorContainer][_onDidChangeModel]`);
+    // }
+
+    /***
+     * @param {string} oldModelpath -
+     * @param {string} newModelpath -
+     * @param {string} oldModelpath -
+     *
+     * oldModelPathのfileのvalueを保存する
+     * NOTE: この処理要らないかも。
+     * */
+    _onDidChangeModel(oldModelPath: string, newModelPath: string) {
+        console.log(
+            `[EditorContainer][_onDidChangeModel] old model path: ${oldModelPath}`
+        );
+        // this.props.dispatchFiles({
+        //     type: filesContextTypes.Change,
+        //     payload: {
+        //         targetFilePath: oldModelPath,
+        //         changeValue: 
+        //     }
+        // });
+    }
 
     _onChangeSelectedTab(selected: string) {
-        // console.log(`[EditorContainer] on change selected tab: ${selected}`);
+        console.log(`[EditorContainer] on change selected tab: ${selected}`);
         this.props.dispatchFiles({
             type: filesContextTypes.ChangeSelectedFile,
             payload: { selectedFilePath: selected },

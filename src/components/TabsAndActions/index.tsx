@@ -105,6 +105,9 @@ const TabsAndActionsContainer = ({
 
     const onClose = (e: React.MouseEvent<HTMLLIElement>, path: string) => {
         e.stopPropagation();
+        e.preventDefault();
+
+        console.log(`[TabsAndActions][onClose] ${path}`);
 
         dispatch({
             type: FilesContextType.Close,
@@ -357,22 +360,45 @@ const arePropsEqual = (
             return 0;
         });
 
-        isTabOrderEqual = prevProps.filesOpening.every(
-            (pf, index) =>
-                pf.getPath() === currentProps.filesOpening[index].getPath()
+        console.log(
+            `[TabsAndActions][memo] previous filesOpening: ${JSON.stringify(
+                prevProps.filesOpening,
+                null,
+                2
+            )}`
         );
+        console.log(
+            `[TabsAndActions][memo] current filesOpening: ${JSON.stringify(
+                currentProps.filesOpening,
+                null,
+                2
+            )}`
+        );
+
+        // TODO: 要修正：prevProps.filesOpeningとcurrentProps.filesOpeningは
+        // ユーザ操作によって毎度同じ長さではないので配列の範囲外にアクセスしようとするエラーが発生している。
+        // 例えばTabsAndActions上のタブを閉じる操作をすると
+        // currentProps.filesOpening[index].getPath()はundefinedでアクセスできないエラーが発生する
+        isTabOrderEqual = prevProps.filesOpening.every((pf, index) => {
+            return pf.getPath() === currentProps.filesOpening[index].getPath();
+        });
+
+        // isTabOrderEqual = prevProps.filesOpening.every(
+        //     (pf, index) =>
+        //         pf.getPath() === currentProps.filesOpening[index].getPath()
+        // );
     }
 
-    // console.log(
-    //   `Will TabsAndActions rerender?: ${
-    //     isEqualNumberOfFiles &&
-    //     isSameSelectedFile &&
-    //     isEqualWidth &&
-    //     isTabOrderEqual
-    //       ? "NO"
-    //       : "YES"
-    //   }`
-    // );
+    console.log(
+        `Will TabsAndActions rerender?: ${
+            isEqualNumberOfFiles &&
+            isSameSelectedFile &&
+            isEqualWidth &&
+            isTabOrderEqual
+                ? 'NO'
+                : 'YES'
+        }`
+    );
 
     return (
         isEqualNumberOfFiles &&
