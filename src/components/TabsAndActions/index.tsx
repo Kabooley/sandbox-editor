@@ -31,7 +31,8 @@ interface iJSXNode extends Node {
 
 interface iProps {
     // Selected file path
-    path: string;
+    // path: string;
+    selectedFile: File | undefined;
     onChangeSelectedTab: (path: string) => void;
     // Get width of parent which may resize dynamically.
     width: number;
@@ -43,7 +44,7 @@ interface iProps {
 const containerHeight = 28;
 
 const TabsAndActionsContainer = ({
-    path,
+    selectedFile,
     onChangeSelectedTab,
     width,
     filesOpening,
@@ -255,7 +256,9 @@ const TabsAndActionsContainer = ({
                         >
                             <div
                                 className={
-                                    f.getPath() === path ? 'tab active' : 'tab'
+                                    f.getPath() === selectedFile?.getPath()
+                                        ? 'tab active'
+                                        : 'tab'
                                 }
                                 ref={(el: HTMLDivElement) =>
                                     (refTabs.current[index] = el)
@@ -308,104 +311,116 @@ const TabsAndActionsContainer = ({
     );
 };
 
-/**
- * https://react.dev/reference/react/memo#parameters
- *
- * Component wrapped by React.memo will return previous its output if arePropsEqual returns true.
- * If arePropsEqual return false, then componet will return updated output.
- *
- * NOTE: Pasing second arguments of React.memo() means
- * that you should check all props are equal to previous props.
- *
- * Check list
- * - Is openingFiles.length equal?
- * - Is selectedFile equal?
- * - Is parent width equal?
- * - Is each tabIndex of openingFiles equal?
- * */
-const arePropsEqual = (
-    prevProps: Readonly<iProps>,
-    currentProps: Readonly<iProps>
-): boolean => {
-    const isEqualNumberOfFiles =
-        prevProps.filesOpening.length !== currentProps.filesOpening.length;
-    // ? false
-    // : true;
-    // 0: exact match, -1, 1: unmatch
-    const isSameSelectedFile = prevProps.path
-        .toLocaleLowerCase()
-        .localeCompare(currentProps.path.toLocaleLowerCase())
-        ? false
-        : true;
+export default TabsAndActionsContainer;
 
-    // const isEqualWidth = prevProps.width === currentProps.width ? true : false;
-    const isEqualWidth = prevProps.width === currentProps.width;
+// /**
+//  * https://react.dev/reference/react/memo#parameters
+//  *
+//  * Component wrapped by React.memo will return previous its output if arePropsEqual returns true.
+//  * If arePropsEqual return false, then componet will return updated output.
+//  *
+//  * NOTE: Pasing second arguments of React.memo() means
+//  * that you should check all props are equal to previous props.
+//  *
+//  * Check list
+//  * - Is openingFiles.length equal?
+//  * - Is selectedFile equal?
+//  * - Is parent width equal?
+//  * - Is each tabIndex of openingFiles equal?
+//  * */
+// const arePropsEqual = (
+//     prevProps: Readonly<iProps>,
+//     currentProps: Readonly<iProps>
+// ): boolean => {
+//     const isEqualNumberOfFiles =
+//         prevProps.filesOpening.length === currentProps.filesOpening.length;
+//     // ? false
+//     // : true;
+//     // 0: exact match, -1, 1: unmatch
+//     const prevSelected = prevProps.selectedFile !== undefined ? prevProps.selectedFile.getPath() : "";
+//     const currentSelected = currentProps.selectedFile !== undefined ? currentProps.selectedFile.getPath() : "";
+//     const isSameSelectedFile = prevSelected
+//         .toLocaleLowerCase()
+//         .localeCompare(currentSelected.toLocaleLowerCase())
+//         ? false
+//         : true;
 
-    let isTabOrderEqual = true;
-    if (isEqualNumberOfFiles) {
-        currentProps.filesOpening.sort(function (a: File, b: File) {
-            if (a.getTabIndex()! < b.getTabIndex()!) {
-                return -1;
-            } else if (a.getTabIndex()! > b.getTabIndex()!) {
-                return 1;
-            }
-            return 0;
-        });
-        prevProps.filesOpening.sort(function (a: File, b: File) {
-            if (a.getTabIndex()! < b.getTabIndex()!) {
-                return -1;
-            } else if (a.getTabIndex()! > b.getTabIndex()!) {
-                return 1;
-            }
-            return 0;
-        });
+//     console.log(`[TabsAndActions][memo] prevSelected: ${prevSelected} currentSelected: ${currentSelected}`);
 
-        console.log(
-            `[TabsAndActions][memo] previous filesOpening: ${JSON.stringify(
-                prevProps.filesOpening,
-                null,
-                2
-            )}`
-        );
-        console.log(
-            `[TabsAndActions][memo] current filesOpening: ${JSON.stringify(
-                currentProps.filesOpening,
-                null,
-                2
-            )}`
-        );
+//     // const isEqualWidth = prevProps.width === currentProps.width ? true : false;
+//     const isEqualWidth = prevProps.width === currentProps.width;
 
-        // TODO: 要修正：prevProps.filesOpeningとcurrentProps.filesOpeningは
-        // ユーザ操作によって毎度同じ長さではないので配列の範囲外にアクセスしようとするエラーが発生している。
-        // 例えばTabsAndActions上のタブを閉じる操作をすると
-        // currentProps.filesOpening[index].getPath()はundefinedでアクセスできないエラーが発生する
-        isTabOrderEqual = prevProps.filesOpening.every((pf, index) => {
-            return pf.getPath() === currentProps.filesOpening[index].getPath();
-        });
+//     let isTabOrderEqual = true;
+//     if (isEqualNumberOfFiles) {
+//         currentProps.filesOpening.sort(function (a: File, b: File) {
+//             if (a.getTabIndex()! < b.getTabIndex()!) {
+//                 return -1;
+//             } else if (a.getTabIndex()! > b.getTabIndex()!) {
+//                 return 1;
+//             }
+//             return 0;
+//         });
+//         prevProps.filesOpening.sort(function (a: File, b: File) {
+//             if (a.getTabIndex()! < b.getTabIndex()!) {
+//                 return -1;
+//             } else if (a.getTabIndex()! > b.getTabIndex()!) {
+//                 return 1;
+//             }
+//             return 0;
+//         });
 
-        // isTabOrderEqual = prevProps.filesOpening.every(
-        //     (pf, index) =>
-        //         pf.getPath() === currentProps.filesOpening[index].getPath()
-        // );
-    }
+//         // console.log(
+//         //     `[TabsAndActions][memo] previuos filesOpening length: ${prevProps.filesOpening.length}`
+//         // );
+//         // console.log(
+//         //     `[TabsAndActions][memo] current filesOpening length: ${currentProps.filesOpening.length}`
+//         // );
+//         // console.log(
+//         //     `[TabsAndActions][memo] previous filesOpening: ${JSON.stringify(
+//         //         prevProps.filesOpening,
+//         //         null,
+//         //         2
+//         //     )}`
+//         // );
+//         // console.log(
+//         //     `[TabsAndActions][memo] current filesOpening: ${JSON.stringify(
+//         //         currentProps.filesOpening,
+//         //         null,
+//         //         2
+//         //     )}`
+//         // );
 
-    console.log(
-        `Will TabsAndActions rerender?: ${
-            isEqualNumberOfFiles &&
-            isSameSelectedFile &&
-            isEqualWidth &&
-            isTabOrderEqual
-                ? 'NO'
-                : 'YES'
-        }`
-    );
+//         // TODO: 要修正：prevProps.filesOpeningとcurrentProps.filesOpeningは
+//         // ユーザ操作によって毎度同じ長さではないので配列の範囲外にアクセスしようとするエラーが発生している。
+//         // 例えばTabsAndActions上のタブを閉じる操作をすると
+//         // currentProps.filesOpening[index].getPath()はundefinedでアクセスできないエラーが発生する
+//         isTabOrderEqual = prevProps.filesOpening.every((pf, index) => {
+//             return pf.getPath() === currentProps.filesOpening[index].getPath();
+//         });
 
-    return (
-        isEqualNumberOfFiles &&
-        isSameSelectedFile &&
-        isEqualWidth &&
-        isTabOrderEqual
-    );
-};
+//         // isTabOrderEqual = prevProps.filesOpening.every(
+//         //     (pf, index) =>
+//         //         pf.getPath() === currentProps.filesOpening[index].getPath()
+//         // );
+//     }
 
-export default React.memo(TabsAndActionsContainer, arePropsEqual);
+//     console.log(
+//         `Will TabsAndActions rerender?: ${
+//             isEqualNumberOfFiles &&
+//             isSameSelectedFile &&
+//             isEqualWidth &&
+//             isTabOrderEqual
+//                 ? 'NO'
+//                 : 'YES'
+//         }`
+//     );
+
+//     return (
+//         isEqualNumberOfFiles &&
+//         isSameSelectedFile &&
+//         isEqualWidth &&
+//         isTabOrderEqual
+//     );
+// };
+
+// export default React.memo(TabsAndActionsContainer, arePropsEqual);

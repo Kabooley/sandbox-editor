@@ -2,12 +2,9 @@
 
 ## TODOs
 
--   [TODO: 新規ファイルを workspace で生成してエディタに表示させたのち、エディタ表示ファイルを切り替えると新規ファイルの内容が切り替えたファイルになる件](#TODO:-新規ファイルをworkspaceで生成してエディタに表示させたのち、エディタ表示ファイルを切り替えると新規ファイルの内容が切り替えたファイルになる件)
--   [TODO: 現状の MonacoEditor の挙動のおさらい](#TODO:-現状のMonacoEditorの挙動のおさらい)
--   [TODO: タブの閉じるボタンで閉じるとエラーになる件](#タブの閉じるボタンで閉じるとエラーになる件)
--   [TODO: EditorContainer.tsx の addExtraLibs メソッドで dispose しなくていいのか確認](#EditorContainer.tsxのaddExtraLibsメソッドでdisposeしなくていいのか確認)
--   [TODO:](#)
--   [TODO:](#)
+-   [TODO: EditorContainer.tsx の addExtraLibs をファイルの更新のたびに実行しなくていいのか確認](#EditorContainer.tsx-のaddExtraLibsをファイルの更新のたびに実行しなくていいのか確認)
+-   [TODO: 最後に閉じたファイルのコンテンツがエディタに残ったままになってしまう件](#最後に閉じたファイルのコンテンツがエディタに残ったままになってしまう件)
+-   [TODO: monaco-editor との連携機能が完全でないので完成させること](#monaco-editorとの連携機能が完全でないので完成させること)
 
 低優先度：
 
@@ -21,12 +18,14 @@
 -   `Explorer`で新規フォルダを作ったら workspace 上そのフォルダを選択している状態にすること。
 -   `Explorer`で新規アイテムを追加するときインデントが一段階不足しているので修正。
 -   `Explorer`で新規アイテムをいずれかのフォルダに追加したらそのフォルダは開いている状態にすること。
+-   エディタ上に`App.tsx`が開かれているとして現在エディタは index.tsx を表示しているとする、Explorer の Workspace 上の App.tsx ファイルをクリックしてもエディタに App.tsx が表示してくれない(つまり、現状タブを選択することでしかファイルの表示切替ができない)
 
-## TODO: 新規ファイルを workspace で生成してエディタに表示させたのち、エディタ表示ファイルを切り替えると新規ファイルの内容が切り替えたファイルになる件
+## Summary
 
-EditorContainer.tsx で`onDidChangeModel()関数が定義されていなかった...
+-   [現状の MonacoEditor の挙動のおさらい](#現状のMonacoEditorの挙動のおさらい)
+-   [snackexpo の monaco-editor の挙動のおさらい](#snackexpoのmonaco-editorの挙動のおさらい)
 
-#### 参考
+## 参考
 
 snack expo の snack/website/src/client/components/Editor/MonacoEditor.tsx
 
@@ -116,7 +115,75 @@ componentDidUpdate(prevProps: iProps, prevState: iState) {
 
 ```
 
-## form
+## EditorContainer.tsx の addExtraLibs をファイルの更新のたびに実行しなくていいのか確認
+
+`EditorContainer.tsx`の addExtraLibs の役割は、files の内容の自身への登録である。
+
+これは`TypingLibsContext.tsx`の行っている addExtraLibs とは別で実行している。
+
+（TypingLibsContext は依存関係を、EditorContainer では仮想ファイルを扱う。）
+
+addExtraLibs に登録してある仮想ファイルは、その仮想ファイルの更新のたびに同期的に自動的に更新内容を反映してくれるわけではないので、手動で更新させなくてはならないはず。
+
+なのでおそらく修正箇所は以下の通り：
+
+-   `addExtraLibs`のコメントアウト部分を戻す
+-   `componentDidMount`でファイルの更新を検査して更新アリのファイルを`addExtraLibs`へ送る。
+
+```TypeSCript
+    /***
+     * Register path and code to monaco.language.[type|java]script addExtraLibs.
+     * Reset code if passed path has already been registered.
+     * */
+    addExtraLibs(code: string, path: string) {
+        // console.log(`[EditorContainer] Add extra Library: ${path}`);
+
+        // const cachedLib = typingLibs.current.get(path);
+        // if (cachedLib) {
+        //     cachedLib.js.dispose();
+        //     cachedLib.ts.dispose();
+        // }
+        // Monaco Uri parsing contains a bug which escapes characters unwantedly.
+        // This causes package-names such as `@expo/vector-icons` to not work.
+        // https://github.com/Microsoft/monaco-editor/issues/1375
+        let uri = monaco.Uri.from({
+            scheme: 'file',
+            path: path,
+        }).toString();
+        if (path.includes('@')) {
+            uri = uri.replace('%40', '@');
+        }
+
+        const js = monaco.languages.typescript.javascriptDefaults.addExtraLib(
+            code,
+            uri
+        );
+        const ts = monaco.languages.typescript.typescriptDefaults.addExtraLib(
+            code,
+            uri
+        );
+        // typingLibs.current.set(path, { js, ts });
+    }
+```
+
+TODO: ファイル更新のたびに extralibs はどうなっているのか確認すること
+
+## monaco-editor との連携機能が完全でないので完成させること
+
+以下の３つ：
+
+-   model 切り替え
+-   model を閉じる
+-   model を開く
+
+現状確認できるバグ：
+
+-   タブをすべて閉じる、つまり表示したい File がないとエラーになる（エディタ上に何も表示していない状態にしたいが何か問題があるみたい）
+-
+
+## 走り書き
+
+#### form
 
 ```TypeScript
 import React, { useState, useEffect } from "react";
@@ -155,42 +222,40 @@ const Form: React.FC<{}> = () => {
 export default Form;
 ```
 
-## EditorContainer.tsx の addExtraLibs メソッドで dispose しなくていいのか確認
+## snackexpo の monaco-editor の挙動のおさらい
 
-コメントアウトしているけど、ファイルの更新内容を反映させる場合 cachedLib は dispose するべきなのでは？
+mount 時：
 
-```TypeSCript
-    /***
-     * Register path and code to monaco.language.[type|java]script addExtraLibs.
-     * Reset code if passed path has already been registered.
-     * */
-    addExtraLibs(code: string, path: string) {
-        // console.log(`[EditorContainer] Add extra Library: ${path}`);
+-   すべてのファイルに対して `this._initializeFile()`を呼び出す
 
-        // const cachedLib = typingLibs.current.get(path);
-        // if (cachedLib) {
-        //     cachedLib.js.dispose();
-        //     cachedLib.ts.dispose();
-        // }
-        // Monaco Uri parsing contains a bug which escapes characters unwantedly.
-        // This causes package-names such as `@expo/vector-icons` to not work.
-        // https://github.com/Microsoft/monaco-editor/issues/1375
-        let uri = monaco.Uri.from({
-            scheme: 'file',
-            path: path,
-        }).toString();
-        if (path.includes('@')) {
-            uri = uri.replace('%40', '@');
-        }
+`this._initializeFile`:
 
-        const js = monaco.languages.typescript.javascriptDefaults.addExtraLib(
-            code,
-            uri
-        );
-        const ts = monaco.languages.typescript.typescriptDefaults.addExtraLib(
-            code,
-            uri
-        );
-        // typingLibs.current.set(path, { js, ts });
-    }
-```
+引数の File の model を生成する
+
+model が生成済の場合、引数 file の変更内容を既存 model に反映させる。
+既存の model がなかった場合、新規の model を作成する。
+
+monaco-editor は model を生成すれば内部的に model を保存してくれて、あとで monaco.editor.getModels()などから取り出すことができる。
+
+update 時：
+
+-   選択されているファイルが変更されていたら、以前の選択されていたファイルの editorstate を保存する（`editorStates.set(prevProps.selectedFile, this.\_editor.saveViewState()）
+
+-   選択されているファイルが変更されたら、エディタの表示を切り替えるために this.\_openFile を呼出す
+
+-   選択されているファイルが変更されていないけれど、内容が更新されている場合、this.\_editor.executeEdits()を呼び出して更新内容を model へ反映させる
+
+-   files に変更があれば（この条件分岐は意味がない気がする。React においてオブジェクト配列同士の比較は必ず一致しないだろ）全てのファイルに対して this.\_initializeFile()を呼び出す
+
+-   独自 linter の結果を updateMarkers で反映させる
+-   依存関係の変更があれば依存関係を取得させる
+-   mode に変更があればモードを切り替える
+-   theme に変更ああればテーマを切り替える
+
+ここからわかること：
+
+model は file の内容更新に合わせて手動で更新しなくてはならない。
+
+疑問：
+
+model の生成と更新を完全に行えばファイルの内容を addExtraLibs へ登録する必要がない？

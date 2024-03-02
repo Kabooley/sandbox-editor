@@ -125,7 +125,7 @@ monaco.languages.typescript.javascriptDefaults.setCompilerOptions(
  * */
 interface iProps extends Monaco.editor.IStandaloneEditorConstructionOptions {
     files: File[];
-    path: string;
+    selectedFile: File | undefined;
     onEditorContentChange: (code: string, path: string) => void;
     onDidChangeModel: (path: string, value: string) => void;
 }
@@ -163,7 +163,7 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
      * TODO: this.props.pathが空文字列の場合もあるのでその対応
      * */
     componentDidMount() {
-        const { files, path, onEditorContentChange, ...options } = this.props;
+        const { files, selectedFile, onEditorContentChange, ...options } = this.props;
 
         // Generate Editor instance.
         const editor = monaco.editor.create(
@@ -187,10 +187,10 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
         );
 
         // Set current path's model to editor.
-        const currentFile = files.find((f) => f.getPath() === path);
-        if (currentFile) {
+        // const currentFile = files.find((f) => f.getPath() === path);
+        if (selectedFile !== undefined) {
             // Set specified model to editor.
-            this._openFile(currentFile!, true);
+            this._openFile(selectedFile, true);
         }
 
         // Load all the files  so the editor can provide proper intelliscense
@@ -204,17 +204,16 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
     }
 
     /***
-     *
+     * TODO: 
      *
      * */
     componentDidUpdate(prevProps: iProps, prevState: iState) {
-        const { files, path, onEditorContentChange, ...options } = this.props;
-
-        const selectedFile = files.find((f) => f.getPath() === path);
-        // const previousFile = prevProps.files.find(f => f.getPath() === prevProps.path);
+        const { files, selectedFile, onEditorContentChange, ...options } = this.props;
 
         if (this._refEditor) {
-            console.log(`[MonacoEditor][did update] Selecting ${path}`);
+            console.log(
+                `[MonacoEditor][did update] Selecting ${selectedFile?.getPath()}`
+            );
 
             this._refEditor.updateOptions(options);
 
@@ -222,21 +221,22 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
             const value = selectedFile?.getValue();
 
             // Change model and save view state if path is changed
-            // if (path === prevProps.path) {
-            if (path !== prevProps.path) {
+            if (selectedFile !== undefined && selectedFile !== prevProps.selectedFile) {
                 console.log(
-                    `[MonacoEditor][did update] ${path} !== ${prevProps.path}`
+                    `[MonacoEditor][did update] ${selectedFile?.getPath()} !== ${prevProps.selectedFile?.getPath()}`
                 );
 
                 // Save the editor state for the previous file so we can restore it when it's re-opened
-                editorStates.set(
-                    prevProps.path,
-                    this._refEditor.saveViewState()
-                );
+                if(prevProps.selectedFile !== undefined) {
+                    editorStates.set(
+                        prevProps.selectedFile.getPath(),
+                        this._refEditor.saveViewState()
+                    );
+                }
 
                 selectedFile && this._openFile(selectedFile, true);
             } else if (model && value !== model.getValue()) {
-                console.log(`[MonacoEditor][did update] excuteEdits ${path}`);
+                console.log(`[MonacoEditor][did update] excuteEdits ${selectedFile?.getPath()}`);
 
                 // @ts-ignore
                 this._refEditor.executeEdits(null, [
@@ -265,7 +265,7 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
      * @param {File} file - model登録するFile.
      *
      * 引数のfileの`monaco.editor.ITextModel`を生成する。
-     * modelが生成済の場合、modelの変更内容をmodelに反映させる。
+     * modelが生成済の場合、引数fileの変更内容を既存modelに反映させる。
      * monaco-editorはmodelを生成すれば内部的にmodelを保存してくれて、
      * あとでmonaco.editor.getModels()などから取り出すことができる。
      *
@@ -277,6 +277,9 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
 
         let model = getModelByPath(path);
 
+        // 引数のfileのmodelが既存modelである場合：
+        // fileの内容が外部で変更されている可能性があるため
+        // 編集内容をmodelへ反映させる
         if (model && !model.isDisposed()) {
             // @ts-ignore
             model.pushEditOperations(
@@ -288,11 +291,12 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
                     },
                 ]
             );
-        } else {
+        } 
+        // 新規fileの場合：
+        else {
             model = monaco.editor.createModel(
                 value,
                 language,
-                // new monaco.Uri().with({ path })
                 monaco.Uri.from({ scheme: 'file', path })
             );
             model.updateOptions({
@@ -333,7 +337,7 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
             if (
                 value !==
                 this.props.files
-                    .find((f) => f.getPath() === this.props.path)
+                    .find((f) => f.getPath() === this.props.selectedFile?.getPath())
                     ?.getValue()
             ) {
                 this.props.onEditorContentChange(value, path);
