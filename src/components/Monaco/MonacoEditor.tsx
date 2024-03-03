@@ -141,6 +141,7 @@ const editorStates = new Map<
     monaco.editor.ICodeEditorViewState | undefined | null
 >();
 
+
 export default class MonacoEditor extends React.Component<iProps, iState> {
     _refEditorNode = React.createRef<HTMLDivElement>();
     _refEditor: Monaco.editor.IStandaloneCodeEditor | null = null;
@@ -163,7 +164,8 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
      * TODO: this.props.pathが空文字列の場合もあるのでその対応
      * */
     componentDidMount() {
-        const { files, selectedFile, onEditorContentChange, ...options } = this.props;
+        const { files, selectedFile, onEditorContentChange, ...options } =
+            this.props;
 
         // Generate Editor instance.
         const editor = monaco.editor.create(
@@ -204,11 +206,12 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
     }
 
     /***
-     * TODO: 
+     * TODO: selectedFileがundefinedの時の処理がない。
      *
      * */
     componentDidUpdate(prevProps: iProps, prevState: iState) {
-        const { files, selectedFile, onEditorContentChange, ...options } = this.props;
+        const { files, selectedFile, onEditorContentChange, ...options } =
+            this.props;
 
         if (this._refEditor) {
             console.log(
@@ -220,14 +223,29 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
             const model = this._refEditor.getModel();
             const value = selectedFile?.getValue();
 
+            if (selectedFile === undefined) {
+                // TODO: modelを「閉じる」
+                // dispose
+
+                // Save the editor state for the previous file so we can restore it when it's re-opened
+                if (prevProps.selectedFile !== undefined) {
+                    editorStates.set(
+                        prevProps.selectedFile.getPath(),
+                        this._refEditor.saveViewState()
+                    );
+                }
+            }
             // Change model and save view state if path is changed
-            if (selectedFile !== undefined && selectedFile !== prevProps.selectedFile) {
+            else if (
+                selectedFile !== undefined &&
+                selectedFile !== prevProps.selectedFile
+            ) {
                 console.log(
                     `[MonacoEditor][did update] ${selectedFile?.getPath()} !== ${prevProps.selectedFile?.getPath()}`
                 );
 
                 // Save the editor state for the previous file so we can restore it when it's re-opened
-                if(prevProps.selectedFile !== undefined) {
+                if (prevProps.selectedFile !== undefined) {
                     editorStates.set(
                         prevProps.selectedFile.getPath(),
                         this._refEditor.saveViewState()
@@ -236,7 +254,9 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
 
                 selectedFile && this._openFile(selectedFile, true);
             } else if (model && value !== model.getValue()) {
-                console.log(`[MonacoEditor][did update] excuteEdits ${selectedFile?.getPath()}`);
+                console.log(
+                    `[MonacoEditor][did update] excuteEdits ${selectedFile?.getPath()}`
+                );
 
                 // @ts-ignore
                 this._refEditor.executeEdits(null, [
@@ -291,7 +311,7 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
                     },
                 ]
             );
-        } 
+        }
         // 新規fileの場合：
         else {
             model = monaco.editor.createModel(
@@ -337,7 +357,10 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
             if (
                 value !==
                 this.props.files
-                    .find((f) => f.getPath() === this.props.selectedFile?.getPath())
+                    .find(
+                        (f) =>
+                            f.getPath() === this.props.selectedFile?.getPath()
+                    )
                     ?.getValue()
             ) {
                 this.props.onEditorContentChange(value, path);

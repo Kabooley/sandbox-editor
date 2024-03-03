@@ -220,13 +220,16 @@ function filesReducer(files: File[], action: iFilesActions) {
          *
          * TabIndex will be same as number of current tabs.
          *
+         * TODO: 予め必ずいずれかのファイルがselected: trueになっていることが前提になっている。selected: trueのファイルがない場合に対応させること。
          * */
         case 'OPEN_FILE': {
             const { path } = action.payload;
             const target = files.find((f) => f.getPath() === path);
-            const currentSelectedFilePath = files
-                .find((f) => f.isSelected())!
-                .getPath();
+            const currentSelectedFile = files.find((f) => f.isSelected());
+
+            const currentSelectedFilePath = currentSelectedFile
+                ? currentSelectedFile.getPath()
+                : undefined;
 
             // Guard if it's folder or opening already.
             if (target?.isFolder() || target?.isOpening()) {
@@ -234,7 +237,7 @@ function filesReducer(files: File[], action: iFilesActions) {
             }
 
             console.log(
-                `[FilesContext] OPEN_FILE: ${path}, ${currentSelectedFilePath}`
+                `[FilesContext] OPEN_FILE: ${path} Previous selected file: ${currentSelectedFilePath}`
             );
 
             const updatedFiles = files.map((f) => {
@@ -257,7 +260,7 @@ function filesReducer(files: File[], action: iFilesActions) {
                 }
                 // Get selected file to be unselected.
                 else if (
-                    currentSelectedFilePath &&
+                    currentSelectedFilePath !== undefined &&
                     f.getPath() === currentSelectedFilePath
                 ) {
                     const clone: File = Object.assign(

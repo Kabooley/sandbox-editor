@@ -3,8 +3,8 @@
 ## TODOs
 
 -   [TODO: EditorContainer.tsx の addExtraLibs をファイルの更新のたびに実行しなくていいのか確認](#EditorContainer.tsx-のaddExtraLibsをファイルの更新のたびに実行しなくていいのか確認)
--   [TODO: 最後に閉じたファイルのコンテンツがエディタに残ったままになってしまう件](#最後に閉じたファイルのコンテンツがエディタに残ったままになってしまう件)
 -   [TODO: monaco-editor との連携機能が完全でないので完成させること](#monaco-editorとの連携機能が完全でないので完成させること)
+- [TODO: fileをリネームしたときにmodelを更新するようにする](#fileをリネームしたときにmodelを更新するようにする)
 
 低優先度：
 
@@ -178,8 +178,61 @@ TODO: ファイル更新のたびに extralibs はどうなっているのか確
 
 現状確認できるバグ：
 
--   タブをすべて閉じる、つまり表示したい File がないとエラーになる（エディタ上に何も表示していない状態にしたいが何か問題があるみたい）
--
+#### model を閉じる
+
+selected: true の File が一つもない場合に対応する。
+
+`filesOpening`が空の場合は`MonacoEditor`を返す代わりに`EditorNoSelectedFile`を返す。
+
+`EditorNoSelectedFile`を返すことになる場合、
+
+`MonacoEditor`はアンマウントされてすべての model が dispose される。
+
+`MonacoEditor`を再度マウントするとき、改めて model が生成される。
+
+```TypeScript
+// EditorContainer.tsx
+    render() {
+        const selectedFilePath = this.props.files.find((f) => f.isSelected());
+        const filesOpening = this.getFilesOpening(this.props.files);
+
+        if (filesOpening.length) {
+            return (
+                <div className="editor-container">
+                    <TabsAndActionsContainer
+                        selectedFile={selectedFilePath}
+                        onChangeSelectedTab={this._onChangeSelectedTab}
+                        width={this.props.width}
+                        filesOpening={filesOpening}
+                    />
+                    <MonacoEditor
+                        files={this.props.files}
+                        selectedFile={selectedFilePath}
+                        onEditorContentChange={this._onEditorContentChange}
+                        onDidChangeModel={this._onDidChangeModel}
+                        {...editorConstructOptions}
+                    />
+                </div>
+            );
+        } else {
+            return (
+                <div className="editor-container">
+                    <TabsAndActionsContainer
+                        selectedFile={selectedFilePath}
+                        onChangeSelectedTab={this._onChangeSelectedTab}
+                        width={this.props.width}
+                        filesOpening={filesOpening}
+                    />
+                    <EditorNoSelectedFile />
+                </div>
+            );
+        }
+    }
+```
+
+snack expo では選択されたファイルがない場合は`NoSelectedFile`というコンポーネントを MonacoEditor のコンポーネントの代わりに返すのを参考にした。
+
+https://github.com/expo/snack/blob/20797c84072296c62482f3ab1d29f054c089d3ba/website/src/client/components/EditorView.tsx#L605
 
 ## 走り書き
 
@@ -221,6 +274,10 @@ const Form: React.FC<{}> = () => {
 
 export default Form;
 ```
+
+## fileをリネームしたときにmodelを更新するようにする
+
+
 
 ## snackexpo の monaco-editor の挙動のおさらい
 
