@@ -141,7 +141,6 @@ const editorStates = new Map<
     monaco.editor.ICodeEditorViewState | undefined | null
 >();
 
-
 export default class MonacoEditor extends React.Component<iProps, iState> {
     _refEditorNode = React.createRef<HTMLDivElement>();
     _refEditor: Monaco.editor.IStandaloneCodeEditor | null = null;
@@ -206,7 +205,7 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
     }
 
     /***
-     * TODO: selectedFileがundefinedの時の処理がない。
+     * filesの変更をmonaco-editorに反映させる。
      *
      * */
     componentDidUpdate(prevProps: iProps, prevState: iState) {
@@ -214,18 +213,14 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
             this.props;
 
         if (this._refEditor) {
-            console.log(
-                `[MonacoEditor][did update] Selecting ${selectedFile?.getPath()}`
-            );
-
             this._refEditor.updateOptions(options);
 
             const model = this._refEditor.getModel();
             const value = selectedFile?.getValue();
 
+            // TODO: 要確認。アンマウント時にcomponentDidMountは呼ばれない?
             if (selectedFile === undefined) {
-                // TODO: modelを「閉じる」
-                // dispose
+                console.log(`[MonacoEditor][did update] no selectedFile`);
 
                 // Save the editor state for the previous file so we can restore it when it's re-opened
                 if (prevProps.selectedFile !== undefined) {
@@ -240,9 +235,7 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
                 selectedFile !== undefined &&
                 selectedFile !== prevProps.selectedFile
             ) {
-                console.log(
-                    `[MonacoEditor][did update] ${selectedFile?.getPath()} !== ${prevProps.selectedFile?.getPath()}`
-                );
+                console.log(`[MonacoEditor][did update] selectedFile ${prevProps.selectedFile?.getPath()} --> ${selectedFile.getPath()}`);
 
                 // Save the editor state for the previous file so we can restore it when it's re-opened
                 if (prevProps.selectedFile !== undefined) {
@@ -270,6 +263,9 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
     }
 
     componentWillUnmount() {
+
+        console.log('[MonacoEditor][will unmount]');
+
         this._refEditorNode.current &&
             this._refEditorNode.current.removeEventListener(
                 'resize',
@@ -408,9 +404,9 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
         const uri = model.uri;
         const markers = monaco.editor.getModelMarkers({ resource: uri });
 
-        // DEBUG:
-        console.log(`[MonacoEditor][_handleChangeMarkers] ${uri}`);
-        console.log(markers);
+        // // DEBUG:
+        // console.log(`[MonacoEditor][_handleChangeMarkers] ${uri}`);
+        // console.log(markers);
     }
 
     render() {

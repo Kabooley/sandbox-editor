@@ -87,27 +87,63 @@ const FilesDispatchContext = createContext<Dispatch<iFilesActions>>(() => null);
 function filesReducer(files: File[], action: iFilesActions) {
     switch (action.type) {
         // Add single file.
+        // TODO: selected: trueにすること
+        // TODO: 同名ファイルは追加できないようにすること
         case 'ADD_FILE': {
             const { requiredPath, isFolder } = action.payload;
-
-            console.log(`[FilesContext] ADD_FILE: ${requiredPath}`);
 
             // Make sure requiredPath is already exist.
             if (files.map((f) => f.getPath()).find((p) => p === requiredPath)) {
                 throw new Error(
-                    '[ADD_FILE] The required path is already exist'
+                    '[FilesContext][ADD_FILE] The required path is already exist'
                 );
             }
             const language = isFolder ? '' : getFileLanguage(requiredPath);
-            return [
-                ...files,
-                new File(
-                    requiredPath,
-                    '',
-                    language ? '' : language === undefined ? '' : language,
-                    isFolder
-                ),
-            ];
+
+            // Add new folder:
+            if (isFolder) {
+                console.log(`[FilesContext] ADD_FILE: folder ${requiredPath}`);
+                return [
+                    ...files,
+                    new File(
+                        requiredPath,
+                        '',
+                        language ? '' : language === undefined ? '' : language,
+                        isFolder
+                    ),
+                ];
+            }
+
+            console.log(`[FilesContext] ADD_FILE: ${requiredPath}`);
+
+            // Add new file:
+            const selectedFile = files.find((f) => f.isSelected());
+            const newFile = new File(
+                requiredPath,
+                '',
+                language ? '' : language === undefined ? '' : language,
+                isFolder
+            );
+            newFile.setOpening(true);
+            newFile.setSelected();
+
+            // Unselect selected file if exists.
+            if (selectedFile !== undefined) {
+                const clone: File = Object.assign(
+                    Object.create(Object.getPrototypeOf(selectedFile)),
+                    selectedFile
+                );
+                clone.unSelected();
+                return [
+                    ...files.filter(
+                        (f) => f.getPath() !== selectedFile.getPath()
+                    ),
+                    clone,
+                    newFile,
+                ];
+            } else {
+                return [...files, newFile];
+            }
         }
         // Delete single File
         case 'DELETE_FILE': {

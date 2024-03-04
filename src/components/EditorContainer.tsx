@@ -105,9 +105,7 @@ class EditorContainer extends React.Component<iProps, iState> {
         }
     }
 
-    // TODO: ファイルの内容更新のたびにaddExtraLibsで更新した方がいい気がする
-    //
-    // なんでかしらんが更新はできている...なぜ？
+    // DEBUG:
     componentDidUpdate(prevProp: iProps, prevState: iState) {
         console.log('[EditorContainer] did update');
 
@@ -217,6 +215,8 @@ class EditorContainer extends React.Component<iProps, iState> {
      *
      * */
     _addTypings(code: string, path: string) {
+        console.log(`[EditorContainer][_addTypings] ${path}`);
+
         this.addExtraLibs(code, path);
     }
 

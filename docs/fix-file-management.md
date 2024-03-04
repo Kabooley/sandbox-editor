@@ -2,9 +2,9 @@
 
 ## TODOs
 
--   [TODO: EditorContainer.tsx の addExtraLibs をファイルの更新のたびに実行しなくていいのか確認](#EditorContainer.tsx-のaddExtraLibsをファイルの更新のたびに実行しなくていいのか確認)
 -   [TODO: monaco-editor との連携機能が完全でないので完成させること](#monaco-editorとの連携機能が完全でないので完成させること)
-- [TODO: fileをリネームしたときにmodelを更新するようにする](#fileをリネームしたときにmodelを更新するようにする)
+-   [TODO: file をリネームしたときに model を更新するようにする](#fileをリネームしたときにmodelを更新するようにする)
+-   [Workspace 上のファイルクリックで selected を更新するようにすること](#Workspace上のファイルクリックでselectedを更新するようにすること)
 
 低優先度：
 
@@ -14,14 +14,14 @@
 
 本ブランチ外の問題：
 
--   `Explorer`の`Workspace`で新規ファイルを作成したらそのファイルを`selected: true`にすること。
--   `Explorer`で新規フォルダを作ったら workspace 上そのフォルダを選択している状態にすること。
+-   `Explorer`で新規フォルダを作ったら workspace 上そのフォルダを選択している状態にすること、且つ開いている状態にすること。
 -   `Explorer`で新規アイテムを追加するときインデントが一段階不足しているので修正。
 -   `Explorer`で新規アイテムをいずれかのフォルダに追加したらそのフォルダは開いている状態にすること。
 -   エディタ上に`App.tsx`が開かれているとして現在エディタは index.tsx を表示しているとする、Explorer の Workspace 上の App.tsx ファイルをクリックしてもエディタに App.tsx が表示してくれない(つまり、現状タブを選択することでしかファイルの表示切替ができない)
 
 ## Summary
 
+-   [エディタでファイル内容が更新された時の処理内容](#エディタでファイル内容が更新された時の処理内容)
 -   [現状の MonacoEditor の挙動のおさらい](#現状のMonacoEditorの挙動のおさらい)
 -   [snackexpo の monaco-editor の挙動のおさらい](#snackexpoのmonaco-editorの挙動のおさらい)
 
@@ -115,58 +115,44 @@ componentDidUpdate(prevProps: iProps, prevState: iState) {
 
 ```
 
-## EditorContainer.tsx の addExtraLibs をファイルの更新のたびに実行しなくていいのか確認
+## EditorContainer.tsx
 
-`EditorContainer.tsx`の addExtraLibs の役割は、files の内容の自身への登録である。
+#### エディタでファイル内容が更新された時の処理内容
 
-これは`TypingLibsContext.tsx`の行っている addExtraLibs とは別で実行している。
+ある file の`value`が更新されたら...
 
-（TypingLibsContext は依存関係を、EditorContainer では仮想ファイルを扱う。）
+-   FilesContext.tsx の CHANGE_FILE アクションがディスパッチされる --> files の該当ファイルの value が更新される
 
-addExtraLibs に登録してある仮想ファイルは、その仮想ファイルの更新のたびに同期的に自動的に更新内容を反映してくれるわけではないので、手動で更新させなくてはならないはず。
+-   EditorContainer.tsx の\_debouncedAddTypings()が呼び出される --> addExtraLibs が呼び出されてエディタで更新された file に該当する`IExtraLibs`が更新される
 
-なのでおそらく修正箇所は以下の通り：
+-   EditorContainer.tsx の\_debouncedBundle()が呼び出される --> 更新内容に応じてバンドルされる
 
--   `addExtraLibs`のコメントアウト部分を戻す
--   `componentDidMount`でファイルの更新を検査して更新アリのファイルを`addExtraLibs`へ送る。
+ということでエディタで編集されたファイルは自動的に monaco の addExtraLib()で登録される。
 
-```TypeSCript
-    /***
-     * Register path and code to monaco.language.[type|java]script addExtraLibs.
-     * Reset code if passed path has already been registered.
+```TypeScript
+// EditorContainer.tsx
+
+    /**
+     * Dispatches code to FilesContext to update file's value.
+     *
+     * @param {string} code - current model code onDidChangeModelContent.
+     * @param {string} path - File path of current model.
+     *
      * */
-    addExtraLibs(code: string, path: string) {
-        // console.log(`[EditorContainer] Add extra Library: ${path}`);
-
-        // const cachedLib = typingLibs.current.get(path);
-        // if (cachedLib) {
-        //     cachedLib.js.dispose();
-        //     cachedLib.ts.dispose();
-        // }
-        // Monaco Uri parsing contains a bug which escapes characters unwantedly.
-        // This causes package-names such as `@expo/vector-icons` to not work.
-        // https://github.com/Microsoft/monaco-editor/issues/1375
-        let uri = monaco.Uri.from({
-            scheme: 'file',
-            path: path,
-        }).toString();
-        if (path.includes('@')) {
-            uri = uri.replace('%40', '@');
-        }
-
-        const js = monaco.languages.typescript.javascriptDefaults.addExtraLib(
-            code,
-            uri
-        );
-        const ts = monaco.languages.typescript.typescriptDefaults.addExtraLib(
-            code,
-            uri
-        );
-        // typingLibs.current.set(path, { js, ts });
+    _onEditorContentChange(code: string, path: string) {
+        this.props.dispatchFiles({
+            type: filesContextTypes.Change,
+            payload: {
+                targetFilePath: path,
+                changeProp: {
+                    newValue: code,
+                },
+            },
+        });
+        this._debouncedBundle();
+        this._debouncedAddTypings(code, path);
     }
 ```
-
-TODO: ファイル更新のたびに extralibs はどうなっているのか確認すること
 
 ## monaco-editor との連携機能が完全でないので完成させること
 
@@ -234,6 +220,12 @@ snack expo では選択されたファイルがない場合は`NoSelectedFile`�
 
 https://github.com/expo/snack/blob/20797c84072296c62482f3ab1d29f054c089d3ba/website/src/client/components/EditorView.tsx#L605
 
+## Workspace 上のファイルクリックで selected を更新するようにすること
+
+既 opening ファイルをクリックしたらエディタ上で該当ファイルを表示するように selected を更新すること。
+
+ちなみに OpenEditor ではできる。
+
 ## 走り書き
 
 #### form
@@ -275,9 +267,7 @@ const Form: React.FC<{}> = () => {
 export default Form;
 ```
 
-## fileをリネームしたときにmodelを更新するようにする
-
-
+## file をリネームしたときに model を更新するようにする
 
 ## snackexpo の monaco-editor の挙動のおさらい
 
