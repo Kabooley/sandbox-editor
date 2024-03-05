@@ -230,9 +230,13 @@ function filesReducer(files: File[], action: iFilesActions) {
         case 'CHANGE_SELECTED_FILE': {
             const { selectedFilePath } = action.payload;
 
-            console.log(
-                `[FilesContext] CHANGE_SELECTED_FILE: To be ${selectedFilePath}`
+            const targetFile = files.find(
+                (f) => f.getPath() === selectedFilePath
             );
+
+            if (targetFile !== undefined && targetFile.isSelected()) {
+                return files;
+            }
 
             const updatedFiles = files.map((f) => {
                 const clone: File = Object.assign(

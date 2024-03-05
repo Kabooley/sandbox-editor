@@ -4,7 +4,6 @@
 
 -   [TODO: monaco-editor との連携機能が完全でないので完成させること](#monaco-editorとの連携機能が完全でないので完成させること)
 -   [TODO: file をリネームしたときに model を更新するようにする](#fileをリネームしたときにmodelを更新するようにする)
--   [Workspace 上のファイルクリックで selected を更新するようにすること](#Workspace上のファイルクリックでselectedを更新するようにすること)
 
 低優先度：
 
@@ -219,12 +218,6 @@ selected: true の File が一つもない場合に対応する。
 snack expo では選択されたファイルがない場合は`NoSelectedFile`というコンポーネントを MonacoEditor のコンポーネントの代わりに返すのを参考にした。
 
 https://github.com/expo/snack/blob/20797c84072296c62482f3ab1d29f054c089d3ba/website/src/client/components/EditorView.tsx#L605
-
-## Workspace 上のファイルクリックで selected を更新するようにすること
-
-既 opening ファイルをクリックしたらエディタ上で該当ファイルを表示するように selected を更新すること。
-
-ちなみに OpenEditor ではできる。
 
 ## 走り書き
 
