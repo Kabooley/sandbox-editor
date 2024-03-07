@@ -83,6 +83,8 @@ class EditorContainer extends React.Component<iProps, iState> {
         this._debouncedAddTypings = debounce(this._addTypings, delay);
         this._debouncedBundle = debounce(this._onBundle, delay);
         this.addExtraLibs = this.addExtraLibs.bind(this);
+        this._removeFileFromExtraLibs =
+            this._removeFileFromExtraLibs.bind(this);
     }
 
     componentDidMount() {
@@ -105,7 +107,6 @@ class EditorContainer extends React.Component<iProps, iState> {
         }
     }
 
-    // DEBUG:
     componentDidUpdate(prevProp: iProps, prevState: iState) {
         console.log('[EditorContainer] did update');
 
@@ -119,6 +120,17 @@ class EditorContainer extends React.Component<iProps, iState> {
             monaco.languages.typescript.typescriptDefaults.getExtraLibs();
 
         console.log(currentTSLibs);
+
+        if (prevProp.files.length > this.props.files.length) {
+            console.log('[EditorContainer] SOme file must have deleted.');
+            const prevFilesPath = prevProp.files.map((pf) => pf.getPath());
+            const currentFilesPath = this.props.files.map((pf) => pf.getPath());
+            // deletedFile: prevFilesPathには存在してcurrentFilesPathには存在しない要素駆らなる配列
+            const deletedFiles = prevFilesPath.filter(
+                (pf) => currentFilesPath.indexOf(pf) === -1
+            );
+            deletedFiles.forEach((df) => this._removeFileFromExtraLibs(df));
+        }
     }
 
     componentWillUnmount() {
@@ -272,6 +284,21 @@ class EditorContainer extends React.Component<iProps, iState> {
             uri
         );
         extraLibs.set(path, { js, ts });
+    }
+
+    /***
+     * Dispose monaco-editor IExtraLibs.
+     *
+     * */
+    _removeFileFromExtraLibs(path: string) {
+        console.log(`[EditorContainer][removeFileFromExtraLibs] ${path}`);
+
+        const cachedLib = extraLibs.get(path);
+        if (cachedLib) {
+            cachedLib.js.dispose();
+            cachedLib.ts.dispose();
+            extraLibs.delete(path);
+        }
     }
 
     render() {

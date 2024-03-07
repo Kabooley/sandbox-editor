@@ -1,24 +1,43 @@
-# Fix: file management
+# file management
+
+テキス・トエディタとして sandbox-editor が扱う仮想ファイルの管理について、
+
+ファイルの追加、削除、変更でそれぞれどういった処理がされるのか記録する。
+
+他。
 
 ## TODOs
 
--   [TODO: monaco-editor との連携機能が完全でないので完成させること](#monaco-editorとの連携機能が完全でないので完成させること)
--   [TODO: file をリネームしたときに model を更新するようにする](#fileをリネームしたときにmodelを更新するようにする)
+-   [TODO: ](#)
+-   [TODO: ](#)
+-   [TODO: ](#)
 
 低優先度：
 
--   [TODO:](#)
--   [TODO:](#)
--   [TODO:](#)
+-   [TODO: package.json が依存関係の更新で裏側で更新されても extraLibs の package.json は更新されていない件](#package.jsonが依存関係の更新で裏側で更新されてもextraLibsのpackage.jsonは更新されていない件)
+-   [TODO: FilesContext で File の利用をやめてそのままオブジェクトを利用する](#FilesContextでFileの利用をやめてそのままオブジェクトを利用する)
+-   [TODO: ReactJSX の色付け](#ReactJSXの色付け)
 
-本ブランチ外の問題：
+本ブランチ外の問題、未実装内容：
 
 -   `Explorer`で新規フォルダを作ったら workspace 上そのフォルダを選択している状態にすること、且つ開いている状態にすること。
 -   `Explorer`で新規アイテムを追加するときインデントが一段階不足しているので修正。
 -   `Explorer`で新規アイテムをいずれかのフォルダに追加したらそのフォルダは開いている状態にすること。
 -   エディタ上に`App.tsx`が開かれているとして現在エディタは index.tsx を表示しているとする、Explorer の Workspace 上の App.tsx ファイルをクリックしてもエディタに App.tsx が表示してくれない(つまり、現状タブを選択することでしかファイルの表示切替ができない)
 
+-   Explorer の未実装機能を実装する
+-   HEADER に preview のトグルボタン、Explorer のトグルボタン、アプリケーションのタイトル
+-   FOOTER の機能を最低限にする
+-   icon をそろえる
+-   TabsAndActions のアクションバー
+-   EditorSelectedNoFIle の状態の Editor 表示領域の表示内容
+-   ショートカット(タブ移動、)
+-
+
 ## Summary
+
+-   [参考](#参考)
+-   [files 管理](#files管理)
 
 -   [エディタでファイル内容が更新された時の処理内容](#エディタでファイル内容が更新された時の処理内容)
 -   [現状の MonacoEditor の挙動のおさらい](#現状のMonacoEditorの挙動のおさらい)
@@ -28,97 +47,61 @@
 
 snack expo の snack/website/src/client/components/Editor/MonacoEditor.tsx
 
-## TODO: 現状の MonacoEditor の挙動のおさらい
+#### snackexpo の monaco-editor の挙動のおさらい
 
-mount 時:
+mount 時：
 
--   `monaco.editor.create`でエディタインスタンスを生成する
--   `this._refEditor`でインスタンスを参照させておく
--   `this._disposable`に各イベントリスナを登録しておく
--   選択されているファイルがあれば`this._openFile(file)`
--   すべての仮想ファイルを`this._initializeFile(file)`
--   `resize`イベントハンドラをエディタインスタンスにつけておく
+-   すべてのファイルに対して `this._initializeFile()`を呼び出す
 
-```TypeScript
-// this._initializeFile()
-/***
- * 渡されたfileをmonaco-editorのmodelとして登録する。
- *
- * @param {File} file - model登録するFile.
- *
- * 引数のfileの`monaco.editor.ITextModel`を生成する。
- * modelが生成済の場合、modelの変更内容をmodelに反映させる。
- * monaco-editorはmodelを生成すれば内部的にmodelを保存してくれて、
- * あとでmonaco.editor.getModels()などから取り出すことができる。
- *
- *
- * */
+`this._initializeFile`:
 
+引数の File の model を生成する
 
-// _openFile()
-/***
- * 渡されたFileに該当するmodelを現在のeditorインスタンスにアタッチする（表示する）
- *
- * */
+model が生成済の場合、引数 file の変更内容を既存 model に反映させる。
+既存の model がなかった場合、新規の model を作成する。
 
-```
+monaco-editor は model を生成すれば内部的に model を保存してくれて、あとで monaco.editor.getModels()などから取り出すことができる。
 
 update 時：
 
-```TypeScript
-/***
- *
- *
- * */
-componentDidUpdate(prevProps: iProps, prevState: iState) {
-    const { files, path, onEditorContentChange, ...options } = this.props;
+-   選択されているファイルが変更されていたら、以前の選択されていたファイルの editorstate を保存する（`editorStates.set(prevProps.selectedFile, this.\_editor.saveViewState()）
 
-    // props.pathによって決定される、選択されていなくてはならないファイル
-    const selectedFile = files.find((f) => f.getPath() === path);
-    // const previousFile = prevProps.files.find(f => f.getPath() === prevProps.path);
+-   選択されているファイルが変更されたら、エディタの表示を切り替えるために this.\_openFile を呼出す
 
-    if (this._refEditor) {
-        console.log(`[MonacoEditor][did update] Selecting ${path}`);
+-   選択されているファイルが変更されていないけれど、内容が更新されている場合、this.\_editor.executeEdits()を呼び出して更新内容を model へ反映させる
 
-        this._refEditor.updateOptions(options);
+-   files に変更があれば（この条件分岐は意味がない気がする。React においてオブジェクト配列同士の比較は必ず一致しないだろ）全てのファイルに対して this.\_initializeFile()を呼び出す
 
-        // 現在editorに展開しているファイルのmodel
-        const model = this._refEditor.getModel();
-        const value = selectedFile?.getValue();
+-   独自 linter の結果を updateMarkers で反映させる
+-   依存関係の変更があれば依存関係を取得させる
+-   mode に変更があればモードを切り替える
+-   theme に変更ああればテーマを切り替える
 
-        // Change model and save view state if path is changed
-        //
-        // 多分ここの演算子は`!==`だったんじゃないかなぁ
-        if (path === prevProps.path) {
-            // Save the editor state for the previous file so we can restore it when it's re-opened
-            editorStates.set(
-                prevProps.path,
-                this._refEditor.saveViewState()
-            );
+ここからわかること：
 
-            selectedFile && this._openFile(selectedFile, true);
-        } else if (model && value !== model.getValue()) {
-            console.log(`[MonacoEditor][did update] excuteEdits ${path}`);
+model は file の内容更新に合わせて手動で更新しなくてはならない。
 
-            // @ts-ignore
-            this._refEditor.executeEdits(null, [
-                {
-                    range: model.getFullModelRange(),
-                    text: value!,
-                },
-            ]);
-        }
-    }
-}
+疑問：
 
+model の生成と更新を完全に行えばファイルの内容を addExtraLibs へ登録する必要がない？
 
-```
+## files 管理
 
-## EditorContainer.tsx
+-   [作成](#作成)
+-   [削除](#削除)
+-   [value 変更](#value変更)
+-   [path 変更](#path変更)
 
-#### エディタでファイル内容が更新された時の処理内容
+#### value 変更
 
-ある file の`value`が更新されたら...
+トリガー：
+
+-   [1. ユーザがエディタでファイルを編集した](#1.-ユーザがエディタでファイルを編集した)
+-   [2. `package.json`が依存関係取得結果反映のために内部的に編集された](#2.-`package.json`が依存関係取得結果反映のために内部的に編集された)
+
+##### 1. ユーザがエディタでファイルを編集した
+
+エディタ編集に因るファイル変更で処理されること：
 
 -   FilesContext.tsx の CHANGE_FILE アクションがディスパッチされる --> files の該当ファイルの value が更新される
 
@@ -153,15 +136,131 @@ componentDidUpdate(prevProps: iProps, prevState: iState) {
     }
 ```
 
-## monaco-editor との連携機能が完全でないので完成させること
+##### 2. `package.json`が依存関係取得結果反映のために内部的に編集された
 
-以下の３つ：
+sandbox-editor はマウント時、または直接仮想ファイルの`package.json`が編集されたとき依存関係取得処理が内部的に実施されて、その取得結果を自動的に仮想ファイルの`package.json`へ反映する。
 
--   model 切り替え
--   model を閉じる
--   model を開く
+そのためユーザによる編集によって変更されたのち、依存関係を取得し依存関係の取得が実際成功したか失敗したか、バージョンが直されたかするとユーザによる編集内容通りにファイルが変更されない場合もある。
 
-現状確認できるバグ：
+詳しくは依存関係管理に関する`docs/improve-dependency-management.md`を参照。
+
+#### 削除
+
+トリガー:
+
+-   Explorer/Workspace のファイルリストのアクションで削除ボタンが押された
+
+file 削除がトリガーされたら起こること：
+
+-   LayoutContext.tsx で削除の確認モーダルを表示する
+-   (確認が取れたら)FilesContext.tsx で context の files から該当ファイルを削除する
+-   EditorContainer.tsx で登録してある`monaco-editor`の`IExtraLibs`から該当ファイルを dispose する。
+
+files から該当ファイルを削除するだけではなく、monaco-eidtor の extralibs に登録してある情報を手動で削除しておかないと該当ファイルが extralibs に残り続けてしまう。
+
+```TypeScript
+// src/components/VSCodeExplorer/Workspace/index.tsx
+    const handleDeleteNode = (_explorer: iExplorer) => {
+        const isDeletionTargetFolder = _explorer.isFolder;
+        const descendantPaths: string[] = getAllDescendants(_explorer).map(
+            (d) => d.path
+        ) as string[];
+
+        const deletionTargetPathArr = _explorer.path.split('/');
+
+        const deletionTargetFiles: File[] = files.filter((f) => {
+            // In case deletion target is folder and f is also folder.
+            if (f.isFolder() && isDeletionTargetFolder) {
+                const comparandPathArr = f.getPath().split('/');
+                if (deletionTargetPathArr.length > comparandPathArr.length)
+                    return false;
+
+                let completeMatch: boolean = true;
+                deletionTargetPathArr.forEach((p, index) => {
+                    completeMatch =
+                        p === comparandPathArr[index] && completeMatch;
+                });
+
+                // return completeMatch ? false : true;
+                return completeMatch ? true : false;
+            }
+            // In case deletion target is a file, not any folder.
+            else if (!descendantPaths.length) {
+                return f.getPath() === _explorer.path;
+            }
+            // In case deletion target is folder but f is not folder.
+            return descendantPaths.find((d) => d === f.getPath())
+                ? true
+                : false;
+        });
+
+        const callback = () => {
+            // やってほしいこと
+            filesDispatch({
+                type: Types.DeleteMultiple,
+                payload: {
+                    requiredPaths: deletionTargetFiles.map((d) => d.getPath()),
+                },
+            });
+
+            // モーダルの解除
+            dispatchLayoutContextAction({
+                type: LayoutContextActionType.RemoveModal,
+                payload: {
+                    modalType: isDeletionTargetFolder
+                        ? ModalTypes.DeleteAFolder
+                        : ModalTypes.DeleteAFile,
+                },
+            });
+        };
+
+        dispatchLayoutContextAction({
+            type: LayoutContextActionType.ShowModal,
+            payload: {
+                modalType: isDeletionTargetFolder
+                    ? ModalTypes.DeleteAFolder
+                    : ModalTypes.DeleteAFile,
+                callback: callback,
+                fileName: _explorer.name,
+            },
+        });
+    };
+
+```
+
+```TypeScript
+// src/components/EditorContainer.tsx
+    componentDidUpdate(prevProp: iProps, prevState: iState) {
+
+        if (prevProp.files.length > this.props.files.length) {
+            console.log('[EditorContainer] SOme file must have deleted.');
+            const prevFilesPath = prevProp.files.map((pf) => pf.getPath());
+            const currentFilesPath = this.props.files.map((pf) => pf.getPath());
+            // deletedFile: prevFilesPathには存在してcurrentFilesPathには存在しない要素からなる配列
+            const deletedFiles = prevFilesPath.filter(
+                (pf) => currentFilesPath.indexOf(pf) === -1
+            );
+            deletedFiles.forEach((df) => this._removeFileFromExtraLibs(df));
+        }
+    }
+
+    /***
+     * Dispose monaco-editor IExtraLibs.
+     *
+     * */
+    _removeFileFromExtraLibs(path: string) {
+        console.log(`[EditorContainer][removeFileFromExtraLibs] ${path}`);
+
+        const cachedLib = extraLibs.get(path);
+        if (cachedLib) {
+            cachedLib.js.dispose();
+            cachedLib.ts.dispose();
+            extraLibs.delete(path);
+        }
+    }
+```
+
+## EditorContainer.tsx
 
 #### model を閉じる
 
@@ -260,42 +359,103 @@ const Form: React.FC<{}> = () => {
 export default Form;
 ```
 
-## file をリネームしたときに model を更新するようにする
+#### emoji search
 
-## snackexpo の monaco-editor の挙動のおさらい
+```TypeScript
 
-mount 時：
+import React, { useState } from "react";
 
--   すべてのファイルに対して `this._initializeFile()`を呼び出す
+const Header: React.FC<{}> = () => {
+  return (
+      <header className="component-header">
+        <img
+          src="//cdn.jsdelivr.net/emojione/assets/png/1f638.png"
+          width="32"
+          height="32"
+          alt=""
+        />
+        Emoji Search
+        <img
+          src="//cdn.jsdelivr.net/emojione/assets/png/1f63a.png"
+          width="32"
+          height="32"
+          alt=""
+        />
+      </header>
+  );
+}
 
-`this._initializeFile`:
+// -----
 
-引数の File の model を生成する
 
-model が生成済の場合、引数 file の変更内容を既存 model に反映させる。
-既存の model がなかった場合、新規の model を作成する。
+import React from "react";
+import PropTypes from "prop-types";
 
-monaco-editor は model を生成すれば内部的に model を保存してくれて、あとで monaco.editor.getModels()などから取り出すことができる。
+import "./SearchInput.css";
 
-update 時：
+interface iProps {
+  textChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}
 
--   選択されているファイルが変更されていたら、以前の選択されていたファイルの editorstate を保存する（`editorStates.set(prevProps.selectedFile, this.\_editor.saveViewState()）
+export default class SearchInput extends React.Component<iProps, {}> {
+  static propTypes = {
+    textChange: PropTypes.func
+  };
 
--   選択されているファイルが変更されたら、エディタの表示を切り替えるために this.\_openFile を呼出す
+  handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    this.props.textChange(e);
+  };
 
--   選択されているファイルが変更されていないけれど、内容が更新されている場合、this.\_editor.executeEdits()を呼び出して更新内容を model へ反映させる
+  render() {
+    return (
+      <div className="component-search-input">
+        <div>
+          <input onChange={this.handleChange} />
+        </div>
+      </div>
+    );
+  }
+}
 
--   files に変更があれば（この条件分岐は意味がない気がする。React においてオブジェクト配列同士の比較は必ず一致しないだろ）全てのファイルに対して this.\_initializeFile()を呼び出す
+// ----
 
--   独自 linter の結果を updateMarkers で反映させる
--   依存関係の変更があれば依存関係を取得させる
--   mode に変更があればモードを切り替える
--   theme に変更ああればテーマを切り替える
 
-ここからわかること：
+import React, { PureComponent } from "react";
+import PropTypes from "prop-types";
+import Clipboard from "clipboard";
 
-model は file の内容更新に合わせて手動で更新しなくてはならない。
+import EmojiResultRow from "./EmojiResultRow";
+import "./EmojiResults.css";
 
-疑問：
+interface iProps {
+  emojiData: {
+    title: string;
+    symbol: string;
+  }[];
+}
 
-model の生成と更新を完全に行えばファイルの内容を addExtraLibs へ登録する必要がない？
+export default class EmojiResults extends React.Component<iProps, {}> {
+
+  componentDidMount() {
+    this.clipboard = new Clipboard(".copy-to-clipboard");
+  }
+
+  componentWillUnmount() {
+    this.clipboard.destroy();
+  }
+
+  render() {
+    return (
+      <div className="component-emoji-results">
+        {this.props.emojiData.map(emojiData => (
+          <EmojiResultRow
+            key={emojiData.title}
+            symbol={emojiData.symbol}
+            title={emojiData.title}
+          />
+        ))}
+      </div>
+    );
+  }
+}
+```
