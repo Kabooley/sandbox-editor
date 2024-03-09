@@ -6,7 +6,8 @@
  *
  *
  * NOTE: 一時的にaddTypingsをクラスメソッドとする(TypingLibsContext.tsxのテストの為)
- * TODO: 仮想explorer上のファイルの中身が更新されたときに、addExtraLibsを適切に更新させる方法の追究。どうやって更新させるのが適切か、キャッシュできるのかなど
+ * TODO: 仮想explorer上のファイルの中身が更新されたときに、addExtraLibsを適切に更新させる方法の追究。どうやって更新させ
+るのが適切か、キャッシュできるのかなど
  * TODO: lodashの使用を避ける。debounceはclassコンポーネントでも使えるものを１から作れないか?
  * ***************************************/
 import React from 'react';
@@ -251,6 +252,7 @@ class EditorContainer extends React.Component<iProps, iState> {
         const js = monaco.languages.typescript.javascriptDefaults.addExtraLib(
             code,
             uri
+        );
         );
         const ts = monaco.languages.typescript.typescriptDefaults.addExtraLib(
             code,
