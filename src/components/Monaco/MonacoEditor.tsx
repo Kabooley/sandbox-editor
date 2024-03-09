@@ -125,7 +125,7 @@ monaco.languages.typescript.javascriptDefaults.setCompilerOptions(
  * */
 interface iProps extends Monaco.editor.IStandaloneEditorConstructionOptions {
     files: File[];
-    path: string;
+    selectedFile: File | undefined;
     onEditorContentChange: (code: string, path: string) => void;
     onDidChangeModel: (path: string, value: string) => void;
 }
@@ -150,8 +150,7 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
         super(props);
         this._handleEditFile = this._handleEditFile.bind(this);
         this._handleChangeModel = this._handleChangeModel.bind(this);
-        this._handleChangeMarkers =
-            this._handleChangeMarkers.bind(this);
+        this._handleChangeMarkers = this._handleChangeMarkers.bind(this);
     }
 
     /***
@@ -164,7 +163,8 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
      * TODO: this.props.pathが空文字列の場合もあるのでその対応
      * */
     componentDidMount() {
-        const { files, path, onEditorContentChange, ...options } = this.props;
+        const { files, selectedFile, onEditorContentChange, ...options } =
+            this.props;
 
         // Generate Editor instance.
         const editor = monaco.editor.create(
@@ -188,10 +188,10 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
         );
 
         // Set current path's model to editor.
-        const currentFile = files.find((f) => f.getPath() === path);
-        if (currentFile) {
+        // const currentFile = files.find((f) => f.getPath() === path);
+        if (selectedFile !== undefined) {
             // Set specified model to editor.
-            this._openFile(currentFile!, true);
+            this._openFile(selectedFile, true);
         }
 
         // Load all the files  so the editor can provide proper intelliscense
@@ -205,14 +205,12 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
     }
 
     /***
-     *
+     * filesの変更をmonaco-editorに反映させる。
      *
      * */
     componentDidUpdate(prevProps: iProps, prevState: iState) {
-        const { files, path, onEditorContentChange, ...options } = this.props;
-
-        const selectedFile = files.find((f) => f.getPath() === path);
-        // const previousFile = prevProps.files.find(f => f.getPath() === prevProps.path);
+        const { files, selectedFile, onEditorContentChange, ...options } =
+            this.props;
 
         if (this._refEditor) {
             this._refEditor.updateOptions(options);
@@ -220,16 +218,39 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
             const model = this._refEditor.getModel();
             const value = selectedFile?.getValue();
 
-            // Change model and save view state if path is changed
-            if (path === prevProps.path) {
+            // TODO: 要確認。アンマウント時にcomponentDidMountは呼ばれない?
+            if (selectedFile === undefined) {
+                console.log(`[MonacoEditor][did update] no selectedFile`);
+
                 // Save the editor state for the previous file so we can restore it when it's re-opened
-                editorStates.set(
-                    prevProps.path,
-                    this._refEditor.saveViewState()
-                );
+                if (prevProps.selectedFile !== undefined) {
+                    editorStates.set(
+                        prevProps.selectedFile.getPath(),
+                        this._refEditor.saveViewState()
+                    );
+                }
+            }
+            // Change model and save view state if path is changed
+            else if (
+                selectedFile !== undefined &&
+                selectedFile !== prevProps.selectedFile
+            ) {
+                console.log(`[MonacoEditor][did update] selectedFile ${prevProps.selectedFile?.getPath()} --> ${selectedFile.getPath()}`);
+
+                // Save the editor state for the previous file so we can restore it when it's re-opened
+                if (prevProps.selectedFile !== undefined) {
+                    editorStates.set(
+                        prevProps.selectedFile.getPath(),
+                        this._refEditor.saveViewState()
+                    );
+                }
 
                 selectedFile && this._openFile(selectedFile, true);
             } else if (model && value !== model.getValue()) {
+                console.log(
+                    `[MonacoEditor][did update] excuteEdits ${selectedFile?.getPath()}`
+                );
+
                 // @ts-ignore
                 this._refEditor.executeEdits(null, [
                     {
@@ -242,6 +263,9 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
     }
 
     componentWillUnmount() {
+
+        console.log('[MonacoEditor][will unmount]');
+
         this._refEditorNode.current &&
             this._refEditorNode.current.removeEventListener(
                 'resize',
@@ -251,6 +275,17 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
         monaco.editor.getModels().forEach((m) => m.dispose());
     }
 
+    /***
+     * 渡されたfileをmonaco-editorのmodelとして登録する。
+     *
+     * @param {File} file - model登録するFile.
+     *
+     * 引数のfileの`monaco.editor.ITextModel`を生成する。
+     * modelが生成済の場合、引数fileの変更内容を既存modelに反映させる。
+     * monaco-editorはmodelを生成すれば内部的にmodelを保存してくれて、
+     * あとでmonaco.editor.getModels()などから取り出すことができる。
+     *
+     * */
     _initializeFile = (file: File) => {
         const path = file.getPath();
         const language = file.getLanguage();
@@ -258,6 +293,9 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
 
         let model = getModelByPath(path);
 
+        // 引数のfileのmodelが既存modelである場合：
+        // fileの内容が外部で変更されている可能性があるため
+        // 編集内容をmodelへ反映させる
         if (model && !model.isDisposed()) {
             // @ts-ignore
             model.pushEditOperations(
@@ -269,11 +307,12 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
                     },
                 ]
             );
-        } else {
+        }
+        // 新規fileの場合：
+        else {
             model = monaco.editor.createModel(
                 value,
                 language,
-                // new monaco.Uri().with({ path })
                 monaco.Uri.from({ scheme: 'file', path })
             );
             model.updateOptions({
@@ -314,7 +353,10 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
             if (
                 value !==
                 this.props.files
-                    .find((f) => f.getPath() === this.props.path)
+                    .find(
+                        (f) =>
+                            f.getPath() === this.props.selectedFile?.getPath()
+                    )
                     ?.getValue()
             ) {
                 this.props.onEditorContentChange(value, path);
@@ -327,14 +369,22 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
         const { oldModelUrl, newModelUrl } = e;
 
         // DEBUG:
-        console.log('[MonacoEditor] _handleChangeModel ');
-        console.log(`old model url: ${oldModelUrl}`);
-        console.log(`new model url: ${newModelUrl}`);
+        console.log(
+            `[MonacoEditor][_handleChangeModel] old model url: ${oldModelUrl}`
+        );
+        console.log(
+            `[MonacoEditor][_handleChangeModel] new model url: ${newModelUrl}`
+        );
 
         if (oldModelUrl) {
             const model = monaco.editor
                 .getModels()
                 .find((m) => m.uri === oldModelUrl);
+
+            // DEBUG:
+            console.log(
+                `[MonacoEditor][_handleChangeModel] old model url: ${oldModelUrl}`
+            );
 
             model &&
                 this.props.onDidChangeModel(
@@ -354,9 +404,9 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
         const uri = model.uri;
         const markers = monaco.editor.getModelMarkers({ resource: uri });
 
-        // DEBUG:
-        console.log(`[MonacoEditor][_handleChangeMarkers] ${uri}`);
-        console.log(markers);
+        // // DEBUG:
+        // console.log(`[MonacoEditor][_handleChangeMarkers] ${uri}`);
+        // console.log(markers);
     }
 
     render() {

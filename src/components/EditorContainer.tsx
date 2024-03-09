@@ -16,7 +16,6 @@ import type { iOrderBundleResult } from '../worker/types';
 import type { File } from '../data/files';
 import type { iFilesActions } from '../context/FilesContext';
 import type { iBundledCodeActions } from '../context/BundleContext';
-// import type { iTypingLibsContext } from '../context/TypingLibsContext';
 import type { iOrderBundle } from '../worker/types';
 import { Types as bundledContextTypes } from '../context/BundleContext';
 import { Types as filesContextTypes } from '../context/FilesContext';
@@ -30,6 +29,7 @@ import debounce from 'lodash.debounce';
 import type * as lodash from 'lodash';
 import { generateTreeForBundler, getFilenameFromPath } from '../utils';
 import TabsAndActionsContainer from './TabsAndActions';
+import EditorNoSelectedFile from './NoSelectedEditor';
 
 interface iProps {
     files: File[];
@@ -57,8 +57,14 @@ const editorConstructOptions: monaco.editor.IStandaloneEditorConstructionOptions
 
 const delay = 500;
 
+// Store details about typings we have loaded.
+const extraLibs = new Map<
+    string,
+    { js: monaco.IDisposable; ts: monaco.IDisposable }
+>();
+
 class EditorContainer extends React.Component<iProps, iState> {
-    state = { currentFilePath: '' };
+    // state = { currentFilePath: '' };
     _bundleWorker: Worker | undefined;
     _debouncedAddTypings: lodash.DebouncedFunc<
         (code: string, path?: string) => void
@@ -78,22 +84,13 @@ class EditorContainer extends React.Component<iProps, iState> {
         this._debouncedAddTypings = debounce(this._addTypings, delay);
         this._debouncedBundle = debounce(this._onBundle, delay);
         this.addExtraLibs = this.addExtraLibs.bind(this);
+        this._removeFileFromExtraLibs =
+            this._removeFileFromExtraLibs.bind(this);
     }
 
     componentDidMount() {
-        // console.log('[EditorContainer] did mount');
+        const { files } = this.props;
 
-        const {
-            files
-        } = this.props;
-
-        const selectedFile = files.find((f) => f.isSelected());
-        selectedFile &&
-            this.setState({
-                currentFilePath: selectedFile.getPath(),
-            });
-
-        // Register all files to monaco addExtraLibs
         files.forEach((f) => {
             this.addExtraLibs(f.getValue(), f.getPath());
         });
@@ -112,24 +109,29 @@ class EditorContainer extends React.Component<iProps, iState> {
     }
 
     componentDidUpdate(prevProp: iProps, prevState: iState) {
-        // console.log('[EditorContainer][componentDidUpdate]');
+        console.log('[EditorContainer] did update');
 
-        const { files } = this.props;
-
-        const selectedFile = files.find((f) => f.isSelected());
-
-        // When selected file was changed
-        if (prevState.currentFilePath !== selectedFile?.getPath()) {
-            selectedFile &&
-                this.setState({
-                    currentFilePath: selectedFile.getPath(),
-                });
-        }
-
-        // console.log('[EditorContainer] did update. getExtraLibs:');
-        const currentLibs =
+        // monaco.languages.typescript.IExtraLibs:
+        // [path: string]: {
+        //      content: string; version: number;
+        // }
+        const currentJSLibs =
+            monaco.languages.typescript.javascriptDefaults.getExtraLibs();
+        const currentTSLibs =
             monaco.languages.typescript.typescriptDefaults.getExtraLibs();
-        // console.log(currentLibs);
+
+        console.log(currentTSLibs);
+
+        if (prevProp.files.length > this.props.files.length) {
+            console.log('[EditorContainer] SOme file must have deleted.');
+            const prevFilesPath = prevProp.files.map((pf) => pf.getPath());
+            const currentFilesPath = this.props.files.map((pf) => pf.getPath());
+            // deletedFile: prevFilesPathには存在してcurrentFilesPathには存在しない要素駆らなる配列
+            const deletedFiles = prevFilesPath.filter(
+                (pf) => currentFilesPath.indexOf(pf) === -1
+            );
+            deletedFiles.forEach((df) => this._removeFileFromExtraLibs(df));
+        }
     }
 
     componentWillUnmount() {
@@ -194,24 +196,49 @@ class EditorContainer extends React.Component<iProps, iState> {
             });
     }
 
-    _onDidChangeModel(oldModelPath: string, newModelPath: string) {}
+    /***
+     * @param {string} oldModelpath -
+     * @param {string} newModelpath -
+     * @param {string} oldModelpath -
+     *
+     * oldModelPathのfileのvalueを保存する
+     * NOTE: この処理要らないかも。
+     * */
+    _onDidChangeModel(oldModelPath: string, newModelPath: string) {
+        console.log(
+            `[EditorContainer][_onDidChangeModel] old model path: ${oldModelPath}`
+        );
+        // this.props.dispatchFiles({
+        //     type: filesContextTypes.Change,
+        //     payload: {
+        //         targetFilePath: oldModelPath,
+        //         changeValue:
+        //     }
+        // });
+    }
 
     _onChangeSelectedTab(selected: string) {
-        // console.log(`[EditorContainer] on change selected tab: ${selected}`);
         this.props.dispatchFiles({
             type: filesContextTypes.ChangeSelectedFile,
             payload: { selectedFilePath: selected },
         });
     }
 
+    /***
+     *
+     * */
     _addTypings(code: string, path: string) {
-        // console.log('[EditorContainer][_addTypings]');
+        console.log(`[EditorContainer][_addTypings] ${path}`);
 
-        // this.props.addTypings(code, path);
         this.addExtraLibs(code, path);
     }
 
-    // https://stackoverflow.com/a/1129270/22007575
+    /***
+     * this.props.filesから`selected: true`のファイルを取り出して
+     * `tabIndex`順に並び変えた配列にして返す。
+     *
+     * https://stackoverflow.com/a/1129270/22007575
+     * */
     getFilesOpening(files: File[]) {
         return files
             .filter((f) => f.isOpening())
@@ -231,13 +258,13 @@ class EditorContainer extends React.Component<iProps, iState> {
      * Reset code if passed path has already been registered.
      * */
     addExtraLibs(code: string, path: string) {
-        // console.log(`[EditorContainer] Add extra Library: ${path}`);
+        console.log(`[EditorContainer] Add extra Library: ${path}`);
 
-        // const cachedLib = typingLibs.current.get(path);
-        // if (cachedLib) {
-        //     cachedLib.js.dispose();
-        //     cachedLib.ts.dispose();
-        // }
+        const cachedLib = extraLibs.get(path);
+        if (cachedLib) {
+            cachedLib.js.dispose();
+            cachedLib.ts.dispose();
+        }
         // Monaco Uri parsing contains a bug which escapes characters unwantedly.
         // This causes package-names such as `@expo/vector-icons` to not work.
         // https://github.com/Microsoft/monaco-editor/issues/1375
@@ -253,32 +280,63 @@ class EditorContainer extends React.Component<iProps, iState> {
             code,
             uri
         );
-        );
         const ts = monaco.languages.typescript.typescriptDefaults.addExtraLib(
             code,
             uri
         );
-        // typingLibs.current.set(path, { js, ts });
+        extraLibs.set(path, { js, ts });
+    }
+
+    /***
+     * Dispose monaco-editor IExtraLibs.
+     *
+     * */
+    _removeFileFromExtraLibs(path: string) {
+        console.log(`[EditorContainer][removeFileFromExtraLibs] ${path}`);
+
+        const cachedLib = extraLibs.get(path);
+        if (cachedLib) {
+            cachedLib.js.dispose();
+            cachedLib.ts.dispose();
+            extraLibs.delete(path);
+        }
     }
 
     render() {
-        return (
-            <div className="editor-container">
-                <TabsAndActionsContainer
-                    path={this.state.currentFilePath}
-                    onChangeSelectedTab={this._onChangeSelectedTab}
-                    width={this.props.width}
-                    filesOpening={this.getFilesOpening(this.props.files)}
-                />
-                <MonacoEditor
-                    files={this.props.files}
-                    path={this.state.currentFilePath!}
-                    onEditorContentChange={this._onEditorContentChange}
-                    onDidChangeModel={this._onDidChangeModel}
-                    {...editorConstructOptions}
-                />
-            </div>
-        );
+        const selectedFilePath = this.props.files.find((f) => f.isSelected());
+        const filesOpening = this.getFilesOpening(this.props.files);
+
+        if (filesOpening.length) {
+            return (
+                <div className="editor-container">
+                    <TabsAndActionsContainer
+                        selectedFile={selectedFilePath}
+                        onChangeSelectedTab={this._onChangeSelectedTab}
+                        width={this.props.width}
+                        filesOpening={filesOpening}
+                    />
+                    <MonacoEditor
+                        files={this.props.files}
+                        selectedFile={selectedFilePath}
+                        onEditorContentChange={this._onEditorContentChange}
+                        onDidChangeModel={this._onDidChangeModel}
+                        {...editorConstructOptions}
+                    />
+                </div>
+            );
+        } else {
+            return (
+                <div className="editor-container">
+                    <TabsAndActionsContainer
+                        selectedFile={selectedFilePath}
+                        onChangeSelectedTab={this._onChangeSelectedTab}
+                        width={this.props.width}
+                        filesOpening={filesOpening}
+                    />
+                    <EditorNoSelectedFile />
+                </div>
+            );
+        }
     }
 }
 

@@ -1,824 +1,884 @@
-/************************************************************************************************
- * Fetches requested npm package module from jsdelvr
- *
- * - resolver呼出時の引数version番号は解決プロセス中に正確なバージョン番号`correctVersion`に更新されて返されます。
- *
- *
- * NOTE:
- * - importしたいモジュールが`window`グローバルスコープを必要としないかどうか予めチェックすること
- * - `import { preProcessFile } from 'typescript'`をすると`ts`って何？
- *    というエラーが発生するので結局すべてtypescriptをimportしている
- ************************************************************************************************/
+import { StyleSheet, css } from 'aphrodite';
+import debounce from 'lodash/debounce';
+import * as React from 'react';
+import { connect } from 'react-redux';
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 
-import { valid } from 'semver';
-import {
-    getFileTreeForModuleByVersion,
-    getFileForModuleByFilePath,
-    getNPMVersionForModuleByReference,
-    getNPMVersionsForModule,
-} from './fetcher';
-import { mapModuleNameToModule } from './edgeCases';
-import {
-    createStore,
-    set as setItem,
-    get as getItem,
-    del as deleteItem,
-} from 'idb-keyval';
-import {
-    iTreeMeta,
-    iConfig,
-    iRequestFetchLibs,
-    iResponseFetchLibs,
-} from './types';
-import ts from 'typescript';
+import AssetViewer from './AssetViewer';
+import { withDependencyManager } from './DependencyManager';
+import DeviceInstructionsModal, {
+  ConnectionMethod,
+} from './DeviceInstructions/DeviceInstructionsModal';
+import DevicePreview from './DevicePreview/DevicePreview';
+import DownloadOrbitDialog from './DownloadOrbitDialog';
+import { EditorProps } from './Editor/EditorProps';
+import EditorFooter from './EditorFooter';
+import EditorPanels from './EditorPanels';
+import EditorToolbar from './EditorToolbar';
+import { EditorViewProps, EditorModal } from './EditorViewProps';
+import EmbedCode from './EmbedCode';
+import FileList from './FileList/FileList';
+import ImportProductionModal from './Import/ImportProductionModal';
+import ImportRepoModal from './Import/ImportRepoModal';
+import KeyboardShortcuts, { Shortcuts } from './KeyboardShortcuts';
+import NoFileSelected from './NoFileSelected';
+import PageMetadata from './PageMetadata';
+import type { PanelType } from './Preferences/PreferencesProvider';
+import withPreferences, { PreferencesContextType } from './Preferences/withPreferences';
+import PreviousSaves from './PreviousSaves';
+import PublishManager, { PublishModals } from './Publish/PublishManager';
+import ContentShell from './Shell/ContentShell';
+import EditorShell from './Shell/EditorShell';
+import LayoutShell from './Shell/LayoutShell';
+import { c, s } from './ThemeProvider';
+import Banner from './shared/Banner';
+import KeybindingsManager from './shared/KeybindingsManager';
+import LazyLoad from './shared/LazyLoad';
+import ModalDialog from './shared/ModalDialog';
+import ProgressIndicator from './shared/ProgressIndicator';
+import constants from '../configs/constants';
+import { Viewer, SnackFiles, Annotation, SDKVersion } from '../types';
+import Analytics from '../utils/Analytics';
+import { isMobile } from '../utils/detectPlatform';
+import { isScript, isJson, isTest } from '../utils/fileUtilities';
+import lintFile from '../utils/lintFile';
+import prettierCode from '../utils/prettierCode';
 
-// --- types ---
+const EDITOR_LOAD_FALLBACK_TIMEOUT = 3000;
 
-// types for ts.preProcessFile() method.
-enum ModuleKind {
-    None = 0,
-    CommonJS = 1,
-    AMD = 2,
-    UMD = 3,
-    System = 4,
-    ES2015 = 5,
-    ES2020 = 6,
-    ES2022 = 7,
-    ESNext = 99,
-    Node16 = 100,
-    NodeNext = 199,
-}
-type ResolutionMode = ModuleKind.ESNext | ModuleKind.CommonJS | undefined;
-interface TextRange {
-    pos: number;
-    end: number;
-}
-interface FileReference extends TextRange {
-    fileName: string;
-    resolutionMode?: ResolutionMode;
-}
-interface PreProcessedFileInfo {
-    referencedFiles: FileReference[];
-    typeReferenceDirectives: FileReference[];
-    libReferenceDirectives: FileReference[];
-    importedFiles: FileReference[];
-    ambientExternalModules?: string[];
-    isLibFile: boolean;
-}
+export type Props = PreferencesContextType &
+  EditorViewProps & {
+    viewer?: Viewer;
+  };
 
-type iTree =
-    | iTreeMeta
-    | { error: Error; message: string }
-    | {
-          error: {
-              version: string | null;
-          };
-          message: string;
-      };
+type ModalName = PublishModals | EditorModal;
+type BannerName =
+  | 'connected'
+  | 'disconnected'
+  | 'reconnect'
+  | 'autosave-disabled'
+  | 'sdk-upgraded'
+  | 'sdk-downgraded'
+  | 'embed-unavailable'
+  | 'slow-connection';
 
-// Type of `.d.ts` file from `iTreeMeta.files`.
-interface iDTSFile {
-    moduleName: string;
-    moduleVersion: string;
-    vfsPath: string;
-    path: string;
-}
+type LintedFile = {
+  code: string;
+  annotations: Annotation[];
+};
 
-// --- IndexedDB interfaces ---
+type LintedFiles = {
+  [path: string]: LintedFile;
+};
 
-/***
- * 以下のように依存関係名称と`依存関係@バージョン`のマップデータを保存する
- * e.g. {key: "react", value: "react@18.2.0"}
- * e.g. {key: "semver", value: "semver@7.5.4"}
- * */
-type iStoreModuleNameVersionValue = string;
-const storeModuleNameVersion = createStore(
-    'sandbox-editor--modulename-n-version--cache-v1-db',
-    'sandbox-editor--modulename-n-version--cache-v1-store'
-);
+type State = {
+  currentModal: ModalName | null;
+  currentBanner: BannerName | null;
+  loadedEditor: 'monaco' | 'simple' | null;
+  isMarkdownPreview: boolean;
+  deviceLogsShown: boolean;
+  lintedFiles: LintedFiles;
+  lintAnnotations: Annotation[];
+  shouldPreventRedirectWarning: boolean;
+  isPanelResizing: boolean;
+};
 
-/**
- * 以下のように`依存関係@バージョン`と、その依存関係に必要な依存関係一覧の組み合わせのMapデータを保存する
- * いわば依存関係の依存関係
- * key: react-dom@18.2.0"
- * value: Map(20) {'/node_modules/@types/react-dom/package.json' => '{\n  "name": "...}
- * */
-type iStoreSetOfDependencyValue = Map<string, string>;
-const storeSetOfDependency = createStore(
-    'sandbox-editor--set-of-dependency--cachde-v1-db',
-    'sandbox-editor--set-of-dependency--cachde-v1-store'
-);
+const BANNER_TIMEOUT_SHORT = 1500;
+const BANNER_TIMEOUT_LONG = 5000;
 
-// --- Methods ---
+class EditorView extends React.Component<Props, State> {
+  state: State = {
+    currentModal: null,
+    currentBanner: null,
+    loadedEditor: null,
+    isMarkdownPreview: true,
+    deviceLogsShown: false,
+    lintedFiles: {},
+    lintAnnotations: [],
+    shouldPreventRedirectWarning: false,
+    isPanelResizing: false,
+  };
 
-/***
- * Fetch to get npm module package file lists.
- * fetch(`https://data.jsdelivr.com/v1/package/npm/${moduleName}@${version}/flat`).
- *
- * @param {iConfig} config -
- * @param {string} moduleName - Name of npm module package.
- * @param {string} version - Version of npm module package.
- * @returns {Promise<{moduleName: string; version: string; default: string; files: Array<{name: string;}>;} | {error: Error; message: string;}>} - Object that contains file list of package or fetching error.
- *
- * This will fix version when `version` is incorrect if possible.
- * `response` contains its modules's correct version.
- * */
-const getFileTreeForModule = async (
-    config: iConfig,
-    moduleName: string,
-    version: string
-) => {
-    let _version = version;
-    if (!_version.length) _version = 'latest';
+  static getDerivedStateFromProps(props: Props, state: State) {
+    const { selectedFile, files } = props;
+    let newState: any = null;
 
-    // Update version if passed version is like "18.0".
-    if (version.split('.').length < 2) {
-        // The jsdelivr API needs a _version_ not a tag. So, we need to switch out
-        // the tag to the version via an API request.
-        const response = await getNPMVersionForModuleByReference(
-            moduleName,
-            _version
-        );
-        if (response instanceof Error) {
-            return {
-                error: response,
-                message: `Could not go from a tag to version on npm for ${moduleName} - possible typo?`,
-            };
-        }
-
-        const neededVersion = response.version;
-        if (!neededVersion) {
-            const versions = await getNPMVersionsForModule(moduleName);
-            if (versions instanceof Error) {
-                return {
-                    error: response,
-                    message: `Could not get versions on npm for ${moduleName} - possible typo?`,
-                };
-            }
-
-            const tags = Object.entries(versions.tags).join(', ');
-            return {
-                error: new Error('Could not find tag for module'),
-                message: `Could not find a tag for ${moduleName} called ${_version}. Did find ${tags}`,
-            };
-        }
-
-        _version = neededVersion;
+    // When an empty markdown file is opened, switch to edit mode
+    if (state.isMarkdownPreview && selectedFile.endsWith('.md') && !files[selectedFile]?.contents) {
+      newState = newState || {};
+      newState.isMarkdownPreview = false;
     }
 
-    const response = await getFileTreeForModuleByVersion(
-        config,
-        moduleName,
-        _version
-    );
-    if (response instanceof Error) {
-        return {
-            error: response,
-            message: `${response.message} Please make sure module name or version is correct.`,
+    return newState;
+  }
+
+  componentDidMount() {
+    window.addEventListener('beforeunload', this._handleUnload);
+
+    // Load prettier early so that clicking on the prettier button doesn't take too long
+    // Try to preload plugins required for the current entry first
+    // If entry isn't present, load plugins for markdown, which will load several of them
+    setTimeout(() => {
+      this._lint(this.props.selectedFile, this.props.files, this.props.sdkVersion);
+      prettierCode(isScript(this.props.selectedFile) ? this.props.selectedFile : 'index.md', '');
+    }, 5000);
+
+    if (this.props.upgradedFromSDKVersion) {
+      if (this.props.upgradedFromSDKVersion > this.props.sdkVersion) {
+        this._showBanner('sdk-downgraded');
+      } else {
+        this._showBanner('sdk-upgraded');
+      }
+    }
+  }
+
+  componentDidUpdate(prevProps: Props) {
+    if (this.props.files !== prevProps.files) {
+      this._lint(this.props.selectedFile, this.props.files, this.props.sdkVersion);
+    }
+
+    if (prevProps.connectedDevices !== this.props.connectedDevices) {
+      if (prevProps.connectedDevices.length < this.props.connectedDevices.length) {
+        Analytics.getInstance().logEvent('CONNECTED_DEVICE');
+
+        if (prevProps.connectedDevices.length === 0) {
+          Analytics.getInstance().startTimer('deviceConnected');
+        }
+
+        this._showBanner('connected', BANNER_TIMEOUT_SHORT);
+      }
+
+      if (prevProps.connectedDevices.length > this.props.connectedDevices.length) {
+        if (this.props.connectedDevices.length === 0) {
+          Analytics.getInstance().logEvent('DISCONNECTED_DEVICE', {}, 'deviceConnected');
+        } else {
+          Analytics.getInstance().logEvent('DISCONNECTED_DEVICE');
+        }
+
+        this._showBanner('disconnected', BANNER_TIMEOUT_SHORT);
+      }
+    }
+
+    if (prevProps.sdkVersion !== this.props.sdkVersion && this.props.connectedDevices.length) {
+      this._showBanner('reconnect');
+    }
+
+    if (prevProps.autosaveEnabled !== this.props.autosaveEnabled && !this.props.autosaveEnabled) {
+      this._showBanner('autosave-disabled');
+    }
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener('beforeunload', this._handleUnload);
+  }
+
+  _handleUnload = (e: any) => {
+    const isUnsaved =
+      this.props.saveStatus === 'edited' ||
+      this.props.saveStatus === 'publishing' ||
+      this.props.saveStatus === 'saving-draft';
+
+    if (!isUnsaved || this.state.shouldPreventRedirectWarning) {
+      this._allowRedirectWarning();
+      return;
+    }
+
+    const message = 'You have unsaved changes. Are you sure you want to leave this page?';
+    e.returnValue = message;
+    return message;
+  };
+
+  _lintNotDebounced = async (_selectedFile: string, files: SnackFiles, _sdkVersion: SDKVersion) => {
+    const { lintedFiles } = this.state;
+    let newLintedFiles: LintedFiles | null = null;
+
+    // Lint other files if they have changed
+    for (const path in files) {
+      const file = files[path];
+      if (!isTest(path) && file.type === 'CODE' && file.contents !== lintedFiles[path]?.code) {
+        const annotations = await lintFile(path, files);
+        newLintedFiles = newLintedFiles ?? { ...lintedFiles };
+        newLintedFiles[path] = {
+          code: file.contents,
+          annotations,
         };
+      }
     }
 
-    // // DEBUG:
-    // console.log('[fetchLibs.worker] getFileTreeForModule response:');
-    // console.log(response);
+    // Remove linter-results for removed files
+    for (const path in lintedFiles) {
+      if (!files[path] || files[path].type !== 'CODE') {
+        newLintedFiles = newLintedFiles ?? { ...lintedFiles };
+        delete newLintedFiles[path];
+      }
+    }
 
-    return response;
-};
+    // Update state
+    if (newLintedFiles) {
+      this.setState(() => ({
+        lintedFiles: newLintedFiles as LintedFiles,
+        lintAnnotations: Object.values(newLintedFiles as LintedFiles).flatMap(
+          ({ annotations }) => annotations
+        ),
+      }));
+    }
+  };
 
-// --- helpers ---
+  _lint = debounce(this._lintNotDebounced, 500);
 
-/***
- *  0:  exact match
- *  -1: `moduleName`@`version` < `compareWith`
- *  1:  `moduleName`@`version` > `compareWith`
- * */
-const compareTwoModuleNameAndVersion = (
-    moduleName: string,
-    version: string,
-    compareWith = ''
-) =>
-    compareWith
-        .toLocaleLowerCase()
-        .localeCompare((moduleName + '@' + version).toLocaleLowerCase());
+  _prettier = async () => {
+    const { selectedFile, files } = this.props;
+    const file = files[selectedFile];
 
-/***
- * Check if parameter string includes any whitespaces.
- * */
-const isIncludingWhiteSpaces = (str: string) => {
-    return /\s/g.test(str);
-};
+    if (file?.type === 'CODE') {
+      let code: string;
+      if (isJson(selectedFile)) {
+        code = JSON.stringify(JSON.parse(file.contents), null, 2);
+      } else {
+        code = await prettierCode(selectedFile, file.contents);
+      }
+      if (code !== file.contents) {
+        this.props.updateFiles(() => ({
+          [selectedFile]: {
+            type: 'CODE',
+            contents: code,
+          },
+        }));
+      }
+    }
+  };
 
-/***
- * Exclude invalid module name.
- *
- * https://docs.npmjs.com/package-name-guidelines
- * https://github.com/npm/validate-npm-package-name#naming-rules
- *
- * Module name begins with '.', '_' is not allowed.
- * Module name includes any whitespace is not allowed.
- * package name should not contain any of the following characters: ~)('!*
- * */
-const excludeInvalidModuleName = (moduleName: string) => {
-    let result = true;
-    result = !moduleName.startsWith('.') && result;
-    result = !moduleName.startsWith('_') && result;
-    result = !isIncludingWhiteSpaces(moduleName) && result;
-    // TODO: use regext to exlude name including invalid character
-    return result;
-};
+  _showBanner = (name: BannerName, duration: number = BANNER_TIMEOUT_LONG) => {
+    this.setState({ currentBanner: name });
 
-/***
- * Exclude invalid npm package version string.
- *
- * @param {string} version - Version string that will be checked by semver.valid().
- * @returns {string|null} - Returns result of semver.valid(version).
- *
- * https://semver.org/
- * https://www.npmjs.com/package/semver
- * https://semver.org/#backusnaur-form-grammar-for-valid-semver-versions
- *
- * NOTE: semver does not allows `latest` as correct versioning.
- * 厳密なバージョン指定でないと受け付けない。つまり、`X.Y.Z`
- * */
-const validateModuleVersion = (version: string) => {
-    return valid(version);
-};
+    setTimeout(() => {
+      this.setState((state) => (state.currentBanner === name ? { currentBanner: null } : null));
+    }, duration);
+  };
 
-/**
- * Retrieve referenced files which has `.d.ts` extension from tree object.
- *
- * @param {iTreeMeta} tree - Tree object which was fetched by its module name and contains files which are referenced from the module.
- * @param {string} vfsPrefix - Virtual file path for `.d.ts` file.
- * @returns {Array<iDTSFile>}
- * */
-const getDTSFilesFromTree = (tree: iTreeMeta, vfsPrefix: string) => {
-    const dtsFiles: iDTSFile[] = [];
+  _handleHideModal = () => {
+    switch (this.state.currentModal) {
+      case 'edit-info':
+        Analytics.getInstance().logEvent('DISMISSED_AUTH_MODAL', {
+          currentModal: this.state.currentModal,
+        });
+        break;
+    }
+    this.setState({ currentModal: null });
+  };
 
-    for (const file of tree.files) {
-        if (file.name.endsWith('.d.ts')) {
-            dtsFiles.push({
-                moduleName: tree.moduleName,
-                moduleVersion: tree.version,
-                vfsPath: `${vfsPrefix}${file.name}`,
-                path: file.name,
-            } as iDTSFile);
+  _handleShowModal = (name: ModalName) => {
+    switch (name) {
+      case 'device-instructions':
+        Analytics.getInstance().logEvent('REQUESTED_QR_CODE');
+        break;
+      case 'embed':
+        if (!this.props.id) {
+          this._showBanner('embed-unavailable', BANNER_TIMEOUT_LONG);
+          return;
         }
+        Analytics.getInstance().logEvent('REQUESTED_EMBED');
+        break;
     }
+    this.setState({ currentModal: name });
+  };
 
-    return dtsFiles;
-};
+  _handleShowShortcuts = () => {
+    this._handleShowModal('shortcuts');
+  };
 
-// `react-dom/client`を`react-dom__client`にしてくれたりする
-// Taken from dts-gen: https://github.com/microsoft/dts-gen/blob/master/lib/names.ts
-function getDTName(s: string) {
-    if (s.indexOf('@') === 0 && s.indexOf('/') !== -1) {
-        // we have a scoped module, e.g. @bla/foo
-        // which should be converted to   bla__foo
-        s = s.substr(1).replace('/', '__');
-    }
-    return s;
-}
+  _handleRemoveFile = (path: string) => {
+    this._EditorComponent?.removePath(path);
+  };
 
-/***
- * Parse passed code and returns list of imported module name and version set.
- *
- * @param {import("typescript")} ts - TypeScript library.
- * @param {string} code - Code that will be parsed what modules are imported in this code.
- * @return {Array<{module: string, version: string}>} - `code`から読み取ったimportモジュールのうち、
- * `.d.ts`拡張子ファイルでないもの、TypeScriptライブラリでないものをリスト化して返す。
- * */
-const retrieveImportedModulesByParse = (
-    ts: typeof import('typescript'),
-    code: string
-) => {
-    // ts: typescript
-    const meta = ts.preProcessFile(code);
-    // const meta = ts.preProcessFile(code) as PreProcessedFileInfo;
-    // Ensure we don't try download TypeScript lib references
-    // @ts-ignore - private but likely to never change
-    const libMap: Map<string, string> = ts.libMap || new Map();
+  _handleRenameFile = (oldPath: string, newPath: string) => {
+    this._EditorComponent?.renamePath(oldPath, newPath);
+  };
 
-    // meta.referencedFiles, meta.importedFiles, meta.libReferenceDirectives
-    // をいったん一つの配列にまとめて、
-    //`.d.ts`拡張子ファイルでないもの、かつすでに取得済でないモジュールを抽出する
-    const references = meta.referencedFiles
-        .concat(meta.importedFiles)
-        .concat(meta.libReferenceDirectives)
-        .filter((f) => !f.fileName.endsWith('.d.ts'))
-        .filter((d) => !libMap.has(d.fileName));
+  _EditorComponent: any;
 
-    return references.map((r) => {
-        let version = undefined;
-        if (!r.fileName.startsWith('.')) {
-            version = 'latest';
-            const line = code.slice(r.end).split('\n')[0]!;
-            if (line.includes('// types:'))
-                version = line.split('// types: ')[1]!.trim();
-        }
-
-        return {
-            module: r.fileName,
-            version,
-        };
+  _showErrorPanel = () =>
+    this.props.setPreferences({
+      panelType: 'errors',
     });
-};
 
-// --- Main ---
-
-/***
- * Agent resolves module's type definition files.
- *
- * @param {iConfig} config - Config for this agent.
- * @param {string} moduleName - Module name to be resolved.
- * @param {string} version - Module's version to be resolved.
- * @returns {Promise<{vfs: Map<string, string>; moduleName: string; version: string;}>} - Resolved type definition files for the module and its code. Version number may have been updated since the time of the call.
- *
- * */
-const fetchTypeAgent = (
-    config: iConfig,
-    moduleName: string,
-    version: string
-) => {
-    // const moduleMap = new Map<string, ModuleMeta>();
-    const fsMap = new Map<string, string>();
-    // moduleNameのモジュールの正確なバージョンを記憶する
-    let correctVersion = '';
-
-    let downloading = 0;
-    let downloaded = 0;
-
-    // DEBUG:
-    const fetchingModuleTitle = `${moduleName}@${version}`;
-
-    const resolver = async (
-        _moduleName: string,
-        version: string,
-        depth: number
-    ) => {
-        // // DEBUG:
-        // console.log(`[fetching ${fetchingModuleTitle}] depth: ${depth}`);
-
-        // Exclude invalid module name and invalid version.
-        if (!excludeInvalidModuleName(_moduleName)) {
-            if (depth > 0) return;
-            throw new Error(
-                'Error: Invalid module name. You might input incorrect module name.'
-            );
-        }
-        if (version !== 'latest' && !validateModuleVersion(version)) {
-            if (depth > 0) return;
-            throw new Error(
-                'Error: Invalid semantic version. You might input incorrect module version.'
-            );
-        }
-
-        // Converts some of the known global imports to node so that we grab the right info.
-        // And strip module filepath e.g. react-dom/client --> react-dom
-        const moduleName = mapModuleNameToModule(_moduleName);
-
-        // // DEBUG:
-        // console.log(
-        //   `[fetching ${fetchingModuleTitle}] depsToGet: ${_moduleName}@${version}`
-        // );
-
-        // Return if it's already downloaded.
-        const isAlreadyExists = await getItem(
-            moduleName,
-            storeModuleNameVersion
-        );
-        if (isAlreadyExists) {
-            // console.log(
-            //   `[fetching ${fetchingModuleTitle}] Module ${moduleName} is already downloaded.`
-            // );
-            return;
-        }
-
-        // Find where the .d.ts file at.
-        // moduleMap.set(moduleName, { state: "loading" });
-        await setItem(
-            moduleName,
-            `${moduleName}@${version}`,
-            storeModuleNameVersion
-        );
-
-        const _tree: iTree = await getFileTreeForModule(
-            config,
-            moduleName,
-            version
-        );
-        if (_tree.hasOwnProperty('error')) {
-            config.logger?.error(
-                (_tree as { error: Error; message: string }).message
-            );
-            throw (_tree as { error: Error; message: string }).error;
-        }
-        const tree = _tree as iTreeMeta;
-
-        // Update requested module's version.
-        if (depth === 0) {
-            correctVersion = tree.version;
-        }
-
-        const hasDtsFile = tree.files.find((f) => f.name.endsWith('.d.ts'));
-
-        // // DEBUG:
-        // console.log(`[fetching ${fetchingModuleTitle}] hasDtsFile:`);
-        // console.log(hasDtsFile);
-
-        let DTSFiles1: iDTSFile[] = [];
-        let DTSFiles2: iDTSFile[] = [];
-
-        if (hasDtsFile !== undefined) {
-            // Retrieve .d.ts file directly.
-            DTSFiles1 = getDTSFilesFromTree(
-                tree,
-                `/node_modules/${tree.moduleName}`
-            );
-        } else {
-            // Look for DT file instead.
-            const _dtTree: iTree = await getFileTreeForModule(
-                config,
-                `@types/${getDTName(moduleName)}`,
-                version
-            );
-            if (_dtTree.hasOwnProperty('error')) {
-                config.logger?.error(
-                    (_dtTree as { error: Error; message: string }).message
-                );
-                throw (_dtTree as { error: Error; message: string }).error;
-            }
-            const dtTree = _dtTree as iTreeMeta;
-
-            // // DEBUG:
-            // console.log(`[fetching ${fetchingModuleTitle}] dtTreesOnly:`);
-            // console.log(dtTree);
-
-            DTSFiles2 = getDTSFilesFromTree(
-                dtTree,
-                `/node_modules/@types/${getDTName(moduleName).replace(
-                    'types__',
-                    ''
-                )}`
-            );
-
-            // // DEBUG:
-            // console.log(`[fetching ${fetchingModuleTitle}] dtsFilesFromDT:`);
-            // console.log(DTSFiles2);
-        }
-
-        const downloadListOfDTSFiles = DTSFiles1.concat(DTSFiles2);
-        downloading = downloadListOfDTSFiles.length;
-
-        // // DEBUG:
-        // console.log(`[fetching ${fetchingModuleTitle}] allDTSFiles:`);
-        // console.log(downloadListOfDTSFiles);
-
-        // downloadListOfDTSFilesの長さがゼロの時はそのまま戻るので特に
-
-        // Get package.json for module.
-        await resolverOfPackageJson(tree);
-
-        // Download all .d.ts files
-        await Promise.all(
-            downloadListOfDTSFiles.map(async (dtsFile) => {
-                const dtsFileCode = await getFileForModuleByFilePath(
-                    config,
-                    dtsFile.moduleName,
-                    dtsFile.moduleVersion,
-                    dtsFile.path
-                );
-                downloaded++;
-                if (dtsFileCode instanceof Error) {
-                    config.logger?.error(
-                        `Had an issue getting ${dtsFile.path} for ${dtsFile.moduleName}`
-                    );
-                } else {
-                    fsMap.set(dtsFile.vfsPath, dtsFileCode);
-                    // NOTE: ファイルを一つダウンロードする度に何かしたい場合このタイミング
-                    // 例えば進行状況とかログに出したいとか。
-
-                    // Retrieve all imported module names
-                    const modules = retrieveImportedModulesByParse(
-                        config.typescript,
-                        dtsFileCode
-                    );
-                    // Recurse through deps
-
-                    await Promise.all(
-                        modules.map((m) => {
-                            const _version: string =
-                                m.version === undefined ? 'latest' : m.version;
-                            return resolver(m.module, _version, depth + 1);
-                        })
-                    );
-                }
-            })
-        );
-    };
-
-    // Get package.json for the dependency.
-    const resolverOfPackageJson = async (tree: iTreeMeta) => {
-        let prefix = `/node_modules/${tree.moduleName}`;
-        if (tree.files.find((f) => f.name.endsWith('.d.ts')) === undefined) {
-            prefix = `/node_modules/@types/${getDTName(tree.moduleName).replace(
-                'types__',
-                ''
-            )}`;
-        }
-        const path = prefix + '/package.json';
-        const pkgJSON = await getFileForModuleByFilePath(
-            config,
-            tree.moduleName,
-            tree.version,
-            '/package.json'
-        );
-
-        if (typeof pkgJSON == 'string') {
-            fsMap.set(path, pkgJSON);
-            // NOTE: ファイルを一つダウンロードする度に何かしたい場合このタイミング
-            // 例えば進行状況とかログに出したいとか。
-        } else {
-            config.logger?.error(
-                `Could not download package.json for ${tree.moduleName}`
-            );
-        }
-    };
-
-    return resolver(moduleName, version, 0).then(() => {
-        // TODO: download数がゼロだった場合の処理を決める
-
-        return {
-            vfs: fsMap,
-            moduleName: moduleName,
-            // version: version,
-            version: correctVersion,
-        };
+  _showDeviceLogs = () =>
+    this.props.setPreferences({
+      panelType: 'logs',
     });
-};
 
-// self.addEventListener('message', (e: MessageEvent<iRequestFetchLibs>) => {
-self.onmessage = (e: MessageEvent<iRequestFetchLibs>) => {
-    const { payload, order } = e.data;
-    if (order !== 'RESOLVE_DEPENDENCY') return;
-    const { moduleName, version } = payload;
+  _togglePanels = (panelType?: PanelType) =>
+    this.props.setPreferences({
+      panelsShown: !this.props.preferences.panelsShown,
+      panelType:
+        panelType && !this.props.preferences.panelsShown
+          ? panelType
+          : this.props.preferences.panelType,
+    });
 
-    // TODO: configは必要か検討
-    const config = {
-        typescript: ts,
-        logger: console,
-    };
+  _toggleFileTree = () =>
+    this.props.setPreferences({
+      fileTreeShown: !this.props.preferences.fileTreeShown,
+    });
 
-    // DEBUG:
-    console.log(`[fetchLibs.worker] Got request: ${moduleName}@${version}`);
+  _changeConnectionMethod = (deviceConnectionMethod: ConnectionMethod) =>
+    this.props.setPreferences({ deviceConnectionMethod });
 
-    getItem<iStoreModuleNameVersionValue>(
-        moduleName,
-        storeModuleNameVersion
-    ).then((existItem) => {
-        // もしもmoduleName@versionがキャッシュ済であるならば
-        if (
-            existItem !== undefined &&
-            !compareTwoModuleNameAndVersion(moduleName, version, existItem)
-        ) {
-            console.log(
-                `[fetchDependencies] return cached data of ${moduleName}@${version}`
-            );
+  _toggleEditorMode = () => {
+    const editorMode = this.props.preferences.editorMode === 'vim' ? 'normal' : 'vim';
+    this.props.setPreferences({ editorMode });
+    localStorage.setItem('editorMode', editorMode);
+  };
 
-            // キャッシュ済のデータを返す
-            return getItem<iStoreSetOfDependencyValue>(
-                moduleName + '@' + version,
-                storeSetOfDependency
-            ).then((vfs) => {
-                self.postMessage({
-                    order: 'RESOLVE_DEPENDENCY',
-                    payload: {
-                        moduleName: moduleName,
-                        version: version,
-                        depsMap: vfs,
-                    },
-                } as iResponseFetchLibs);
-            });
-        } else {
-            // キャッシュしていないならそのまま新規取得
-            // 新規モジュール取得、同名モジュール別バージョン取得の場合がある
-            //
-            // TODO: 新規モジュール取得と同名モジュール別バージョン取得の処理は完全に分けなくてはならない。そうしないと同名モジュール別バージョン取得の処理中にエラーが起こった場合、storeModuleNameVersionに登録されている同名モジュール前バージョンまで削除される。これの修正。
-            //
+  _toggleTheme = () => {
+    const theme = this.props.preferences.theme === 'light' ? 'dark' : 'light';
+    this.props.setPreferences({ theme });
+    localStorage.setItem('theme', theme);
+  };
+
+  _toggleMarkdownPreview = () =>
+    this.setState((state) => ({ isMarkdownPreview: !state.isMarkdownPreview }));
+
+  _preventRedirectWarning = () =>
+    this.setState({
+      shouldPreventRedirectWarning: true,
+    });
+
+  _allowRedirectWarning = () =>
+    this.setState({
+      shouldPreventRedirectWarning: false,
+    });
+
+  onPanelResizing = (isDragging: boolean) => {
+    this.setState({
+      isPanelResizing: isDragging,
+    });
+  };
+
+  render() {
+    const { currentModal, currentBanner, lintAnnotations } = this.state;
+
+    const {
+      id,
+      createdAt,
+      experienceURL,
+      experienceName,
+      saveHistory,
+      saveStatus,
+      viewer,
+      snackagerURL,
+      files,
+      selectedFile,
+      dependencies,
+      isResolving,
+      sendCodeOnChangeEnabled,
+      sdkVersion,
+      isLocalWebPreview,
+      userAgent,
+      connectedDevices,
+      deviceLogs,
+      onSendCode,
+      onReloadSnack,
+      onClearDeviceLogs,
+      onChangePlatform,
+      onToggleSendCode,
+      onTogglePreview,
+      uploadFileAsync,
+      preferences,
+      name,
+      description,
+      previewRef,
+      previewURL,
+      platform,
+      platformOptions,
+      previewShown,
+      isDownloading,
+      devices,
+    } = this.props;
+
+    const annotations = lintAnnotations.length
+      ? [...this.props.annotations, ...lintAnnotations]
+      : this.props.annotations;
+
+    return (
+      <ContentShell>
+        {this.state.loadedEditor ? null : <ProgressIndicator />}
+        <PageMetadata name={name} description={description} id={id} />
+        <PublishManager
+          id={id}
+          sdkVersion={sdkVersion}
+          name={name}
+          description={description}
+          onSubmitMetadata={this.props.onSubmitMetadata}
+          onPublishAsync={this.props.onPublishAsync}
+          onShowModal={this._handleShowModal}
+          onHideModal={this._handleHideModal}
+          currentModal={currentModal}
+        >
+          {({ onPublishAsync }) => {
             return (
-                deleteItem(moduleName, storeModuleNameVersion)
-                    // storeSetOfDependencyは削除要求されても残す
-                    .then(() => fetchTypeAgent(config, moduleName, version))
-                    .then(
-                        (r: {
-                            vfs: Map<string, string>;
-                            moduleName: string;
-                            version: string;
-                        }) => {
-                            // 新規取得モジュールのファイル群はこのタイミングで保存する
-                            setItem(
-                                r.moduleName + '@' + r.version,
-                                r.vfs,
-                                storeSetOfDependency
-                            );
-                            self.postMessage({
-                                order: 'RESOLVE_DEPENDENCY',
-                                payload: {
-                                    moduleName: r.moduleName,
-                                    version: r.version,
-                                    depsMap: r.vfs,
-                                },
-                            } as iResponseFetchLibs);
-                        }
-                    )
-                    .catch((e: Error) => {
-                        const emptyMap = new Map<string, string>();
+              <>
+                <KeybindingsManager
+                  bindings={Shortcuts}
+                  onTrigger={(type) => {
+                    const commands: { [key: string]: (() => void) | null } = {
+                      save:
+                        saveStatus === 'published'
+                          ? null
+                          : this.props.isResolving
+                          ? null
+                          : onPublishAsync,
+                      tree: this._toggleFileTree,
+                      panels: this._togglePanels,
+                      format: this._prettier,
+                      shortcuts: this._handleShowShortcuts,
+                      update: onSendCode,
+                    };
 
-                        // 取得失敗した依存関係がstoreに登録されたままの場合削除する
-                        // ただし同名別バージョンが削除されないようにバージョン一まで確認する
-                        getItem<iStoreModuleNameVersionValue>(
-                            moduleName,
-                            storeModuleNameVersion
-                        ).then((item) => {
-                            if (
-                                item !== undefined &&
-                                item === moduleName + '@' + version
-                            ) {
-                                return (
-                                    deleteItem(
-                                        moduleName,
-                                        storeModuleNameVersion
-                                    )
-                                        // DEBUG:
-                                        .then(() => {
-                                            console.log(
-                                                `[fetchDependencies] deleted ${moduleName} from storeModuleNameVersion`
-                                            );
-                                        })
-                                );
+                    const fn = commands[type];
+
+                    if (fn) {
+                      fn();
+                    }
+                  }}
+                />
+                <EditorToolbar
+                  name={name}
+                  description={description}
+                  createdAt={createdAt}
+                  saveHistory={saveHistory}
+                  saveStatus={saveStatus}
+                  sdkVersion={sdkVersion}
+                  viewer={viewer}
+                  isDownloading={isDownloading}
+                  isResolving={isResolving}
+                  experienceURL={experienceURL}
+                  visibleModal={currentModal as EditorModal}
+                  onShowModal={this._handleShowModal}
+                  onHideModal={this._handleHideModal}
+                  onSubmitMetadata={this.props.onSubmitMetadata}
+                  onDownloadCode={this.props.onDownloadAsync}
+                  onPublishAsync={onPublishAsync}
+                />
+                <PanelGroup direction="horizontal">
+                  <Panel id="editor" order={1}>
+                    <div className={css(styles.panelContainer)}>
+                      <LayoutShell>
+                        <FileList
+                          annotations={annotations}
+                          visible={preferences.fileTreeShown}
+                          files={files}
+                          selectedFile={selectedFile}
+                          updateFiles={this.props.updateFiles}
+                          onSelectFile={this.props.onSelectFile}
+                          onRemoveFile={this._handleRemoveFile}
+                          onRenameFile={this._handleRenameFile}
+                          uploadFileAsync={uploadFileAsync}
+                          onDownloadCode={this.props.onDownloadAsync}
+                          onShowModal={this._handleShowModal}
+                          hasSnackId={!!id}
+                          saveStatus={saveStatus}
+                          sdkVersion={sdkVersion}
+                        />
+                        {/* Don't load it conditionally since we need the _EditorComponent object to be available */}
+                        <LazyLoad
+                          load={async (): Promise<{
+                            default: React.ComponentType<EditorProps>;
+                          }> => {
+                            if (isMobile(userAgent)) {
+                              // Monaco doesn't work great on mobile`
+                              // Use simple editor for better experience
+                              const editor = await import('./Editor/SimpleEditor');
+                              this.setState({ loadedEditor: 'simple' });
+                              return editor;
                             }
-                        });
 
-                        console.error(e);
+                            let timeout: any;
 
-                        self.postMessage({
-                            order: 'RESOLVE_DEPENDENCY',
-                            payload: {
-                                moduleName: moduleName,
-                                version: version,
-                                depsMap: emptyMap,
-                            },
-                            error: e,
-                        } as iResponseFetchLibs);
-                    })
+                            const MonacoEditorPromise = import(
+                              /* webpackPreload: true */ './Editor/MonacoEditor'
+                            ).then((editor) => ({ editor, type: 'monaco' }));
+
+                            // Fallback to simple editor if monaco editor takes too long to load
+                            const SimpleEditorPromise = new Promise((resolve, reject) => {
+                              timeout = setTimeout(() => {
+                                this._showBanner('slow-connection');
+
+                                import('./Editor/SimpleEditor').then(resolve, reject);
+                              }, EDITOR_LOAD_FALLBACK_TIMEOUT);
+                            }).then((editor) => ({ editor, type: 'simple' }));
+
+                            return Promise.race([
+                              MonacoEditorPromise.catch(() => SimpleEditorPromise),
+                              SimpleEditorPromise,
+                            ]).then(({ editor, type }: any) => {
+                              this.setState({ loadedEditor: type });
+
+                              clearTimeout(timeout);
+
+                              return editor;
+                            });
+                          }}
+                        >
+                          {({ loaded, data: Comp }) => {
+                            this._EditorComponent = Comp;
+                            const file = files[selectedFile];
+                            if (file) {
+                              if (file.type === 'ASSET') {
+                                return <AssetViewer selectedFile={selectedFile} files={files} />;
+                              }
+
+                              const { contents } = file;
+                              const isMarkdown = selectedFile.endsWith('.md');
+
+                              if (isMarkdown && this.state.isMarkdownPreview) {
+                                return (
+                                  <>
+                                    <LazyLoad load={() => import('./Markdown/MarkdownPreview')}>
+                                      {({ loaded: mdLoaded, data: MarkdownPreview }) => {
+                                        if (mdLoaded && MarkdownPreview) {
+                                          return <MarkdownPreview source={contents} />;
+                                        }
+
+                                        return <EditorShell />;
+                                      }}
+                                    </LazyLoad>
+                                    <button
+                                      className={css(styles.previewToggle)}
+                                      onClick={this._toggleMarkdownPreview}
+                                    >
+                                      <svg
+                                        width="12px"
+                                        height="12px"
+                                        viewBox="0 0 18 18"
+                                        className={css(styles.previewToggleIcon)}
+                                      >
+                                        <g transform="translate(-147.000000, -99.000000)">
+                                          <g transform="translate(144.000000, 96.000000)">
+                                            <path d="M3,17.25 L3,21 L6.75,21 L17.81,9.94 L14.06,6.19 L3,17.25 L3,17.25 Z M20.71,7.04 C21.1,6.65 21.1,6.02 20.71,5.63 L18.37,3.29 C17.98,2.9 17.35,2.9 16.96,3.29 L15.13,5.12 L18.88,8.87 L20.71,7.04 L20.71,7.04 Z" />
+                                          </g>
+                                        </g>
+                                      </svg>
+                                    </button>
+                                  </>
+                                );
+                              }
+
+                              if (loaded && Comp) {
+                                return (
+                                  <>
+                                    <Comp
+                                      dependencies={dependencies}
+                                      sdkVersion={sdkVersion}
+                                      selectedFile={selectedFile}
+                                      files={files}
+                                      autoFocus={!/Untitled file.*\.(js|tsx?)$/.test(selectedFile)}
+                                      annotations={annotations}
+                                      updateFiles={this.props.updateFiles}
+                                      onSelectFile={this.props.onSelectFile}
+                                      mode={preferences.editorMode}
+                                      lineNumbers={isMobile(userAgent) ? 'off' : undefined}
+                                    />
+                                    {isMarkdown ? (
+                                      <button
+                                        className={css(styles.previewToggle)}
+                                        onClick={this._toggleMarkdownPreview}
+                                      >
+                                        <svg
+                                          width="16px"
+                                          height="12px"
+                                          viewBox="0 0 22 16"
+                                          className={css(styles.previewToggleIcon)}
+                                        >
+                                          <g transform="translate(-145.000000, -1156.000000)">
+                                            <g transform="translate(144.000000, 1152.000000)">
+                                              <path d="M12,4.5 C7,4.5 2.73,7.61 1,12 C2.73,16.39 7,19.5 12,19.5 C17,19.5 21.27,16.39 23,12 C21.27,7.61 17,4.5 12,4.5 L12,4.5 Z M12,17 C9.24,17 7,14.76 7,12 C7,9.24 9.24,7 12,7 C14.76,7 17,9.24 17,12 C17,14.76 14.76,17 12,17 L12,17 Z M12,9 C10.34,9 9,10.34 9,12 C9,13.66 10.34,15 12,15 C13.66,15 15,13.66 15,12 C15,10.34 13.66,9 12,9 L12,9 Z" />
+                                            </g>
+                                          </g>
+                                        </svg>
+                                      </button>
+                                    ) : null}
+                                  </>
+                                );
+                              }
+                            } else {
+                              return <NoFileSelected />;
+                            }
+
+                            return <EditorShell />;
+                          }}
+                        </LazyLoad>
+                      </LayoutShell>
+                      {preferences.panelsShown ? (
+                        <EditorPanels
+                          annotations={annotations}
+                          deviceLogs={deviceLogs}
+                          onShowErrorPanel={this._showErrorPanel}
+                          onShowDeviceLogs={this._showDeviceLogs}
+                          onTogglePanels={this._togglePanels}
+                          onClearDeviceLogs={onClearDeviceLogs}
+                          onSelectFile={this.props.onSelectFile}
+                          panelType={preferences.panelType}
+                        />
+                      ) : null}
+                    </div>
+                  </Panel>
+                  {previewShown ? (
+                    <>
+                      <PanelResizeHandle
+                        onDragging={this.onPanelResizing}
+                        className={css(
+                          styles.panelResizeTouchArea,
+                          this.state.isPanelResizing && styles.panelResizeTouchAreaActive
+                        )}
+                      >
+                        <div className={css(styles.resizeHandleContainer)}>
+                          <div className={css(styles.resizeHandle)} />
+                        </div>
+                      </PanelResizeHandle>
+                      <Panel
+                        id="preview"
+                        order={2}
+                        defaultSize={20}
+                        collapsible
+                        collapsedSize={0}
+                        className={css(styles.previewPanel)}
+                      >
+                        <DevicePreview
+                          className={css(styles.preview, styles.panelContainer)}
+                          width={334}
+                          connectedDevices={connectedDevices}
+                          experienceURL={experienceURL}
+                          experienceName={experienceName}
+                          name={name}
+                          onChangePlatform={onChangePlatform}
+                          onShowModal={this._handleShowModal}
+                          onReloadSnack={onReloadSnack}
+                          onSendCode={onSendCode}
+                          onToggleSendCode={onToggleSendCode}
+                          platform={platform}
+                          platformOptions={platformOptions}
+                          previewRef={previewRef}
+                          previewURL={previewURL}
+                          sdkVersion={sdkVersion}
+                          sendCodeOnChangeEnabled={sendCodeOnChangeEnabled}
+                          devices={devices}
+                        />
+                      </Panel>
+                    </>
+                  ) : null}
+                </PanelGroup>
+                <EditorFooter
+                  annotations={annotations}
+                  connectedDevices={connectedDevices}
+                  fileTreeShown={preferences.fileTreeShown}
+                  previewShown={previewShown}
+                  panelsShown={preferences.panelsShown}
+                  editorMode={preferences.editorMode}
+                  sendCodeOnChangeEnabled={sendCodeOnChangeEnabled}
+                  sdkVersion={sdkVersion}
+                  isLocalWebPreview={isLocalWebPreview}
+                  onSendCode={onSendCode}
+                  onReloadSnack={onReloadSnack}
+                  onToggleTheme={this._toggleTheme}
+                  onTogglePanels={this._togglePanels}
+                  onToggleFileTree={this._toggleFileTree}
+                  onTogglePreview={onTogglePreview}
+                  onToggleSendCode={onToggleSendCode}
+                  onToggleVimMode={
+                    this.state.loadedEditor === 'monaco' ? this._toggleEditorMode : undefined
+                  }
+                  onChangeSDKVersion={this.props.onChangeSDKVersion}
+                  onShowModal={this._handleShowModal}
+                  onPrettifyCode={this._prettier}
+                  theme={preferences.theme}
+                />
+                <DeviceInstructionsModal
+                  visible={currentModal === 'device-instructions'}
+                  onDismiss={this._handleHideModal}
+                  onChangeMethod={this._changeConnectionMethod}
+                  method={preferences.deviceConnectionMethod}
+                  experienceURL={experienceURL}
+                  isEmbedded={false}
+                />
+                <ModalDialog
+                  title="Expo Orbit"
+                  visible={currentModal === 'install-orbit'}
+                  onDismiss={this._handleHideModal}
+                >
+                  <DownloadOrbitDialog />
+                </ModalDialog>
+                <ModalDialog
+                  className={css(styles.embedModal)}
+                  autoSize={false}
+                  visible={currentModal === 'embed'}
+                  onDismiss={this._handleHideModal}
+                >
+                  <EmbedCode id={id} sdkVersion={sdkVersion} platformOptions={platformOptions} />
+                </ModalDialog>
+                <ModalDialog
+                  visible={currentModal === 'previous-saves'}
+                  title="Previous saves"
+                  onDismiss={this._handleHideModal}
+                >
+                  <PreviousSaves saveHistory={saveHistory} />
+                </ModalDialog>
+                <ModalDialog
+                  visible={currentModal === 'shortcuts'}
+                  onDismiss={this._handleHideModal}
+                >
+                  <KeyboardShortcuts />
+                </ModalDialog>
+                <ImportRepoModal
+                  visible={currentModal === 'import-repo'}
+                  onHide={this._handleHideModal}
+                  preventRedirectWarning={this._preventRedirectWarning}
+                  snackagerURL={snackagerURL}
+                />
+                <ImportProductionModal
+                  visible={currentModal === 'import-production'}
+                  onHide={this._handleHideModal}
+                  onSubmitMetadata={this.props.onSubmitMetadata}
+                  onChangeSDKVersion={this.props.onChangeSDKVersion}
+                  updateFiles={this.props.updateFiles}
+                  updateDependencies={this.props.updateDependencies}
+                />
+                <Banner type="success" visible={currentBanner === 'connected'}>
+                  Device connected!
+                </Banner>
+                <Banner type="error" visible={currentBanner === 'disconnected'}>
+                  Device disconnected!
+                </Banner>
+                <Banner type="info" visible={currentBanner === 'autosave-disabled'}>
+                  Automatic saving has been disabled in this Snack because you have it open in
+                  another tab.
+                </Banner>
+                <Banner type="info" visible={currentBanner === 'sdk-upgraded'}>
+                  This Snack was written in an older Expo version that is not longer supported. We
+                  have upgraded the Expo version to {sdkVersion}.<br />
+                  You might need to do some manual changes to make the Snack work correctly.
+                </Banner>
+                <Banner type="info" visible={currentBanner === 'sdk-downgraded'}>
+                  The requested Expo version is not yet supported. We have downgraded the Expo
+                  version to {sdkVersion}.<br />
+                  You might need to do some manual changes to make the Snack work correctly.
+                </Banner>
+                <Banner type="info" visible={currentBanner === 'reconnect'}>
+                  Please close and reopen Expo Go on your phone to see the Expo version change.
+                </Banner>
+                <Banner type="info" visible={currentBanner === 'slow-connection'}>
+                  Slow network detected. Trying to load a basic version of the editor. Some features
+                  such as linting and autocomplete may not work.
+                </Banner>
+                <Banner type="info" visible={currentBanner === 'embed-unavailable'}>
+                  You need to save the Snack first to get an Embed code!
+                </Banner>
+              </>
             );
-        }
-    });
-};
+          }}
+        </PublishManager>
+      </ContentShell>
+    );
+  }
+}
 
-// /***
-//  *
-//  * NOTE: Stackblitz.comで動作確認するためワーカの代わりにagent関数を呼び出す。
-//  *
-//  * */
-// const agent = (
-//   moduleName: string,
-//   version: string
-// ): Promise<{
-//   moduleName: string;
-//   version: string;
-//   depsMap: Map<string, string>;
-//   error?: Error;
-// }> => {
-//   // TODO: configは必要か検討
-//   const config = {
-//     typescript: ts,
-//     logger: console,
-//   };
+export default withPreferences(
+  connect((state: any) => ({
+    viewer: state.viewer,
+  }))(withDependencyManager(EditorView))
+);
 
-//   // DEBUG:
-//   console.log(`[fetchLibs.worker] Got request: ${moduleName}@${version}`);
+const styles = StyleSheet.create({
+  panelContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    width: '100%',
+    height: '100%',
+  },
 
-//   return getItem<iStoreModuleNameVersionValue>(
-//     moduleName,
-//     storeModuleNameVersion
-//   ).then((existItem) => {
-//     // もしもmoduleName@versionがキャッシュ済であるならば
-//     if (
-//       existItem !== undefined &&
-//       !compareTwoModuleNameAndVersion(moduleName, version, existItem)
-//     ) {
-//       // キャッシュ済のデータを返す
-//       console.log(
-//         `[fetchDependencies] return cached data of ${moduleName}@${version}`
-//       );
+  embedModal: {
+    minWidth: 0,
+    minHeight: 0,
+    maxWidth: 'calc(100% - 48px)',
+    maxHeight: 'calc(100% - 48px)',
+  },
 
-//       return getItem<iStoreSetOfDependencyValue>(
-//         moduleName + '@' + version,
-//         storeSetOfDependency
-//       ).then((vfs) => {
-//         return {
-//           moduleName: moduleName,
-//           // TODO: versionがコレクトされていないのでコレクトされたバージョンを返すこと
-//           version: version,
-//           depsMap: vfs,
-//         };
-//       });
-//     } else {
-//       // キャッシュしていないならそのまま新規取得
-//       // 新規モジュール取得、同名モジュール別バージョン取得の場合がある
-//       return (
-//         deleteItem(moduleName, storeModuleNameVersion)
-//           // NOTE: storeSetOfDependencyは削除要求されても残す
-//           .then(() => fetchTypeAgent(config, moduleName, version))
-//           .then(
-//             (r: {
-//               vfs: Map<string, string>;
-//               moduleName: string;
-//               version: string;
-//             }) => {
-//               // 新規取得モジュールのファイル群はこのタイミングで保存する
-//               setItem(
-//                 r.moduleName + '@' + r.version,
-//                 r.vfs,
-//                 storeSetOfDependency
-//               );
-//               return {
-//                 moduleName: r.moduleName,
-//                 version: r.version,
-//                 depsMap: r.vfs,
-//               };
-//             }
-//           )
-//           .catch((e: Error) => {
-//             const empty = new Map<string, string>();
-//             deleteItem(moduleName, storeModuleNameVersion);
-//             // // DEBUG:
-//             // .then(() => {
-//             //   console.log(
-//             //     `deleted ${moduleName} from storeModuleNameVersion`
-//             //   );
-//             // });
+  preview: {
+    backgroundColor: c('content'),
+  },
 
-//             console.log(
-//               `[fetchDependencies] Failed to acquire ${moduleName}@${version}`
-//             );
+  previewPanel: {
+    display: 'none',
+    minWidth: 334,
 
-//             console.error(e);
-//             return {
-//               moduleName: moduleName,
-//               version: version,
-//               depsMap: empty,
-//               error: e,
-//             };
-//           })
-//       );
-//     }
-//   });
-// };
+    [`@media (min-width: ${constants.preview.minWidth}px)`]: {
+      display: 'flex',
+    },
+  },
 
-// export default agent;
+  panelResizeTouchArea: {
+    borderRight: `1px solid ${c('border-editor')}`,
+    width: 12,
+    height: '100%',
 
-//  // Incase this was worker.
-//  // self.addEventListener('message', (e: MessageEvent<iRequestFetchLibs>) => {
-//  self.onmessage = (e: MessageEvent<iRequestFetchLibs>) => {
-//    const { payload, order } = e.data;
-//    if (order !== 'RESOLVE_DEPENDENCY') return;
-//    const { moduleName, version } = payload;
+    display: 'none',
+    [`@media (min-width: ${constants.preview.minWidth}px)`]: {
+      display: 'block',
+    },
 
-//    // TODO: configは必要か検討
-//    const config = {
-//      typescript: ts,
-//      logger: console,
-//    };
+    ':hover': {
+      backgroundColor: c('hover'),
+    },
+  },
 
-//    // DEBUG:
-//    console.log(`[fetchLibs.worker] Got request: ${moduleName}@${version}`);
+  // Note(cedric): aphrodite does not support styling by attribute, so this is now handled by state
+  panelResizeTouchAreaActive: {
+    backgroundColor: c('hover'),
+  },
 
-//    fetchTypeAgent(config, moduleName, version)
-//      .then(
-//        (r: {
-//          vfs: Map<string, string>;
-//          moduleName: string;
-//          version: string;
-//        }) => {
-//          self.postMessage({
-//            order: 'RESOLVE_DEPENDENCY',
-//            payload: {
-//              moduleName: r.moduleName,
-//              version: r.version,
-//              depsMap: r.vfs,
-//            },
-//          } as iResponseFetchLibs);
-//        }
-//      )
-//      .catch((e: Error) => {
-//        const emptyMap = new Map<string, string>();
-//        self.postMessage({
-//          order: 'RESOLVE_DEPENDENCY',
-//          payload: {
-//            depsMap: emptyMap,
-//          },
-//          error: e,
-//        } as iResponseFetchLibs);
-//      });
-//  };
+  resizeHandleContainer: {
+    position: 'relative',
+    top: '50%',
+    transform: 'translateY(-50%)',
+  },
+
+  resizeHandle: {
+    backgroundColor: c('border-editor'),
+    width: 4,
+    height: 32,
+    borderRadius: 2,
+    margin: '6px auto',
+  },
+
+  previewToggle: {
+    appearance: 'none',
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    margin: 32,
+    padding: 12,
+    height: 48,
+    width: 48,
+    border: 0,
+    borderRadius: '50%',
+    backgroundColor: c('secondary'),
+    color: c('secondary-text'),
+    outline: 0,
+    transitionDuration: '170ms',
+    transitionProperty: 'box-shadow',
+    transitionTimingFunction: 'linear',
+
+    ':focus-visible': {
+      outline: 'auto',
+    },
+
+    ':hover': {
+      boxShadow: s('small'),
+    },
+  },
+
+  previewToggleIcon: {
+    fill: 'currentColor',
+    verticalAlign: -1,
+  },
+});
