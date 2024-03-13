@@ -17,7 +17,6 @@ import {
     getParentNodeByChildId,
 } from '../utils';
 import type { iExplorer } from '../../../data/types';
-import type { iFilesActions } from '../../../context/FilesContext';
 import { File } from '../../../data/files';
 import { Types } from '../../../context/FilesContext';
 
@@ -29,6 +28,7 @@ import {
     Types as LayoutContextActionType,
 } from '../../../context/LayoutContext';
 import { ModalTypes } from '../../../context/LayoutContext';
+// import type { iFilesActions } from '../../../context/FilesContext';
 
 interface iProps {
     id: number;
@@ -74,6 +74,13 @@ const Workspace: React.FC<iProps> = ({
         });
     };
 
+    /***
+     * @param {iExplorer} _explorer - Explorer data about to delete.
+     *
+     * FilesContext.tsxのアクション`ShowModal`をディスパッチする。
+     * ユーザに削除の確認をとって同意されれば`callback`が実行され、
+     * `_explorer`に該当するFileは削除される。
+     * */
     const handleDeleteNode = (_explorer: iExplorer) => {
         const isDeletionTargetFolder = _explorer.isFolder;
         const descendantPaths: string[] = getAllDescendants(_explorer).map(
@@ -141,9 +148,14 @@ const Workspace: React.FC<iProps> = ({
     };
 
     /**
-     * pathを変更する対象をすべて取得する
-     * pathがどう変更されるべきかを決定する
-     * 変更リクエストをdispatchする
+     * Explorer/Workspace上でのファイルの並びを変更する。
+     *
+     * @param {string} droppedId - Explorer item's id which is dropped item.
+     * @param {string} draggableId - Explorer item's id.
+     *
+     * pathを変更する対象をすべて取得する。
+     * pathがどう変更されるべきかを決定する。
+     * 変更リクエストをdispatchする。
      * type: Types.Change | Types.ChangeMultiple
      * */
     const handleReorderNode = (
@@ -158,6 +170,7 @@ const Workspace: React.FC<iProps> = ({
         if (isNodeIncludedUnderExplorer(treeData, droppedId, draggableId)) {
             return;
         }
+
         const movingItem: iExplorer | undefined = getNodeById(
             treeData,
             draggableId
@@ -231,7 +244,6 @@ const Workspace: React.FC<iProps> = ({
                 });
             } else {
                 // In case movingItem is empty folder:
-
                 filesDispatch({
                     type: Types.Change,
                     payload: {
@@ -246,7 +258,6 @@ const Workspace: React.FC<iProps> = ({
             }
         } else {
             // In case movingItem is not folder:
-
             filesDispatch({
                 type: Types.Change,
                 payload: {
@@ -326,7 +337,7 @@ const Workspace: React.FC<iProps> = ({
     };
 
     /**
-     * EXPERIMENTAL
+     *
      * */
     const handleSelectFile = (explorer: iExplorer) => {
         console.log(`[Workspace] on select ${explorer.path}`);
@@ -388,6 +399,9 @@ const Workspace: React.FC<iProps> = ({
         };
         return <Action handler={clickHandler} icon={closeIcon} altMessage="" />;
     };
+
+    console.log('[Workspace] tree data:');
+    console.dir(treeData);
 
     return (
         <Stack

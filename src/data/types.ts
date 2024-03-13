@@ -17,4 +17,7 @@ export interface iExplorer {
     // So isOpening is always false if this data is folder.
     // True is only for file which is on editor.
     isOpening?: boolean;
+
+    // Experimental
+    isSelected: boolean;
 }
