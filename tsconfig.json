@@ -16,7 +16,7 @@
             "ES2017.Object",
             "WebWorker"
         ],
-        "types": [],
+        "types": ["jest"],
         "baseUrl": "./node_modules",
         "jsx": "preserve",
         "esModuleInterop": true,
