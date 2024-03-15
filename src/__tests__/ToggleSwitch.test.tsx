@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { ToggleSwitch } from '../common/ToggleSwitch';
+import '@testing-library/jest-dom';
 
 describe('Test App.tsx', () => {
     test('', () => {
