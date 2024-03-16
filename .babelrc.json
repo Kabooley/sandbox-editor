@@ -1,6 +1,6 @@
 {
     "presets": [
-        ["@babel/preset-react", { "runtime": "automatic" }],
-        ["@babel/preset-env", { "targets": { "node": "16.16.0" } }]
+        ["@babel/preset-env", { "targets": { "node": "16.16.0" } }],
+        ["@babel/preset-react", { "runtime": "automatic" }]
     ]
 }

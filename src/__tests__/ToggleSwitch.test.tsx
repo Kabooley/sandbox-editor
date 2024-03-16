@@ -3,7 +3,7 @@ import { ToggleSwitch } from '../common/ToggleSwitch';
 import '@testing-library/jest-dom';
 
 describe('Test App.tsx', () => {
-    test('', () => {
+    test('make sure test set up is working', () => {
         const onchange = (event: React.ChangeEvent<HTMLInputElement>) => {};
         const classnames = {
             container: 'container',
@@ -19,7 +19,7 @@ describe('Test App.tsx', () => {
                 classNames={classnames}
             />
         );
-        const label = screen.getAllByRole('lable');
+        const label = screen.getAllByRole('label');
         expect(label).toBeInTheDocument();
     });
 });

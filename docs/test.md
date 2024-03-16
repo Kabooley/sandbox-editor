@@ -323,6 +323,30 @@ https://archive.jestjs.io/docs/ja/next/webpack
 
 ## `tsconfig.jest.json`で jest 用の tsconfig を作る
 
+`tsconfig.json`との違いを如何に記載：
+
+```diff JSON
+{
++   "extends": "./tsconfig.json",
+}
+```
+
+jest 用の tsconfig を有効にするためには、以下の通りにする：
+
+```diff JavaScript
+
+```
+
+https://stackoverflow.com/a/73696933/22007575
+
+## jest における`<rootDir>`
+
+https://jestjs.io/docs/webpack#configuring-jest-to-find-our-files
+
+> <rootDir> is a special token that gets replaced by Jest with the root of your project. Most of the time this will be the folder where your package.json is located unless you specify a custom rootDir option in your configuration.
+
+> <rootDir> は、Jest によってプロジェクトのルートに置き換えられる特別なトークンです。ほとんどの場合、構成でカスタム rootDir オプションを指定しない限り、これは package.json が配置されるフォルダーになります。
+
 ## Error
 
 #### `Cannot find module 'react-dom/client' from 'node_modules/@testing-library/react/dist/pure.js'`
@@ -336,3 +360,236 @@ https://stackoverflow.com/a/71716438/22007575
 現状React@17.0.2なので@testing-library/react@14.2.1が使えない。
 
 ダウングレードして解決した。（14.2.1 --> @release-12.x）
+
+## 手順
+
+## 1. jest と ts-jest の設定
+
+ECMAScript 文法、且つ TypeScript で書かれた JavaScript ファイルのテストを可能とさせる。
+
+以下のような設定を行っていく：
+
+-   CommonJS 文法で書かれたファイルの babel-jest が行う
+-   TypeScript で書かれたファイルのテストは ts-jest が行う
+-   global 型情報の取得
+-   ECMAScript 文法を許容させる
+-   test ファイル群は`src/__tests__/`へ納める
+-   webpack でビルドするプロジェクトなので、ビルド時に`src/__tests__`などテスト関係が含まれないように webpack の設定を変更する
+-   テスト用の tsconfig ファイルを用意する
+
+Installation:
+
+https://jestjs.io/docs/getting-started
+
+```bash
+# jestのインストール
+$ yarn add --dev jest
+# テストのためのbabelのインストール
+$ yarn add --dev babel-jest @babel/core @babel/preset-env
+# ts-jestのインストール
+$ yarn add --dev ts-jest
+# 型情報のインストール
+$ yarn add --dev @types/jest
+```
+
+コンフィグファイルの構成:
+
+https://jestjs.io/docs/getting-started#using-babel
+
+https://kulshekhar.github.io/ts-jest/docs/getting-started/installation
+
+```bash
+# jest.config.jsが出力される
+npx ts-jest config:init
+# <rootDir>/jest.config.js
+```
+
+以下のような内容になっている
+
+```JavaScript
+// jest.config.js
+/** @type {import('ts-jest').JestConfigWithTsJest} */
+module.exports = {
+  preset: 'ts-jest',
+  testEnvironment: 'node',
+};
+```
+
+#### jest に TypeScript 拡張子ファイルに対しては ts-jest を使うように認識させる
+
+`transform`プロパティを定義することで設定できる。
+
+https://jestjs.io/docs/configuration#transform-objectstring-pathtotransformer--pathtotransformer-object
+
+`transform`プロパティは Node がサポートしていない JavaScript 構文をサポート可能な構文に変換するための設定を定義するところである。
+
+デフォルトだと`.ts`, `.js`, `.tsx`, `.jsx`は babel-jest が変換処理を行うことになっている。
+
+これに`ts-jest`の設定を追加することで TypeScript ファイルをテスト可能とさせる。
+
+NOTE: `ts-jest`の設定で`transform`設定を定義する場合は`preset`設定を除外すること。
+
+> If you are using custom transform config, please remove preset from your Jest config to avoid issues that Jest doesn't transform files correctly.
+
+https://kulshekhar.github.io/ts-jest/docs/getting-started/options/#introduction
+
+```diff JavaScript
+// jest.config.js
+/** @type {import('ts-jest').JestConfigWithTsJest} */
+module.exports = {
+- preset: 'ts-jest',
+  testEnvironment: 'node',
++    transform: {
++        // '^.+\\.[tj]sx?$' to process js/ts with `ts-jest`
++        // '^.+\\.m?[tj]sx?$' to process js/ts/mjs/mts with `ts-jest`
++        '^.+\\.(ts|tsx)?$': [
++            'ts-jest',
++            {
++               // define ts-jest settings
++            },
++        ]
++    },
+};
+```
+
+#### jest に TypeScript 拡張子ファイル以外に対しては bable-jest を使うように認識させる
+
+TypeScript 拡張子ファイルを ts-jest に変換させるルールを書いたら、
+
+デフォルトの`{"\\.[jt]sx?$": "babel-jest"}`設定がなくなっているので、
+
+TypeScript 拡張子以外の JavaScript はお前がやってくれと設定を追加しなくてはならない。
+
+> Remember to include the default babel-jest transformer explicitly, if you wish to use it alongside with additional code preprocessors:
+
+```diff JavaScript
+// jest.config.js
+/** @type {import('ts-jest').JestConfigWithTsJest} */
+module.exports = {
+- preset: 'ts-jest',
+  testEnvironment: 'node',
+    transform: {
+        '^.+\\.(ts|tsx)?$': [
+            'ts-jest',
+            {
+               // define ts-jest settings
+            },
+        ],
++       '^.+\\.(js|jsx)$': 'babel-jest',
+    },
+};
+```
+
+#### babel のコンフィグを定義する
+
+https://jestjs.io/docs/getting-started#using-babel
+
+```bash
+# on root directory
+$ touch .babelrc.json
+```
+
+`.bablerc`:
+
+```JSON
+{
+  "presets": [["@babel/preset-env", {"targets": {"node": "current"}}]],
+}
+```
+
+`current`の部分は使用環境の Node のバージョンを指定する。
+
+[`.babelrc`と`babel.config.js`どちらを定義すればいいのかについてはこちら](#.babelrc-vs-babel.config.js)
+
+#### ECMAScript 文法を許容させる
+
+https://kulshekhar.github.io/ts-jest/docs/getting-started/options/#options
+
+https://jestjs.io/docs/ecmascript-modules
+
+https://jestjs.io/docs/configuration#extensionstotreatasesm-arraystring
+
+jest は ECMAScript 文法のサポートは実験的なサポートしか提供していない、とのこと。
+
+```diff JavaScript
+// jest.config.js
+/** @type {import('ts-jest').JestConfigWithTsJest} */
+module.exports = {
+- preset: 'ts-jest',
+  testEnvironment: 'node',
++   extensionsToTreatAsEsm: ['.ts', '.tsx', '.jsx', 'js'],
+    transform: {
+        '^.+\\.(ts|tsx)?$': [
+            'ts-jest',
+            {
++               useESM: true
+            },
+        ],
+        '^.+\\.(js|jsx)$': 'babel-jest',
+    },
+};
+```
+
+-   `ts-jest`は`useESM`を有効にする
+-   `extensionsToTreatAsESM`に ESM 文法を使う拡張子を指定する。
+
+> jest は package.json で`"type": "module"`が定義されているときに`.js`や`.mjs`のファイルを ECMAScript として扱う。
+
+TODO: `extensionsToTreatAsESM`の設定は意味があるのか確認。今のところpackage.jsonは`type: module`設定していない
+
+#### import 文なしでテスト API を使えるようにする
+
+https://jestjs.io/docs/getting-started#type-definitions
+
+API を使用するには
+
+-   `@jest/globals`をインストールして、各 test ファイルは import 文で取得する
+-   `@types/jest`をインストールする
+
+`@types/jest`をインストールする方法を採用した。
+
+インストールするだけだとまったく認識してくれない。
+
+次の通りに設定する。
+
+`tsconfig.jest.json`:
+
+```diff JSON
+{
+    "compilerOptions": {
++      types: ["jest"]
+    }
+}
+```
+
+TODO: tsconfigの該当項目を要確認。
+
+typesとtypeRootsの項目
+
+#### test ファイル群のディレクトリを認識させる
+
+#### tsconfig.jest.json を認識させる、設定する
+
+なんでか知らんが tsconfig.jest.json で`extends`を設定しても認識しないっぽい
+
+なので今のところ tsconfig.json をそのままコピペしている。
+
+#### @babel/preset-typescript vs ts-jest
+
+結論：型チェックしたいなら ts-jest しかありえない。
+
+TypeScript ファイルをテストするには 2 通りあると jest の公式に書いてある。
+
+https://jestjs.io/docs/getting-started#using-typescript
+
+https://babeljs.io/docs/babel-plugin-transform-typescript#caveats
+
+babel の仕様として、
+
+-   babel は型チェックをしないため、本来 TypeScript が型チェックしたらエラーを出力するはずのコードでも babel はコード変換を問題なく実行させてしまう
+-   babel は`tsconfig.json`の変更を反映しない。
+-   babel は TypeScript コードをトランスパイルするだけである。
+
+## 2. @testing-library/react を先のテスト環境に追加する
+
+そして問題なくテストできるようにする。
