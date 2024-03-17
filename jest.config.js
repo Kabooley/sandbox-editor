@@ -3,7 +3,7 @@
 module.exports = {
     roots: ['<rootDir>/src'],
     testEnvironment: 'jsdom',
-    extensionsToTreatAsEsm: ['.ts', '.tsx', '.jsx', 'js'],
+    extensionsToTreatAsEsm: ['.ts', '.tsx', '.jsx'],
     transform: {
         // '^.+\\.[tj]sx?$' to process js/ts with `ts-jest`
         // '^.+\\.m?[tj]sx?$' to process js/ts/mjs/mts with `ts-jest`

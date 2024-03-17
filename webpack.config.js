@@ -86,7 +86,4 @@ module.exports = {
         }),
         isDevelopment && new ReactRefreshWebpackPlugin(),
     ].filter(Boolean),
-    exclude: {
-        test: [/\.test\.(ts|tsx|js|jsx)$/],
-    },
 };

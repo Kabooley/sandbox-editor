@@ -515,9 +515,8 @@ jest は ECMAScript 文法のサポートは実験的なサポートしか提供
 // jest.config.js
 /** @type {import('ts-jest').JestConfigWithTsJest} */
 module.exports = {
-- preset: 'ts-jest',
   testEnvironment: 'node',
-+   extensionsToTreatAsEsm: ['.ts', '.tsx', '.jsx', 'js'],
++   extensionsToTreatAsEsm: ['.ts', '.tsx', '.jsx'],
     transform: {
         '^.+\\.(ts|tsx)?$': [
             'ts-jest',
@@ -535,7 +534,16 @@ module.exports = {
 
 > jest は package.json で`"type": "module"`が定義されているときに`.js`や`.mjs`のファイルを ECMAScript として扱う。
 
-TODO: `extensionsToTreatAsESM`の設定は意味があるのか確認。今のところpackage.jsonは`type: module`設定していない
+`.js`は常に package.json の設定に従って常に(ESM だと)推測されるので含めるなというエラーが発生するので`.js`は含めない。
+
+```bash
+● Validation Error:
+
+  Option: extensionsToTreatAsEsm: ['.ts', '.tsx', '.jsx', '.js'] includes '.js' which is always inferred based on type in its nearest package.json.
+
+```
+
+TODO: `extensionsToTreatAsESM`の設定は意味があるのか確認。今のところ package.json は`type: module`設定していない
 
 #### import 文なしでテスト API を使えるようにする
 
@@ -562,13 +570,113 @@ API を使用するには
 }
 ```
 
-TODO: tsconfigの該当項目を要確認。
+TODO: tsconfig の該当項目を要確認。
 
-typesとtypeRootsの項目
+types と typeRoots の項目
 
 #### test ファイル群のディレクトリを認識させる
 
+```diff JSON
+// jest.config.js
+/** @type {import('ts-jest').JestConfigWithTsJest} */
+module.exports = {
+  testEnvironment: 'node',
+    extensionsToTreatAsEsm: ['.ts', '.tsx', '.jsx'],
+    transform: {
+        '^.+\\.(ts|tsx)?$': [
+            'ts-jest',
+            {
+                useESM: true
+            },
+        ],
+        '^.+\\.(js|jsx)$': 'babel-jest',
+    },
++   testMatch: [
++       '**/__tests__/**/*.+(ts|tsx|js)',
++       '**/?(*.)+(spec|test).+(ts|tsx|js)',
++       '!**/__tests__/setup-jest.js',
++   ],
+};
+```
+
+test ファイル群を指定するプロパティは`testMatch`と`testRegex`の 2 つがある。
+
+どちらか一方のプロパティのみ指定できる。
+
+両者の指定する正規表現は異なる。
+
+`testMatch`は`micromatch`という glob という正規表現の一種を採用している模様。
+
+正直この正規表現はさっぱりいじることができないので公式に乗っている指定方法をそのまま踏襲するほかない。
+
+複数の正規表現を渡すことでテストファイル群を詳しく指定している。
+
+```JavaScript
+testMatch: [
+    // __tests__ディレクトリ以下の`.ts`, `.tsx`, `.js`ファイルすべて
+    '**/__tests__/**/*.+(ts|tsx|js)',
+    // 先の結果のうち、`.spec`, `.test`が拡張子の前についているファイルすべて
+    '**/?(*.)+(spec|test).+(ts|tsx|js)',
+    // 先の結果のうち次のファイルを除外する
+    '!**/__tests__/setup-jest.js',
+],
+```
+
+ということで各正規表現は常に前の結果のフィルタの役割になっているみたい。
+
+上記の設定で、
+
+`__tests__/`ディレクトリ以下の、`.test`,`.spec`が付いた`.ts`, `.tsx`, `.js`拡張子のファイル、ただし`setup-jest.js`ファイル以外が対象となる。
+
+個人的に jest の setup ファイルは`__tests__/`以下に置きたかったのでこのような指定方法にした。
+
 #### tsconfig.jest.json を認識させる、設定する
+
+```diff JavaScript
+// jest.config.js
+/** @type {import('ts-jest').JestConfigWithTsJest} */
+module.exports = {
+  testEnvironment: 'node',
+    extensionsToTreatAsEsm: ['.ts', '.tsx', '.jsx'],
+    transform: {
+        '^.+\\.(ts|tsx)?$': [
+            'ts-jest',
+            {
+                useESM: true,
++               tsconfig: './tsconfig.jest.json'
+            },
+        ],
+        '^.+\\.(js|jsx)$': 'babel-jest',
+    },
+   testMatch: [
+       '**/__tests__/**/*.+(ts|tsx|js)',
+       '**/?(*.)+(spec|test).+(ts|tsx|js)',
+       '!**/__tests__/setup-jest.js',
+   ],
+};
+```
+
+ディレクトリ構成：
+
+```diff
+    src/
+        __tests__/
+            setup-jest.js
+            XXXX.test.tsx
+            ZZZZ.test.ts
+            YYYY.test.js
+        XXXX.tsx
+        ZZZZ.ts
+        YYYY.js
+    jest.config.js
+    tsconfig.json
++   tsconfig.jest.json
+    webpack.config.js
+```
+
+概ねの tsconfig.jest.json の設定は`tsconfig.json`の方と同じになるはずなので、
+
+`extends`プロパティでオリジナルの設定を引っ張ってくればいいのだが
 
 なんでか知らんが tsconfig.jest.json で`extends`を設定しても認識しないっぽい
 
@@ -590,6 +698,207 @@ babel の仕様として、
 -   babel は`tsconfig.json`の変更を反映しない。
 -   babel は TypeScript コードをトランスパイルするだけである。
 
-## 2. @testing-library/react を先のテスト環境に追加する
+#### testEnvironment
 
-そして問題なくテストできるようにする。
+https://jestjs.io/docs/configuration#testenvironment-string
+
+test を実行するための実行環境を指定する。
+
+デフォルトで`node`なので、ブラウザを想定した JavaScript コードをテストしたい場合変更する必要がある。
+
+> If you are building a web app, you can use a browser-like environment through jsdom instead.
+
+`jsdom`にすればいいだけではなく、実際にその実行環境を提供してくれるライブラリをインストールしておかなくてはならない。
+
+```bash
+$ yarn add --dev jest-environment-jsdom
+```
+
+```diff JavaScript
+// jest.config.js
+/** @type {import('ts-jest').JestConfigWithTsJest} */
+module.exports = {
+- testEnvironment: 'node',
++ testEnvironment: 'jsdom',
+    extensionsToTreatAsEsm: ['.ts', '.tsx', '.jsx'],
+    transform: {
+        '^.+\\.(ts|tsx)?$': [
+            'ts-jest',
+            {
+                useESM: true,
++               tsconfig: './tsconfig.jest.json'
+            },
+        ],
+        '^.+\\.(js|jsx)$': 'babel-jest',
+    },
+   testMatch: [
+       '**/__tests__/**/*.+(ts|tsx|js)',
+       '**/?(*.)+(spec|test).+(ts|tsx|js)',
+       '!**/__tests__/setup-jest.js',
+   ],
+};
+```
+
+#### 他の設定
+
+```JavaScript
+/** @type {import('ts-jest').JestConfigWithTsJest} */
+// export default {
+module.exports = {
+    roots: ['<rootDir>/src'],
+    testEnvironment: 'jsdom',
+    extensionsToTreatAsEsm: ['.ts', '.tsx', '.jsx'],
+    transform: {
+        '^.+\\.(ts|tsx)?$': [
+            'ts-jest',
+            {
+                useESM: true,
+                tsconfig: './tsconfig.jest.json',
+            },
+        ],
+        '^.+\\.(js|jsx)$': 'babel-jest',
+    },
+    testMatch: [
+        '**/__tests__/**/*.+(ts|tsx|js)',
+        '**/?(*.)+(spec|test).+(ts|tsx|js)',
+        '!**/__tests__/setup-jest.js',
+    ],
+    setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup-jest.js'],
+    moduleFileExtensions: ['tsx', 'ts', 'js', 'json', 'node'],
+    collectCoverageFrom: ['src/**/*.{js,jsx,ts,tsx}'],    transformIgnorePatterns: ['/node_modules/.*']
+};
+
+```
+
+#### `setupFilesAfterEnv`
+
+https://jestjs.io/docs/configuration#setupfilesafterenv-array
+
+テストスイートが実行される前に実行しておきたい構成ファイルやフレームワークを列挙できるプロパティ
+
+`setupFiles`プロパティはフレームワークがインストールされる前に実行されるのと異なり、
+フレームワークがインストールされた直後、かつテストスイーツが実行される前に実行したいものを指定できる。
+
+`setupFilesAfterEnv`で指定されるモジュール群は、各テスト ファイルで繰り返されるコードを対象としています。テスト フレームワークをインストールすると、モジュール内で Jest グローバル、Jest オブジェクト、および Expect にアクセスできるようになります。たとえば、jest 拡張ライブラリから追加のマッチャーを追加したり、セットアップ フックやティアダウン フックを呼び出したりできます。
+
+たとえば`@testing-library/react`などのフレームワークの API をｸﾞﾛｰﾊﾞﾙで使いたい場合、`setup-jest.js`でその設定を書けばすべてのテストに適用できるなど。
+
+#### moduleFileExtensions
+
+https://jestjs.io/docs/configuration#modulefileextensions-arraystring
+
+> モジュールが使用するファイル拡張子の配列。ファイル拡張子を指定せずにモジュールが必要な場合、これらの拡張子が Jest によって左から右の順序で検索されます。
+> プロジェクトで最もよく使用される拡張子を左側に配置することをお勧めします。そのため、TypeScript を使用している場合は、「ts」または「tsx」、あるいはその両方を配列の先頭に移動することを検討してください。
+
+## 2. RTL フレームワーク他を現在のテスト環境に追加、有効にする
+
+#### Installation
+
+```bash
+# ReactのDOMをテストするフレームワーク
+$ yarn add --dev @testing-library/react
+# ユーザの操作を模倣するフレームワーク
+$ yarn add --dev @testing-library/user-event
+#
+$ yarn add --dev @testing-library/jest-dom
+```
+
+#### babel に JSX を JS へ変換してもらう
+
+https://jestjs.io/docs/tutorial-react#dom-testing
+
+```bash
+$ yarn add --dev @babel/preset-react
+```
+
+```JSON
+{
+    "presets": [
+        ["@babel/preset-env", { "targets": { "node": "16.16.0" } }],
+        ["@babel/preset-react", { "runtime": "automatic" }]
+    ]
+}
+
+```
+
+#### `tscofnig.jest.json`の`"react"`プロパティに`"react-jsx"`を渡す
+
+jest に JSX を認めさせるのと、`import React from "react"`の記載なしでも React を認識してくれるようにする措置。
+
+`tsconfig.jest.json`:
+
+```JSON
+{
+    "compilerOptions": {
+        "jsx": "react-jsx",
+    }
+}
+```
+
+これを"preserve"にしていたら次のエラーが発生する。
+
+```bash
+Jest encountered an unexpected token
+
+    Jest failed to parse a file. This happens e.g. when your code or its dependencies use non-standard JavaScript syntax, or when Jest is not configured to support such syntax.
+
+    Out of the box Jest supports Babel, which will be used to transform your files into valid JS based on your Babel configuration.
+
+    By default "node_modules" folder is ignored by transformers.
+# ...
+```
+
+これは jest が JSX って何？ってなっている状態。
+
+なので`"jsx": "react-jsx"`を 指定することで解決できる。
+
+#### `jsx: react`と`jsx: react-jsx`の違い
+
+`jsx: react`にすると test ファイルで`import React from "react"`が必ず必要になる
+`jsx: react-jsx`にすると test ファイルで上記の import が不要になる
+
+実際、`jsx: react`にすると以下のエラーが発生する。
+
+```bash
+  ● Test suite failed to run
+
+    src/__tests__/ToggleSwitch.test.tsx:16:14 - error TS2686: 'React' refers to a UMD global, but the current file is a module. Consider adding an import instead.
+
+    16             <ToggleSwitch
+                    ~~~~~~~~~~~~
+```
+
+`React`を参照したけれど module だから import を代わりに使えと言われる。
+
+#### setup ファイルにインストールしたフレームワークを import してグローバルに API を使えるようにする
+
+`setup-jest.js`:
+
+```JavaScript
+import { configure } from '@testing-library/react';
+import '@testing-library/jest-dom';
+import '@testing-library/user-event';
+
+configure({ testIdAttribute: 'data-my-test-id' });
+```
+
+これで、すべての` @testing-library/react``@testing-library/user-event `,`@testing-library/jest-dom`を使いたいテストファイルは import なしで API が使えるようになる...はずなのだが使えるようになっていない。
+
+現状個別にすべて各テストファイルに import している。
+
+## 3. webpack 設定
+
+参考:
+
+https://gist.github.com/kpunith8/51d43ed6adaaa5698e49ed2cab3f514e
+
+https://riptutorial.com/web-component/example/30849/webpack-and-jest
+
+#### test 関連のファイルがバンドルに含まれないようにする
+
+バンドルに__tests__ファイルが含まれているか確認 --> わからん
+
+`src/__tests__/`というディレクトリ構成が問題なのかも
+
+`__tests__`をルート直下に移動できるか？
+
