@@ -4,26 +4,68 @@
 
 ## TODOs
 
--   [TODO: OpenEditor Opening ファイルをすべて閉じる](#OpenEditor-Openingファイルをすべて閉じる)
--   [TODO: Workspace Workspace の開いているフォルダをすべて閉じる](#Workspace-Workspaceの開いているフォルダをすべて閉じる)
+-   TODO: Workspace のタイトルバー上のアクション（新規ファイル追加など）が機能していない
 -   [TODO: Workspace ファイル/フォルダのリネーム](#Workspace-ファイル/フォルダのリネーム)
--   [TODO: Workspace selected ファイルを含むフォルダは自動的に開いたままにする](#Workspace-selectedファイルを含むフォルダは自動的に開いたままにする)
--   [TODO: Workspace 新規アイテム追加するときのフォームのインデントの修正](#Workspace 新規アイテム追加するときのフォームのインデントの修正)
--   [TODO: Icon の追加](#Iconの追加)
-
-低優先
-
--   [TODO: ホバーしたらアイテムの説明が現れるようにする](#ホバーしたらアイテムの説明が現れるようにする)
--   [TODO: ](#)
-
-本ブランチ関係ない件：
-
--   [TODO: seletcted: true のファイルを削除すると editor 上にその削除したファイルが残ってしまう件](#seletcted:-trueのファイルを削除するとeditor上にその削除したファイルが残ってしまう件)
-    これは FilesContext.tsx で`DELETE_FILE`, `DELETE_FILE_MULTIPLE`するときに selected:true のファイルを選定しなおせばよい
+-   TODO: Workspace Workspace の開いているフォルダをすべて閉じる
+-   TODO: Workspace selected ファイルを含むフォルダは自動的に開いたままにする
+-   TODO: OpenEditor Opening ファイルをすべて閉じる
+-   TODO: Workspace 新規アイテム追加するときのフォームのインデントの修正
+-   TODO: Icon の追加
+-   TODO: ホバーしたらアイテムの説明が現れるようにする
+-   TODO: seletcted: true のファイルを削除すると editor 上にその削除したファイルが残ってしまう件
 
 ## Summary
 
+[機能見直し](#機能見直し)
 [機能解説](#機能解説)
+
+## 機能見直し
+
+付けたい機能を欲張りすぎたか。Explorer の各アクションを見直して最小限の機能に制限する。
+
+付けようとしているアクション機能:
+
+見送る機能：
+
+-   OpenEditor の開いているファイルをすべて閉じる機能
+-   OpenEditor の「保存できた」ファイルをすべて閉じる機能
+
+実装することにした機能：
+
+-   Workspace の開いているフォルダをすべて閉じる機能
+-   Workspace のファイル・フォルダのリネーム機能
+-   Workspace のタイトルバー上のファイル・フォルダの新規追加機能
+
+付けようとしているアクション機能以外の機能：
+
+-   アイテムをホバーしたらアイテムの説明が現れるようにする機能
+
+#### 期限を切る
+
+-   Workspace のファイル・フォルダのリネーム機能
+    2 日
+-   Workspace の開いているフォルダをすべて閉じる機能
+    2 日
+-   Workspace のタイトルバー上のファイル・フォルダの新規追加機能
+    1 日
+
+## TODO: Workspace ファイル/フォルダのリネーム
+
+Tree.tsx::`folderTreeActions`にリネームアクションの追加
+Tree.tsx::`fileTreeActions`にリネームアクションの追加
+リネームアクションはFilesContext.tsxのChangeアクションをディスパッチしてnewPathを渡す
+
+リネーム対象のアイテムのカラムがフォームに置き換わる
+アイコン、インデントは残して他の領域がフォームになる
+他の領域をクリックする又は変更せずにエンターキーを押すとキャンセル
+ファイル名称を変更してエンタキーを押すとリネーム実行
+
+#### 置き換わるフォームのコンポーネント作成
+
+
+Tree.tsxの`{showInput...}の領域のJSXがそれ
+
+これをコンポーネント化する
 
 ## OpenEditor
 
@@ -277,9 +319,9 @@ iExplorer に selected プロパティをつけることはできるか
 
 #### `iExplorer`
 
-`iExplorer`型のデータは`src/components/VSCodeExplorer/Workspace`で主に使われる、FilesContext.tsxから配信されるFileをツリー型のオブジェクトに変換したものである。
+`iExplorer`型のデータは`src/components/VSCodeExplorer/Workspace`で主に使われる、FilesContext.tsx から配信される File をツリー型のオブジェクトに変換したものである。
 
-各Fileの状態（プロパティ）もiExplorerデータに反映させる。
+各 File の状態（プロパティ）も iExplorer データに反映させる。
 
 ```TypeScript
 // data/types.ts
@@ -299,20 +341,19 @@ export interface iExplorer {
 }
 ```
 
-- `isOpening`はそのiExplorerデータに該当するFileが現在エディタに展開されていることを示す
-- `isSelected`はiExplorerデータに該当するFileが現在エディタに表示されていることを示す
+-   `isOpening`はその iExplorer データに該当する File が現在エディタに展開されていることを示す
+-   `isSelected`は iExplorer データに該当する File が現在エディタに表示されていることを示す
 
 ということでフォルダアイテムにとっては現状意味のないプロパティとなっている。
 
-フォルダというアイテムはFileには存在せず、iExplorerへ変換する過程で発生するアイテムであるため。
+フォルダというアイテムは File には存在せず、iExplorer へ変換する過程で発生するアイテムであるため。
 
 TODO:
 
-- ファイルがisSelected: trueであるときその親フォルダのisOpening, isSelectedはtrueになってほしい
-- フォルダアイテムがisSelected: trueであるとき、該当アイテムカラムは選択中であるような見た目になってほしい
-- フォルダアイテムがisOpening: trueであるとき、フォルダアイテムのTree.tsxのexpand:trueになってほしい
-- 
-
+-   ファイルが isSelected: true であるときその親フォルダの isOpening, isSelected は true になってほしい
+-   フォルダアイテムが isSelected: true であるとき、該当アイテムカラムは選択中であるような見た目になってほしい
+-   フォルダアイテムが isOpening: true であるとき、フォルダアイテムの Tree.tsx の expand:true になってほしい
+-
 
 #### src/components/VSCodeExplorer/Workspace/Tree.tsx
 
@@ -325,8 +366,8 @@ TODO:
  * @param {Function} handleReorderNode: (droppedId: string, draggableId: string) => void;
  * @param {Function} handleOpenFile: (explorer: iExplorer) => void;
  * @param {Function} handleSelectFile: (explorer: iExplorer) => void;
- * 
- * */ 
+ *
+ * */
 ```
 
 フォルダをクリックしたとき：
@@ -826,7 +867,6 @@ const root: iExplorer = {
 
 ファイル File のプロパティを追加・削除する際には第二段階のコードを変更すること。
 フォルダ File は生成が 2 通りに分かれているのでそれぞれ`items`を持つのか否かに気を付けないといけない。
-
 
 ##### log
 
