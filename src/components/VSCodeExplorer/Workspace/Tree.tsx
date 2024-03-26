@@ -14,6 +14,14 @@ import newFileIcon from '../../../assets/vscode/dark/new-file.svg';
 import newFolderIcon from '../../../assets/vscode/dark/new-folder.svg';
 import trashIcon from '../../../assets/vscode/dark/trash.svg';
 
+// NOTE: new added.
+import FormColumn from './FormColumn';
+import {
+    useFilesDispatch,
+    Types as FilesActionTypes,
+} from '../../../context/FilesContext';
+import { getPathExcludeFilename } from '../../../utils';
+
 interface iProps {
     nestDepth: number;
     explorer: iExplorer;
@@ -47,6 +55,10 @@ const Tree: React.FC<iProps> = ({
     const [isNameEmpty, setIsNameEmpty] = useState<boolean>(false);
     const [dragging, setDragging] = useState<boolean>(false);
 
+    // NOTE: new added.
+    const [renaming, setRenaming] = useState<boolean>(false);
+    const dispatchFilesAction = useFilesDispatch();
+
     const handleNewItem = (isFolder: boolean) => {
         setExpand(true);
         setShowInput({
@@ -55,12 +67,9 @@ const Tree: React.FC<iProps> = ({
         });
     };
 
-    const onAddItem = (
-        e: React.KeyboardEvent<HTMLInputElement>,
-        addTo: string
-    ) => {
-        const requiredPath = addTo.length
-            ? addTo + '/' + e.currentTarget.value
+    const onAddItem = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        const requiredPath = explorer.path.length
+            ? explorer.path + '/' + e.currentTarget.value
             : e.currentTarget.value;
         if (e.keyCode === 13 && requiredPath && isNameValid) {
             handleInsertNode(requiredPath, showInput.isFolder);
@@ -72,10 +81,30 @@ const Tree: React.FC<iProps> = ({
         }
     };
 
+    // // TODO: 引数でexplorer.pathを受け取る必要がない
+    // const onAddItem = (
+    //     e: React.KeyboardEvent<HTMLInputElement>,
+    //     addTo: string
+    // ) => {
+    //     const requiredPath = addTo.length
+    //         ? addTo + '/' + e.currentTarget.value
+    //         : e.currentTarget.value;
+    //     if (e.keyCode === 13 && requiredPath && isNameValid) {
+    //         handleInsertNode(requiredPath, showInput.isFolder);
+    //         // Clear states
+    //         setShowInput({ ...showInput, visible: false });
+    //         setIsInputBegun(false);
+    //         setIsNameValid(false);
+    //         setIsNameEmpty(false);
+    //     }
+    // };
+
     const handleNewItemNameInput = (
         e: React.ChangeEvent<HTMLInputElement>,
         isFolder: boolean
     ) => {
+        console.log('[Tree] handleNewItemNameInput');
+
         setIsInputBegun(true);
 
         // Check if input form is empty.
@@ -108,6 +137,51 @@ const Tree: React.FC<iProps> = ({
     const handleClickFolderColumn = (e: React.MouseEvent<HTMLDivElement>) => {
         e.stopPropagation();
         setExpand(!expand);
+    };
+
+    /***
+     * @param {string} newName - New name for this Tree explorer.
+     *
+     * Dispatch change action to FilexContext to change path of the File.
+     * - renamingの時にonKeyDownで呼び出されるはず
+     *
+     * TODO: path情報が欠けている。完全なpathの取得
+     *  explorerデータの生成方法の改善か、treeのpropsを増やすか
+     * 
+     *  --> explorer.pathは完全なpathであった
+     * 
+     * TODO: isFolder: trueだと、リネームするのはpath文字列のうち中間の文字列なのでnewPathの生成方法を修正すること
+     * 
+     * TODO: folder名の変更だとTypes.MultipleCangesになるので、そのフォルダのすべての連なるアイテムのpathを更新しなくてはならない
+     * 
+     *  --> explorer.itemsからたどることができる
+     * 
+
+     *
+     * */
+    const handleRename = (newName: string) => {
+        // create new path
+        const _path = getPathExcludeFilename(explorer.path);
+        const newPath = (_path ? _path : '') + newName;
+
+        console.log(
+            `[Tree] handleRename: newPath: ${newPath} from ${explorer.path}`
+        );
+
+        dispatchFilesAction({
+            type: FilesActionTypes.Change,
+            payload: {
+                targetFilePath: explorer.path,
+                changeProp: {
+                    newPath: newPath,
+                },
+            },
+        });
+
+        setIsInputBegun(false);
+        setIsNameValid(false);
+        setIsNameEmpty(false);
+        setRenaming(false);
     };
 
     /****************************************************
@@ -180,6 +254,23 @@ const Tree: React.FC<iProps> = ({
         );
     };
 
+    const renderRenameFunction = () => {
+        const clickHandler = (e: React.MouseEvent<HTMLLIElement>) => {
+            e.stopPropagation();
+            e.preventDefault();
+            setRenaming(true);
+
+            console.log('[Tree] Clicked Rename action');
+        };
+        return (
+            <Action
+                handler={clickHandler}
+                icon={newFileIcon}
+                altMessage="Rename item"
+            />
+        );
+    };
+
     const renderDeleteFunction = () => {
         const clickHandler = (e: React.MouseEvent<HTMLLIElement>) => {
             e.stopPropagation();
@@ -193,8 +284,9 @@ const Tree: React.FC<iProps> = ({
         renderAddFileFunction,
         renderAddFolderFunction,
         renderDeleteFunction,
+        renderRenameFunction,
     ];
-    const fileTreeActions = [renderDeleteFunction];
+    const fileTreeActions = [renderDeleteFunction, renderRenameFunction];
     const columnIndent = `${nestDepth * 1.6}rem`;
     // input.inputContainer--inputの動的style
     let inputStyle = {};
@@ -208,48 +300,71 @@ const Tree: React.FC<iProps> = ({
     // DEBUG:
     // const debug = true;
 
+    // DEBUG:
+    console.log(`[Tree] rendering ${explorer.path}`);
+    console.log(explorer);
+
     if (explorer.isFolder) {
         return (
             <div>
-                <DragNDrop
-                    key={explorer.id}
-                    id={explorer.id}
-                    index={Number(explorer.id)}
-                    isDraggable={true}
-                    onDragStart={(e) => onDragStart(e, explorer.id)}
-                    onDragEnter={onDragEnter}
-                    onDragLeave={onDragLeave}
-                    onDrop={(e) => onDrop(e, explorer.id)}
-                    onDragOver={onDragOver}
-                >
-                    <div
-                        className="stack-body-list__item virtual-folder"
+                {renaming ? (
+                    <FormColumn
+                        id={explorer.id}
+                        columnIndent={columnIndent}
+                        isFolder={explorer.isFolder}
+                        name={explorer.name}
+                        isNameEmpty={isNameEmpty}
+                        isInputBegun={isInputBegun}
+                        isNameValid={isNameValid}
+                        handleNewItemNameInput={handleNewItemNameInput}
+                        callbackOnKeyDown={handleRename}
+                        setIsInputBegun={setIsInputBegun}
+                        displayForm={setRenaming}
+                        inputStyle={inputStyle}
+                    />
+                ) : (
+                    <DragNDrop
                         key={explorer.id}
-                        onClick={handleClickFolderColumn}
+                        id={explorer.id}
+                        index={Number(explorer.id)}
+                        isDraggable={true}
+                        onDragStart={(e) => onDragStart(e, explorer.id)}
+                        onDragEnter={onDragEnter}
+                        onDragLeave={onDragLeave}
+                        onDrop={(e) => onDrop(e, explorer.id)}
+                        onDragOver={onDragOver}
                     >
                         <div
-                            className="indent"
-                            style={{ paddingLeft: columnIndent }}
-                        ></div>
-                        <div className="codicon">
-                            <img
-                                src={
-                                    expand ? chevronDownIcon : chevronRightIcon
-                                }
-                            />
-                        </div>
-                        <h3 className="item-label">{explorer.name}</h3>
-                        <div className="actions hover-to-appear">
-                            <div className="actions-bar">
-                                <ul className="actions-container">
-                                    {folderTreeActions.map((action) =>
-                                        action()
-                                    )}
-                                </ul>
+                            className="stack-body-list__item virtual-folder"
+                            key={explorer.id}
+                            onClick={handleClickFolderColumn}
+                        >
+                            <div
+                                className="indent"
+                                style={{ paddingLeft: columnIndent }}
+                            ></div>
+                            <div className="codicon">
+                                <img
+                                    src={
+                                        expand
+                                            ? chevronDownIcon
+                                            : chevronRightIcon
+                                    }
+                                />
+                            </div>
+                            <h3 className="item-label">{explorer.name}</h3>
+                            <div className="actions hover-to-appear">
+                                <div className="actions-bar">
+                                    <ul className="actions-container">
+                                        {folderTreeActions.map((action) =>
+                                            action()
+                                        )}
+                                    </ul>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </DragNDrop>
+                    </DragNDrop>
+                )}
                 <div style={{ display: expand ? 'block' : 'none' }}>
                     {showInput.visible && (
                         <div
@@ -281,7 +396,8 @@ const Tree: React.FC<iProps> = ({
                                     ' ' +
                                     (isNameValid ? '__valid' : '__invalid')
                                 }
-                                onKeyDown={(e) => onAddItem(e, explorer.path)}
+                                onKeyDown={onAddItem}
+                                // onKeyDown={(e) => onAddItem(e, explorer.path)}
                                 onBlur={() => {
                                     setIsInputBegun(false);
                                     setShowInput({

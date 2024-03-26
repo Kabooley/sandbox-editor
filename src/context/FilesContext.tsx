@@ -181,6 +181,8 @@ function filesReducer(files: File[], action: iFilesActions) {
 
             const updatedFiles = files.map((f) => {
                 if (f.getPath() === targetFilePath) {
+                    console.log('file found');
+
                     const clone: File = Object.assign(
                         Object.create(Object.getPrototypeOf(f)),
                         f
@@ -197,6 +199,8 @@ function filesReducer(files: File[], action: iFilesActions) {
             });
 
             // DEBUG:
+            const _updatedFilesPath = updatedFiles.map((uf) => uf.getPath());
+            console.log(_updatedFilesPath);
 
             return [...updatedFiles];
         }

@@ -67,6 +67,53 @@ Tree.tsxの`{showInput...}の領域のJSXがそれ
 
 これをコンポーネント化する
 
+新規アイテムフォーム処理はどうやって行われているのか
+
+```sequence
+renderAdd[File|Folder]Function -> handleNewItem: true if it is folder
+handleNewItem -> setExpand(): true
+handleNewItem -> setShowInput(): visible: true, isFolder
+' これでフォームがレンダリングされる...
+' inputにonChange, onBlur, onKeyDownがあり...
+onChange -> handleNewItemNameInput: e.currentTarget.value
+' handleNewItemNameInputでは入力内容の状態管理をしている
+onKeyDown -> onAddItem: event, explorer, path
+' 入力状態のリセット
+' 入力内容をhandleInsertNodeへ渡す
+onAddItem -> handleInsertNode: requiredPath, showInput.isFolder
+' これでフォームが消える
+```
+
+ひとまず以下のように作った：
+
+```sequence
+-> clickHandler of renderRenameFunciton: click event
+clickHandler -> setRenaming: true
+' FormColumn must be displayed on the Tree column.
+' User inputs new item's name
+' handleNewItemNameInput watches input is valid
+change-event -> handleNewItemNameInput: change event
+keydown-event -> handleRename: keydown event
+handleRename -> dispatchFilesAction: Types.Change, newPath
+```
+
+#### 走り書き
+
+```TypeScript
+
+const Tree: React.FC<iProps> = ({
+    explorer,
+    nestDepth,
+    handleInsertNode,
+    handleDeleteNode,
+    handleReorderNode,
+    handleOpenFile,
+    handleSelectFile,
+}) => {
+    // 新規追加
+    const [renaming, setRenaming] = useState<boolean>(false);
+```
+
 ## OpenEditor
 
 ## Workspace

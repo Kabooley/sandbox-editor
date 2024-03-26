@@ -20,3 +20,4 @@ export { sortPropertiesByKey } from './sortPropertiesByKey';
 export { getValidSemver } from './getValidSemver';
 export { isSameShallowObject } from './isSameShallowObject';
 export { mustache } from './mustache';
+export { getPathExcludeFilename } from './getPathExcludeFilename';
