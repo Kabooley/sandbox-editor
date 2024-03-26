@@ -20,7 +20,7 @@ import {
     useFilesDispatch,
     Types as FilesActionTypes,
 } from '../../../context/FilesContext';
-import { getPathExcludeFilename } from '../../../utils';
+import { getPathExcludeFilename, getAllDescendantsPath } from '../../../utils';
 
 interface iProps {
     nestDepth: number;
@@ -156,27 +156,58 @@ const Tree: React.FC<iProps> = ({
      * 
      *  --> explorer.itemsからたどることができる
      * 
-
+     * actionをdispatchするところまでは実は期待通り。
+     * 問題は、FilesはiExplorerと異なりフォルダだけのFilesがないため
+     * dispatchはファイルに対して行われないと
+     * CHANGE_FILEアクションのf.getPath() === targetFilePathが一生ヒットしない
+     * そのためpathが変更されないのである
+     * 
+     * TODO: explorerのitems以下のアイテム全てを抜き出して、それらすべてのアイテムに対してchangeアクションをディスパッチする
      *
+     * 絶対パスが`src/components/Counters/index.tsx`というpathがあったとして
+     * explorerが`src/components/Counters`であったとして
+     * `src/components/Counters`と`src/components/Counters/index.tsx`の両方を修正しなくてはならない
+     * 
+     * 
      * */
     const handleRename = (newName: string) => {
-        // create new path
-        const _path = getPathExcludeFilename(explorer.path);
-        const newPath = (_path ? _path : '') + newName;
-
-        console.log(
-            `[Tree] handleRename: newPath: ${newPath} from ${explorer.path}`
-        );
-
-        dispatchFilesAction({
-            type: FilesActionTypes.Change,
-            payload: {
-                targetFilePath: explorer.path,
-                changeProp: {
-                    newPath: newPath,
+        // Update all descendants tree object.
+        if(explorer.isFolder) {
+            const _path = getPathExcludeFilename(explorer.path);
+            const updatedExplorerPath = (_path ? _path : '') + newName;
+            const descendantsPath = getAllDescendantsPath(explorer);
+            const requests = descendantsPath.map(desPath => {
+                return {
+                            targetFilePath: desPath,
+                            changeProps: {
+                                newPath: /* TODO: update path */
+                            }
+                    };
+            });
+            
+            dispatchFilesAction({
+                type: FilesActionTypes.ChangeMultiple,
+                payload: requests
+            });
+        }
+        else {
+            console.log(
+                `[Tree] handleRename: newPath: ${newPath} from ${explorer.path}`
+            );
+    
+            // create new path
+            const _path = getPathExcludeFilename(explorer.path);
+            const newPath = (_path ? _path : '') + newName;
+            dispatchFilesAction({
+                type: FilesActionTypes.Change,
+                payload: {
+                    targetFilePath: explorer.path,
+                    changeProp: {
+                        newPath: newPath,
+                    },
                 },
-            },
-        });
+            });
+        }
 
         setIsInputBegun(false);
         setIsNameValid(false);
