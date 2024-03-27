@@ -35,6 +35,23 @@ interface iProps {
 const defaultNewFileName = 'Untitled.file.js';
 const defaultNewDirectoryName = 'Untitled';
 
+const renameFolderAndDescendants = (
+    folderPath: string,
+    newFolderPath: string,
+    descendantsPath: string[]
+  ) => {
+    const result: string[] = [];
+    descendantsPath.forEach((dp) => {
+      if (dp.includes(folderPath)) {
+        const unmodify = dp.split(folderPath)[1];
+        result.push([newFolderPath, unmodify].join(''));
+      } else {
+        result.push(dp);
+      }
+    });
+    return result;
+  };
+
 const Tree: React.FC<iProps> = ({
     explorer,
     nestDepth,
@@ -171,16 +188,32 @@ const Tree: React.FC<iProps> = ({
      * 
      * */
     const handleRename = (newName: string) => {
-        // Update all descendants tree object.
+        // Update all descendants tree object if explorer is folder.
         if(explorer.isFolder) {
             const _path = getPathExcludeFilename(explorer.path);
             const updatedExplorerPath = (_path ? _path : '') + newName;
             const descendantsPath = getAllDescendantsPath(explorer);
-            const requests = descendantsPath.map(desPath => {
+
+            // create new path and pairs old path.
+            const updatedDescendantsPath = descendantsPath.map(dp => {
+                const d = {
+                    oldPath: dp,
+                    newPath: ""
+                };
+                if (dp.includes(explorer.path)) {
+                  const unmodify = dp.split(explorer.path)[1];
+                  d.newPath = updatedExplorerPath + unmodify;
+                } else {
+                  d.newPath = dp;
+                }
+                return d;
+            });
+
+            const requests = updatedDescendantsPath.map(udp => {
                 return {
-                            targetFilePath: desPath,
+                            targetFilePath: udp.oldPath,
                             changeProps: {
-                                newPath: /* TODO: update path */
+                                newPath: udp.newPath
                             }
                     };
             });
