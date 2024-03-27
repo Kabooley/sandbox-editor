@@ -187,66 +187,130 @@ const Tree: React.FC<iProps> = ({
      * 
      * 
      * */
-    const handleRename = (newName: string) => {
-        // Update all descendants tree object if explorer is folder.
-        if(explorer.isFolder) {
-            const _path = getPathExcludeFilename(explorer.path);
-            const updatedExplorerPath = (_path ? _path : '') + newName;
-            const descendantsPath = getAllDescendantsPath(explorer);
+    // const handleRename = (newName: string) => {
+    //     // Update all descendants tree object if explorer is folder.
+    //     if(explorer.isFolder) {
+    //         const _path = getPathExcludeFilename(explorer.path);
+    //         const updatedExplorerPath = (_path ? _path : '') + newName;
+    //         const descendantsPath = getAllDescendantsPath(explorer);
 
-            // create new path and pairs old path.
-            const updatedDescendantsPath = descendantsPath.map(dp => {
-                const d = {
-                    oldPath: dp,
-                    newPath: ""
-                };
-                if (dp.includes(explorer.path)) {
-                  const unmodify = dp.split(explorer.path)[1];
-                  d.newPath = updatedExplorerPath + unmodify;
-                } else {
-                  d.newPath = dp;
-                }
-                return d;
-            });
+    //         // create new path and pairs old path.
+    //         const updatedDescendantsPath = descendantsPath.map(dp => {
+    //             const d = {
+    //                 oldPath: dp,
+    //                 newPath: ""
+    //             };
+    //             if (dp.includes(explorer.path)) {
+    //               const unmodify = dp.split(explorer.path)[1];
+    //               d.newPath = updatedExplorerPath + unmodify;
+    //             } else {
+    //               d.newPath = dp;
+    //             }
+    //             return d;
+    //         });
 
-            const requests = updatedDescendantsPath.map(udp => {
-                return {
-                            targetFilePath: udp.oldPath,
-                            changeProps: {
-                                newPath: udp.newPath
-                            }
-                    };
-            });
+    //         const requests = updatedDescendantsPath.map(udp => {
+    //             return {
+    //                         targetFilePath: udp.oldPath,
+    //                         changeProps: {
+    //                             newPath: udp.newPath
+    //                         }
+    //                 };
+    //         });
             
-            dispatchFilesAction({
-                type: FilesActionTypes.ChangeMultiple,
-                payload: requests
-            });
-        }
-        else {
-            console.log(
-                `[Tree] handleRename: newPath: ${newPath} from ${explorer.path}`
-            );
+    //         dispatchFilesAction({
+    //             type: FilesActionTypes.ChangeMultiple,
+    //             payload: requests
+    //         });
+    //     }
+    //     else {
+    //         console.log(
+    //             `[Tree] handleRename: newPath: ${newPath} from ${explorer.path}`
+    //         );
     
-            // create new path
-            const _path = getPathExcludeFilename(explorer.path);
-            const newPath = (_path ? _path : '') + newName;
-            dispatchFilesAction({
-                type: FilesActionTypes.Change,
-                payload: {
-                    targetFilePath: explorer.path,
-                    changeProp: {
-                        newPath: newPath,
-                    },
-                },
-            });
-        }
+    //         // create new path
+    //         const _path = getPathExcludeFilename(explorer.path);
+    //         const newPath = (_path ? _path : '') + newName;
+    //         dispatchFilesAction({
+    //             type: FilesActionTypes.Change,
+    //             payload: {
+    //                 targetFilePath: explorer.path,
+    //                 changeProp: {
+    //                     newPath: newPath,
+    //                 },
+    //             },
+    //         });
+    //     }
 
-        setIsInputBegun(false);
-        setIsNameValid(false);
-        setIsNameEmpty(false);
-        setRenaming(false);
-    };
+    //     setIsInputBegun(false);
+    //     setIsNameValid(false);
+    //     setIsNameEmpty(false);
+    //     setRenaming(false);
+    // };
+
+const handleRename = (
+  newName: string
+) => {
+  // Update all descendants tree object if explorer is folder.
+  if (explorer.isFolder) {
+    const _path = getPathExcludeFilename(explorer.path);
+    const updatedExplorerPath = (_path ? _path : '') + newName;
+    const descendantsPath = getAllDescendantsPath(explorer);
+
+    // create new path and pairs old path.
+    const updatedDescendantsPath = descendantsPath.map((dp) => {
+      const d = {
+        oldPath: dp,
+        newPath: '',
+      };
+      if (dp.includes(explorer.path)) {
+        const unmodify = dp.split(explorer.path)[1];
+        d.newPath = updatedExplorerPath + unmodify;
+      } else {
+        d.newPath = dp;
+      }
+      return d;
+    });
+
+    const requests = updatedDescendantsPath.map((udp) => {
+      return {
+        targetFilePath: udp.oldPath,
+        changeProp: {
+          newPath: udp.newPath,
+        },
+      };
+    });
+    requests.push({
+      targetFilePath: explorer.path,
+      changeProp: {
+        newPath: updatedExplorerPath,
+      },
+    });
+
+    dispatchFilesAction({
+        type: FilesActionTypes.ChangeMultiple,
+        payload: requests
+    });
+  } else {
+    // create new path
+    const _path = getPathExcludeFilename(explorer.path);
+    const newPath = (_path ? _path : '') + newName;
+    dispatchFilesAction({
+        type: FilesActionTypes.Change,
+        payload: {
+          targetFilePath: explorer.path,
+          changeProp: {
+            newPath: newPath,
+          },
+        },
+    });
+  }
+
+  setIsInputBegun(false);
+  setIsNameValid(false);
+  setIsNameEmpty(false);
+  setRenaming(false);
+};
 
     /****************************************************
      * Drag and Drop handlers
