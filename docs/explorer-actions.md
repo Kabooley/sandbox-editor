@@ -97,6 +97,260 @@ keydown-event -> handleRename: keydown event
 handleRename -> dispatchFilesAction: Types.Change, newPath
 ```
 
+log:
+
+```bash
+20:06:38.152 Tree.tsx:415 [Tree] Clicked Rename action
+20:06:38.160 FormColumn.tsx:53 [FormColumn] rendering...
+20:06:39.023 Tree.tsx:156 [Tree] handleNewItemNameInput
+20:06:39.025 FormColumn.tsx:53 [FormColumn] rendering...
+20:06:39.200 Tree.tsx:156 [Tree] handleNewItemNameInput
+20:06:39.497 Tree.tsx:156 [Tree] handleNewItemNameInput
+20:06:39.733 Tree.tsx:156 [Tree] handleNewItemNameInput
+20:06:40.052 Tree.tsx:156 [Tree] handleNewItemNameInput
+20:06:40.228 Tree.tsx:156 [Tree] handleNewItemNameInput
+20:06:40.465 Tree.tsx:156 [Tree] handleNewItemNameInput
+20:06:40.932 FormColumn.tsx:49 [FormColumn] key down
+20:06:40.936 FilesContext.tsx:163 [FilesContext] CHANGE_MULTIPLE_FILES
+[
+    {
+        "_path": "package.json",
+        "_value": "{\n  \"name\": \"react-typescript\",\n  \"version\": \"1.0.0\",\n  \"description\": \"React and TypeScript example starter project\",\n  \"keywords\": [\n    \"typescript\",\n    \"react\",\n    \"starter\"\n  ],\n  \"main\": \"src/index.tsx\",\n  \"dependencies\": {\n    \"@types/react\": \"18.0.25\",\n    \"@types/react-dom\": \"18.0.9\",\n    \"react\": \"18.2.0\",\n    \"react-dom\": \"18.2.0\",\n    \"react-scripts\": \"5.0.1\",\n    \"typescript\": \"4.4.2\"\n  },\n  \"devDependencies\": {},\n  \"scripts\": {\n    \"start\": \"react-scripts start\",\n    \"build\": \"react-scripts build\",\n    \"test\": \"react-scripts test --env=jsdom\",\n    \"eject\": \"react-scripts eject\"\n  },\n  \"browserslist\": [\n    \">0.2%\",\n    \"not dead\",\n    \"not ie <= 11\",\n    \"not op_mini all\"\n  ]\n}",
+        "_language": "json",
+        "_isFolder": false,
+        "_selected": false,
+        "_opening": false,
+        "_tabIndex": null
+    },
+    {
+        "_path": "public/index.html",
+        "_value": "\n<!DOCTYPE html>\n<html>\n  <head>\n    <meta charset=\"utf-8\" />\n    <title>React TypeScript</title>\n  </head>\n  <body>\n    <div id=\"root\"></div>\n  </body>\n</html>",
+        "_language": "html",
+        "_isFolder": false,
+        "_selected": false,
+        "_opening": false,
+        "_tabIndex": null
+    },
+    {
+        "_path": "CHROMEO/superUltraHyperTooLongBaddaaasssssFile.txt",
+        "_value": "so much text might be here...",
+        "_language": "",
+        "_isFolder": false,
+        "_selected": false,
+        "_opening": false,
+        "_tabIndex": null
+    },
+    {
+        "_path": "src/App.tsx",
+        "_value": "\nimport React from 'react';\nimport \"./styles.css\";\n\nexport default function App(): JSX.Element {\n  return (\n    <div className=\"App\">\n      <h1>Hello CodeSandbox</h1>\n      <h2>Start editing to see some magic happen!</h2>\n    </div>\n  );\n};\n      ",
+        "_language": "typescript",
+        "_isFolder": false,
+        "_selected": true,
+        "_opening": true,
+        "_tabIndex": null
+    },
+    {
+        "_path": "src/index.tsx",
+        "_value": "\nimport React from \"react\";\nimport ReactDOM from \"react-dom/client\";\nimport App from \"./App\";\n\nconst rootElement = document.getElementById(\"root\");\nif(rootElement) {\n  const root = ReactDOM.createRoot(rootElement);\n\n  root.render(\n    <React.StrictMode>\n      <App />\n    </React.StrictMode>\n  );   \n}",
+        "_language": "typescript",
+        "_isFolder": false,
+        "_selected": false,
+        "_opening": false,
+        "_tabIndex": null
+    },
+    {
+        "_path": "src/styles.css",
+        "_value": ".App {\n        font-family: sans-serif;\n        text-align: center;\n      }\n      ",
+        "_language": "css",
+        "_isFolder": false,
+        "_selected": false,
+        "_opening": false,
+        "_tabIndex": null
+    },
+    {
+        "_path": "tsconfig.json",
+        "_value": "{\n      \"include\": [\n          \"./src/**/*\"\n      ],\n      \"compilerOptions\": {\n          \"strict\": true,\n          \"esModuleInterop\": true,\n          \"lib\": [\n              \"dom\",\n              \"es2015\"\n          ],\n          \"jsx\": \"react-jsx\"\n      }\n  }",
+        "_language": "json",
+        "_isFolder": false,
+        "_selected": false,
+        "_opening": false,
+        "_tabIndex": null
+    }
+]
+20:06:40.941 index.tsx:365 [Workspace] tree data:
+{
+    "id": "1",
+    "name": "root",
+    "isFolder": true,
+    "items": [
+        {
+            "id": "2",
+            "name": "CHROMEO",
+            "isFolder": true,
+            "items": [
+                {
+                    "id": "5",
+                    "name": "superUltraHyperTooLongBaddaaasssssFile.txt",
+                    "isFolder": false,
+                    "items": [],
+                    "path": "CHROMEO/superUltraHyperTooLongBaddaaasssssFile.txt",
+                    "isOpening": false,
+                    "isSelected": false
+                }
+            ],
+            "path": "CHROMEO",
+            "isOpening": false,
+            "isSelected": false
+        },
+        {
+            "id": "3",
+            "name": "public",
+            "isFolder": true,
+            "items": [
+                {
+                    "id": "7",
+                    "name": "index.html",
+                    "isFolder": false,
+                    "items": [],
+                    "path": "public/index.html",
+                    "isOpening": false,
+                    "isSelected": false
+                }
+            ],
+            "path": "public",
+            "isOpening": false,
+            "isSelected": false
+        },
+        {
+            "id": "4",
+            "name": "src",
+            "isFolder": true,
+            "items": [
+                {
+                    "id": "8",
+                    "name": "App.tsx",
+                    "isFolder": false,
+                    "items": [],
+                    "path": "src/App.tsx",
+                    "isOpening": true,
+                    "isSelected": true
+                },
+                {
+                    "id": "9",
+                    "name": "index.tsx",
+                    "isFolder": false,
+                    "items": [],
+                    "path": "src/index.tsx",
+                    "isOpening": false,
+                    "isSelected": false
+                },
+                {
+                    "id": "10",
+                    "name": "styles.css",
+                    "isFolder": false,
+                    "items": [],
+                    "path": "src/styles.css",
+                    "isOpening": false,
+                    "isSelected": false
+                }
+            ],
+            "path": "src",
+            "isOpening": false,
+            "isSelected": false
+        },
+        {
+            "id": "6",
+            "name": "package.json",
+            "isFolder": false,
+            "items": [],
+            "path": "package.json",
+            "isOpening": false,
+            "isSelected": false
+        },
+        {
+            "id": "11",
+            "name": "tsconfig.json",
+            "isFolder": false,
+            "items": [],
+            "path": "tsconfig.json",
+            "isOpening": false,
+            "isSelected": false
+        }
+    ],
+    "path": "",
+    "isOpening": false,
+    "isSelected": false
+}
+20:06:40.980 EditorContainer.tsx:113 [EditorContainer] did update
+# 
+# TODO: extralibsの中身はpathの更新がされていないことが確認できた
+# 
+20:06:40.981 EditorContainer.tsx:121 {file:///package.json: {…}, file:///public/index.html: {…}, file:///soMuchLongDirectoryName/superUltraHyperTooLongBaddaaasssssFile.txt: {…}, file:///src/App.tsx: {…}, file:///src/index.tsx: {…}, …}
+
+```
+
+わかったことsofar：
+
+- monaco-editorのextralibsのpathは更新されていない
+- Filesとexplorerの更新は、フォルダ名の更新に関しては問題なく処理できている
+- explorer.ifFolder: falseのexplorerはFormColumnが出力されていない（入れ忘れ
+- 多分入力状態の値が正しくリセットされていない
+
+入力状態値：
+
+```bash
+# フォルダの名称変更処理：
+20:35:53.057 Tree.tsx:423 [Tree] Clicked Rename action
+20:35:53.059 FormColumn.tsx:53 [FormColumn] rendering...
+20:35:54.005 Tree.tsx:177 [Tree] handleNewItemNameInput
+20:35:54.007 FormColumn.tsx:53 [FormColumn] rendering...
+20:35:54.010 Tree.tsx:120 [Tree] isNameInvalid: true
+20:35:54.010 Tree.tsx:121 [Tree] isNameEmpty false
+20:35:54.011 Tree.tsx:122 [Tree] isInputBegun true
+20:35:54.092 Tree.tsx:177 [Tree] handleNewItemNameInput
+20:35:54.439 Tree.tsx:177 [Tree] handleNewItemNameInput
+20:35:54.573 Tree.tsx:177 [Tree] handleNewItemNameInput
+20:35:55.031 Tree.tsx:177 [Tree] handleNewItemNameInput
+20:35:55.161 Tree.tsx:177 [Tree] handleNewItemNameInput
+20:35:55.325 Tree.tsx:177 [Tree] handleNewItemNameInput
+20:35:55.868 FormColumn.tsx:49 [FormColumn] key down
+20:35:55.870 FilesContext.tsx:163 [FilesContext] CHANGE_MULTIPLE_FILES
+20:35:55.870 FilesContext.tsx:179 Array(7)
+20:35:55.874 index.tsx:365 [Workspace] tree data:
+20:35:55.874 index.tsx:366 Object
+20:35:55.875 index.tsx:366 Object
+20:35:55.898 EditorContainer.tsx:113 [EditorContainer] did update
+20:35:55.898 EditorContainer.tsx:121 {file:///package.json: {…}, file:///public/index.html: {…}, file:///soMuchLongDirectoryName/superUltraHyperTooLongBaddaaasssssFile.txt: {…}, file:///src/App.tsx: {…}, file:///src/index.tsx: {…}, …}
+20:35:55.918 Tree.tsx:120 [Tree] isNameInvalid: false
+20:35:55.926 Tree.tsx:121 [Tree] isNameEmpty false
+20:35:55.927 Tree.tsx:122 [Tree] isInputBegun false
+20:35:55.930 Tree.tsx:120 [Tree] isNameInvalid: false
+20:35:55.931 Tree.tsx:121 [Tree] isNameEmpty false
+20:35:55.931 Tree.tsx:122 [Tree] isInputBegun false
+# ファイル名変更処理：
+20:36:27.005 Tree.tsx:423 [Tree] Clicked Rename action
+20:36:27.007 FormColumn.tsx:53 [FormColumn] rendering...
+20:36:29.673 Tree.tsx:177 [Tree] handleNewItemNameInput
+20:36:29.675 FormColumn.tsx:53 [FormColumn] rendering...
+20:36:29.678 Tree.tsx:120 [Tree] isNameInvalid: false
+20:36:29.678 Tree.tsx:121 [Tree] isNameEmpty false
+20:36:29.679 Tree.tsx:122 [Tree] isInputBegun true
+# 入力中常に入力内容が無効である判定であった
+20:36:29.783 Tree.tsx:177 [Tree] handleNewItemNameInput
+20:36:29.980 Tree.tsx:177 [Tree] handleNewItemNameInput
+20:36:30.333 Tree.tsx:177 [Tree] handleNewItemNameInput
+20:36:30.941 Tree.tsx:177 [Tree] handleNewItemNameInput
+20:36:31.344 Tree.tsx:177 [Tree] handleNewItemNameInput
+20:36:31.591 Tree.tsx:177 [Tree] handleNewItemNameInput
+20:36:31.741 Tree.tsx:177 [Tree] handleNewItemNameInput
+20:36:31.989 Tree.tsx:177 [Tree] handleNewItemNameInput
+20:36:33.669 FormColumn.tsx:34 [FormColumn] on blur
+20:36:33.685 Tree.tsx:120 [Tree] isNameInvalid: false
+20:36:33.686 Tree.tsx:121 [Tree] isNameEmpty false
+20:36:33.687 Tree.tsx:122 [Tree] isInputBegun false
+
+```
+
 #### 走り書き
 
 ```TypeScript

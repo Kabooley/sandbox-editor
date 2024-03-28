@@ -11,6 +11,7 @@
 
 const filenameRegexp = /^([A-Za-z0-9\-\_\.]+)\.([a-zA-Z0-9]{1,9})$/;
 
+// TODO: 拡張子が必要になっているのでなしでも有効とするように
 export const isFilenameValid = (path: string): boolean => {
     return filenameRegexp.test(path);
 };
@@ -18,18 +19,18 @@ export const isFilenameValid = (path: string): boolean => {
 
 
 // const filenames = [
-//     "sdfsadfa/dsafsdfs.fdsjkad/sadsa.js",
-//     "222222.3333",
-//     "script2.js",
-//     "script2.js.worker",
-//     "script2._.bundled",
-//     "script_3.js",
-//     "-script.js",
-//     "_script.js",
-//     "sc'ript.js",
-//     "sc&ript.js",
-//     "sc^ript.js",
-//     "sc\ript.js",
+    // "sdfsadfa/dsafsdfs.fdsjkad/sadsa.js",
+    // "222222.3333",
+    // "script2.js",
+    // "script2.js.worker",
+    // "script2._.bundled",
+    // "script_3.js",
+    // "-script.js",
+    // "_script.js",
+    // "sc'ript.js",
+    // "sc&ript.js",
+    // "sc^ript.js",
+    // "sc\ript.js",
 //   ];
   
 //   filenames.forEach(f => {

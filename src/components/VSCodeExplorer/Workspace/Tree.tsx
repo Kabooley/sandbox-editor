@@ -22,6 +22,9 @@ import {
 } from '../../../context/FilesContext';
 import { getPathExcludeFilename, getAllDescendantsPath } from '../../../utils';
 
+// DEBUG: for debug purpose
+import { useEffect } from 'react';
+
 interface iProps {
     nestDepth: number;
     explorer: iExplorer;
@@ -35,22 +38,22 @@ interface iProps {
 const defaultNewFileName = 'Untitled.file.js';
 const defaultNewDirectoryName = 'Untitled';
 
-const renameFolderAndDescendants = (
-    folderPath: string,
-    newFolderPath: string,
-    descendantsPath: string[]
-  ) => {
-    const result: string[] = [];
-    descendantsPath.forEach((dp) => {
-      if (dp.includes(folderPath)) {
-        const unmodify = dp.split(folderPath)[1];
-        result.push([newFolderPath, unmodify].join(''));
-      } else {
-        result.push(dp);
-      }
-    });
-    return result;
-  };
+// const renameFolderAndDescendants = (
+//     folderPath: string,
+//     newFolderPath: string,
+//     descendantsPath: string[]
+//   ) => {
+//     const result: string[] = [];
+//     descendantsPath.forEach((dp) => {
+//       if (dp.includes(folderPath)) {
+//         const unmodify = dp.split(folderPath)[1];
+//         result.push([newFolderPath, unmodify].join(''));
+//       } else {
+//         result.push(dp);
+//       }
+//     });
+//     return result;
+//   };
 
 const Tree: React.FC<iProps> = ({
     explorer,
@@ -75,6 +78,13 @@ const Tree: React.FC<iProps> = ({
     // NOTE: new added.
     const [renaming, setRenaming] = useState<boolean>(false);
     const dispatchFilesAction = useFilesDispatch();
+
+    useEffect(() => {
+        console.log('[Tree] did update');
+        console.log('[Tree] isNameInvalid:', isNameValid);
+        console.log('[Tree] isNameEmpty', isNameEmpty);
+        console.log('[Tree] isInputBegun', isInputBegun);
+    }, [isInputBegun, isNameValid, isNameEmpty]);
 
     const handleNewItem = (isFolder: boolean) => {
         setExpand(true);
@@ -120,8 +130,6 @@ const Tree: React.FC<iProps> = ({
         e: React.ChangeEvent<HTMLInputElement>,
         isFolder: boolean
     ) => {
-        console.log('[Tree] handleNewItemNameInput');
-
         setIsInputBegun(true);
 
         // Check if input form is empty.
@@ -130,6 +138,8 @@ const Tree: React.FC<iProps> = ({
             : setIsNameEmpty(true);
 
         // Check if value is valid
+        // 
+        // folder
         if (isFolder && isFolderNameValid(e.currentTarget.value)) {
             setIsNameValid(true);
         } else if (isFilenameValid(e.currentTarget.value)) {
@@ -137,6 +147,11 @@ const Tree: React.FC<iProps> = ({
         } else {
             setIsNameValid(false);
         }
+
+        console.log('[Tree] handleNewItemNameInput', e.currentTarget.value);
+        console.log('[Tree] isNameInvalid:', isNameValid);
+        console.log('[Tree] isNameEmpty', isNameEmpty);
+        console.log('[Tree] isInputBegun', isInputBegun);
     };
 
     const onDelete = () => {
@@ -164,28 +179,28 @@ const Tree: React.FC<iProps> = ({
      *
      * TODO: path情報が欠けている。完全なpathの取得
      *  explorerデータの生成方法の改善か、treeのpropsを増やすか
-     * 
+     *
      *  --> explorer.pathは完全なpathであった
-     * 
+     *
      * TODO: isFolder: trueだと、リネームするのはpath文字列のうち中間の文字列なのでnewPathの生成方法を修正すること
-     * 
+     *
      * TODO: folder名の変更だとTypes.MultipleCangesになるので、そのフォルダのすべての連なるアイテムのpathを更新しなくてはならない
-     * 
+     *
      *  --> explorer.itemsからたどることができる
-     * 
+     *
      * actionをdispatchするところまでは実は期待通り。
      * 問題は、FilesはiExplorerと異なりフォルダだけのFilesがないため
      * dispatchはファイルに対して行われないと
      * CHANGE_FILEアクションのf.getPath() === targetFilePathが一生ヒットしない
      * そのためpathが変更されないのである
-     * 
+     *
      * TODO: explorerのitems以下のアイテム全てを抜き出して、それらすべてのアイテムに対してchangeアクションをディスパッチする
      *
      * 絶対パスが`src/components/Counters/index.tsx`というpathがあったとして
      * explorerが`src/components/Counters`であったとして
      * `src/components/Counters`と`src/components/Counters/index.tsx`の両方を修正しなくてはならない
-     * 
-     * 
+     *
+     *
      * */
     // const handleRename = (newName: string) => {
     //     // Update all descendants tree object if explorer is folder.
@@ -217,7 +232,7 @@ const Tree: React.FC<iProps> = ({
     //                         }
     //                 };
     //         });
-            
+
     //         dispatchFilesAction({
     //             type: FilesActionTypes.ChangeMultiple,
     //             payload: requests
@@ -227,7 +242,7 @@ const Tree: React.FC<iProps> = ({
     //         console.log(
     //             `[Tree] handleRename: newPath: ${newPath} from ${explorer.path}`
     //         );
-    
+
     //         // create new path
     //         const _path = getPathExcludeFilename(explorer.path);
     //         const newPath = (_path ? _path : '') + newName;
@@ -248,69 +263,67 @@ const Tree: React.FC<iProps> = ({
     //     setRenaming(false);
     // };
 
-const handleRename = (
-  newName: string
-) => {
-  // Update all descendants tree object if explorer is folder.
-  if (explorer.isFolder) {
-    const _path = getPathExcludeFilename(explorer.path);
-    const updatedExplorerPath = (_path ? _path : '') + newName;
-    const descendantsPath = getAllDescendantsPath(explorer);
+    const handleRename = (newName: string) => {
+        // Update all descendants tree object if explorer is folder.
+        if (explorer.isFolder) {
+            const _path = getPathExcludeFilename(explorer.path);
+            const updatedExplorerPath = (_path ? _path : '') + newName;
+            const descendantsPath = getAllDescendantsPath(explorer);
 
-    // create new path and pairs old path.
-    const updatedDescendantsPath = descendantsPath.map((dp) => {
-      const d = {
-        oldPath: dp,
-        newPath: '',
-      };
-      if (dp.includes(explorer.path)) {
-        const unmodify = dp.split(explorer.path)[1];
-        d.newPath = updatedExplorerPath + unmodify;
-      } else {
-        d.newPath = dp;
-      }
-      return d;
-    });
+            // create new path and pairs old path.
+            const updatedDescendantsPath = descendantsPath.map((dp) => {
+                const d = {
+                    oldPath: dp,
+                    newPath: '',
+                };
+                if (dp.includes(explorer.path)) {
+                    const unmodify = dp.split(explorer.path)[1];
+                    d.newPath = updatedExplorerPath + unmodify;
+                } else {
+                    d.newPath = dp;
+                }
+                return d;
+            });
 
-    const requests = updatedDescendantsPath.map((udp) => {
-      return {
-        targetFilePath: udp.oldPath,
-        changeProp: {
-          newPath: udp.newPath,
-        },
-      };
-    });
-    requests.push({
-      targetFilePath: explorer.path,
-      changeProp: {
-        newPath: updatedExplorerPath,
-      },
-    });
+            const requests = updatedDescendantsPath.map((udp) => {
+                return {
+                    targetFilePath: udp.oldPath,
+                    changeProp: {
+                        newPath: udp.newPath,
+                    },
+                };
+            });
+            requests.push({
+                targetFilePath: explorer.path,
+                changeProp: {
+                    newPath: updatedExplorerPath,
+                },
+            });
 
-    dispatchFilesAction({
-        type: FilesActionTypes.ChangeMultiple,
-        payload: requests
-    });
-  } else {
-    // create new path
-    const _path = getPathExcludeFilename(explorer.path);
-    const newPath = (_path ? _path : '') + newName;
-    dispatchFilesAction({
-        type: FilesActionTypes.Change,
-        payload: {
-          targetFilePath: explorer.path,
-          changeProp: {
-            newPath: newPath,
-          },
-        },
-    });
-  }
+            dispatchFilesAction({
+                type: FilesActionTypes.ChangeMultiple,
+                payload: requests,
+            });
+        } else {
+            // create new path
+            const _path = getPathExcludeFilename(explorer.path);
+            const newPath = (_path ? _path : '') + newName;
+            dispatchFilesAction({
+                type: FilesActionTypes.Change,
+                payload: {
+                    targetFilePath: explorer.path,
+                    changeProp: {
+                        newPath: newPath,
+                    },
+                },
+            });
+        }
 
-  setIsInputBegun(false);
-  setIsNameValid(false);
-  setIsNameEmpty(false);
-  setRenaming(false);
-};
+        setIsInputBegun(false);
+        setIsNameValid(false);
+        setIsNameEmpty(false);
+        setRenaming(false);
+    };
 
     /****************************************************
      * Drag and Drop handlers
@@ -427,10 +440,6 @@ const handleRename = (
     }
     // DEBUG:
     // const debug = true;
-
-    // DEBUG:
-    console.log(`[Tree] rendering ${explorer.path}`);
-    console.log(explorer);
 
     if (explorer.isFolder) {
         return (
@@ -622,39 +631,60 @@ const handleRename = (
         );
     } else {
         return (
-            <DragNDrop
-                key={explorer.id}
-                id={explorer.id}
-                index={Number(explorer.id)}
-                isDraggable={true}
-                onDragStart={(e) => onDragStart(e, explorer.id)}
-                onDragEnter={onDragEnter}
-                onDragLeave={onDragLeave}
-                onDrop={(e) => onDrop(e, explorer.id)}
-                onDragOver={onDragOver}
-            >
-                <div
-                    className="stack-body-list__item virtual-folder"
-                    key={explorer.id}
-                    onClick={handleClickFileColumn}
-                >
-                    <div
-                        className="indent"
-                        style={{ paddingLeft: columnIndent }}
-                    ></div>
-                    <div className="codicon">
-                        <img src={chevronRightIcon} />
-                    </div>
-                    <h3 className="item-label">{explorer.name}</h3>
-                    <div className="actions hover-to-appear">
-                        <div className="actions-bar">
-                            <ul className="actions-container">
-                                {fileTreeActions.map((action) => action())}
-                            </ul>
+            <div>
+                {renaming ? (
+                    <FormColumn
+                        id={explorer.id}
+                        columnIndent={columnIndent}
+                        isFolder={explorer.isFolder}
+                        name={explorer.name}
+                        isNameEmpty={isNameEmpty}
+                        isInputBegun={isInputBegun}
+                        isNameValid={isNameValid}
+                        handleNewItemNameInput={handleNewItemNameInput}
+                        callbackOnKeyDown={handleRename}
+                        setIsInputBegun={setIsInputBegun}
+                        displayForm={setRenaming}
+                        inputStyle={inputStyle}
+                    />
+                ) : (
+                    <DragNDrop
+                        key={explorer.id}
+                        id={explorer.id}
+                        index={Number(explorer.id)}
+                        isDraggable={true}
+                        onDragStart={(e) => onDragStart(e, explorer.id)}
+                        onDragEnter={onDragEnter}
+                        onDragLeave={onDragLeave}
+                        onDrop={(e) => onDrop(e, explorer.id)}
+                        onDragOver={onDragOver}
+                    >
+                        <div
+                            className="stack-body-list__item virtual-folder"
+                            key={explorer.id}
+                            onClick={handleClickFileColumn}
+                        >
+                            <div
+                                className="indent"
+                                style={{ paddingLeft: columnIndent }}
+                            ></div>
+                            <div className="codicon">
+                                <img src={chevronRightIcon} />
+                            </div>
+                            <h3 className="item-label">{explorer.name}</h3>
+                            <div className="actions hover-to-appear">
+                                <div className="actions-bar">
+                                    <ul className="actions-container">
+                                        {fileTreeActions.map((action) =>
+                                            action()
+                                        )}
+                                    </ul>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </div>
-            </DragNDrop>
+                    </DragNDrop>
+                )}
+            </div>
         );
     }
 };

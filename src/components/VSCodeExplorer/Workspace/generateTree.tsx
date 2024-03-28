@@ -36,18 +36,16 @@ export const generateTreeNodeData = (
         path: '',
         isOpening: false,
         // NOTE: Experimental
-        isSelected: false
+        isSelected: false,
     };
 
     /**
      * Generate folders which has some files.
-     * 
+     *
      * TODO: itemsが空でないフォルダはこの段階で生成されるのでこの段階でselectedやopeningは付与したい
      * */
     entries.forEach((entry: File) => {
         if (entry.isFolder()) return;
-
-        console.log(`[generateTree][phase 1] ${entry.getPath()}`);
 
         const pathArr = entry.getPath().split('/');
         const pathLen = pathArr.length;
@@ -56,8 +54,6 @@ export const generateTreeNodeData = (
         for (let i = 0; i < pathLen; i++) {
             let name = pathArr[i];
             let index = i;
-            
-            console.log(`[generateTree][phase 1] ${entry.getPath()}`);
 
             // If the child node doesn't exist, create it
             let child = current.items.find((item) => item.name === name);
@@ -72,7 +68,7 @@ export const generateTreeNodeData = (
                     items: [],
                     path: pathArr.slice(0, index + 1).join('/'),
                     isOpening: false,
-                    isSelected: false
+                    isSelected: false,
                 };
                 current.items.push(child);
             }
@@ -103,7 +99,7 @@ export const generateTreeNodeData = (
                 items: [],
                 path: pathArr[0],
                 isOpening: entry.isOpening(),
-                isSelected: entry.isSelected()
+                isSelected: entry.isSelected(),
             };
             current.items.push(node);
             return;
@@ -122,7 +118,7 @@ export const generateTreeNodeData = (
                     items: [],
                     path: pathArr.slice(0, index + 1).join('/'),
                     isOpening: entry.isOpening(),
-                    isSelected: entry.isSelected()
+                    isSelected: entry.isSelected(),
                 };
                 current.items.push(child);
             } else if (child === undefined) {
@@ -158,7 +154,7 @@ export const generateTreeNodeData = (
                     isFolder: true, // As this is folder.
                     items: [],
                     path: pathArr.slice(0, index + 1).join('/'),
-                    isSelected: false
+                    isSelected: false,
                 };
                 current.items.push(child);
             } else if (child === undefined) {
@@ -172,8 +168,8 @@ export const generateTreeNodeData = (
     /***
      * TODO: set opening and selected properties for folder
      * - set selected as true if folder's explorerData has selected file in its items.
-     * - 
-     * */ 
+     * -
+     * */
 
     return rootNode;
 };

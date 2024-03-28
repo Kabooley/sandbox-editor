@@ -206,7 +206,7 @@ function filesReducer(files: File[], action: iFilesActions) {
         }
         // Change multiple files property.
         case 'CHANGE_MULTIPLE_FILES': {
-            console.log(`[FilesContext] DELETE_MULTIPLE_FILES`);
+            console.log(`[FilesContext] CHANGE_MULTIPLE_FILES`);
 
             const requests = action.payload;
             const updatedFiles = files.map((f) => {
@@ -228,6 +228,8 @@ function filesReducer(files: File[], action: iFilesActions) {
                     return clone;
                 } else return f;
             });
+
+            console.dir(updatedFiles);
 
             return [...updatedFiles];
         }

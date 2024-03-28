@@ -2,7 +2,14 @@
 
 const foldernmaeRegexp = /^[^\\\/?%*:|"'<>\.]+$/;
 
+/****
+ * Checks if passed name includes any invalid characters.
+ *
+ * Filename should not contain...
+ * \ / ? % * : | " < >
+ *
+ * NOTE: 改行抜きの文字列が渡されることが前提となっている。
+ ****/
 export const isFolderNameValid = (name: string): boolean => {
     return foldernmaeRegexp.test(name);
 };
-  
