@@ -2,7 +2,7 @@
  * FormColumn for Workspace column.
  *
  * *****************************************************************/
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import ValidMessage from '../ValidMessage';
 import chevronRightIcon from '../../../assets/vscode/dark/chevron-right.svg';
 
@@ -14,6 +14,7 @@ interface iProps {
     isNameEmpty: boolean;
     isInputBegun: boolean;
     isNameValid: boolean;
+    isSameNameAlreadyExists: boolean;
     inputStyle: React.CSSProperties;
     handleNewItemNameInput: (
         e: React.ChangeEvent<HTMLInputElement>,
@@ -32,13 +33,18 @@ const FormColumn: React.FC<iProps> = ({
     isNameEmpty,
     isInputBegun,
     isNameValid,
+    isSameNameAlreadyExists,
     inputStyle,
     handleNewItemNameInput,
     callbackOnKeyDown,
     setIsInputBegun,
     displayForm,
 }) => {
-    // フォーカスが外れたらこのフォーム要素を閉じさせる
+    /***
+     * Undisplay this form if form has been blurred.
+     *
+     * TODO: 入力状態全部リセットしていないけど問題ないのか確認
+     * */
     const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
         console.log('[FormColumn] on blur');
 
@@ -49,27 +55,16 @@ const FormColumn: React.FC<iProps> = ({
 
     /**
      *
-     *
      * */
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         e.stopPropagation();
-        // e.preventDefault();
-
         if (e.keyCode === 13 && isNameValid && !isNameEmpty) {
-            console.log(`[FormColumn] key down`);
-
             callbackOnKeyDown(e.currentTarget.value);
         }
     };
 
-    console.log('[FormColumn] rendering...');
-
     return (
-        <div
-            className="stack-body-list__item inputContainer"
-            key={id}
-            // onClick={handleClickFolderColumn}
-        >
+        <div className="stack-body-list__item inputContainer" key={id}>
             <div className="indent" style={{ paddingLeft: columnIndent }}></div>
             <div className="codicon">
                 {isFolder ? (
@@ -85,7 +80,6 @@ const FormColumn: React.FC<iProps> = ({
                     ' ' +
                     (isNameValid ? '__valid' : '__invalid')
                 }
-                // onKeyDown={(e) => onAddItem(e, path)}
                 onKeyDown={handleKeyDown}
                 onBlur={handleBlur}
                 onChange={(e) => handleNewItemNameInput(e, isFolder)}
@@ -98,6 +92,7 @@ const FormColumn: React.FC<iProps> = ({
                 isNameEmpty={isNameEmpty}
                 isInputBegun={isInputBegun}
                 isNameValid={isNameValid}
+                isSameNameAlreadyExists={isSameNameAlreadyExists}
                 marginLeft={`calc(${columnIndent} + 20px)`}
                 width={`calc(100% - ${columnIndent} - 20px)`}
             />

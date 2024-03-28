@@ -4,6 +4,7 @@ interface iProps {
     isInputBegun: boolean;
     isNameValid: boolean;
     isNameEmpty: boolean;
+    isSameNameAlreadyExists: boolean;
     marginLeft: string;
     width: string;
 }
@@ -23,6 +24,7 @@ const ValidMessage = ({
     isNameEmpty,
     marginLeft,
     width,
+    isSameNameAlreadyExists
 }: iProps) => {
     const _className =
         'inputContainer--validSign' +

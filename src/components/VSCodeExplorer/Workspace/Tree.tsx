@@ -64,7 +64,9 @@ const Tree: React.FC<iProps> = ({
     handleOpenFile,
     handleSelectFile,
 }) => {
+    // Expand folder if true.
     const [expand, setExpand] = useState<boolean>(false);
+    // Display new item form under this explorer.
     const [showInput, setShowInput] = useState({
         visible: false,
         isFolder: false,
@@ -77,14 +79,16 @@ const Tree: React.FC<iProps> = ({
 
     // NOTE: new added.
     const [renaming, setRenaming] = useState<boolean>(false);
+    const [isSameNameAlreadyExists, setIsSameNameAlreadyExists] =
+        useState<boolean>(false);
     const dispatchFilesAction = useFilesDispatch();
 
-    useEffect(() => {
-        console.log('[Tree] did update');
-        console.log('[Tree] isNameInvalid:', isNameValid);
-        console.log('[Tree] isNameEmpty', isNameEmpty);
-        console.log('[Tree] isInputBegun', isInputBegun);
-    }, [isInputBegun, isNameValid, isNameEmpty]);
+    // useEffect(() => {
+    //     console.log('[Tree] did update');
+    //     console.log('[Tree] isNameInvalid:', isNameValid);
+    //     console.log('[Tree] isNameEmpty', isNameEmpty);
+    //     console.log('[Tree] isInputBegun', isInputBegun);
+    // }, [isInputBegun, isNameValid, isNameEmpty]);
 
     const handleNewItem = (isFolder: boolean) => {
         setExpand(true);
@@ -105,26 +109,9 @@ const Tree: React.FC<iProps> = ({
             setIsInputBegun(false);
             setIsNameValid(false);
             setIsNameEmpty(false);
+            setIsSameNameAlreadyExists(false);
         }
     };
-
-    // // TODO: 引数でexplorer.pathを受け取る必要がない
-    // const onAddItem = (
-    //     e: React.KeyboardEvent<HTMLInputElement>,
-    //     addTo: string
-    // ) => {
-    //     const requiredPath = addTo.length
-    //         ? addTo + '/' + e.currentTarget.value
-    //         : e.currentTarget.value;
-    //     if (e.keyCode === 13 && requiredPath && isNameValid) {
-    //         handleInsertNode(requiredPath, showInput.isFolder);
-    //         // Clear states
-    //         setShowInput({ ...showInput, visible: false });
-    //         setIsInputBegun(false);
-    //         setIsNameValid(false);
-    //         setIsNameEmpty(false);
-    //     }
-    // };
 
     const handleNewItemNameInput = (
         e: React.ChangeEvent<HTMLInputElement>,
@@ -138,7 +125,10 @@ const Tree: React.FC<iProps> = ({
             : setIsNameEmpty(true);
 
         // Check if value is valid
-        // 
+        //
+        // TODO: 同一pathがないか調べること --> rename機能をindexへリフトアップするべきかと。そうしないとexplorer全体から同一pathを調べるの厳しい
+        // TODO: それが終わったらValidMessageを修正すること
+        //
         // folder
         if (isFolder && isFolderNameValid(e.currentTarget.value)) {
             setIsNameValid(true);
@@ -148,10 +138,10 @@ const Tree: React.FC<iProps> = ({
             setIsNameValid(false);
         }
 
-        console.log('[Tree] handleNewItemNameInput', e.currentTarget.value);
-        console.log('[Tree] isNameInvalid:', isNameValid);
-        console.log('[Tree] isNameEmpty', isNameEmpty);
-        console.log('[Tree] isInputBegun', isInputBegun);
+        // console.log('[Tree] handleNewItemNameInput', e.currentTarget.value);
+        // console.log('[Tree] isNameInvalid:', isNameValid);
+        // console.log('[Tree] isNameEmpty', isNameEmpty);
+        // console.log('[Tree] isInputBegun', isInputBegun);
     };
 
     const onDelete = () => {
@@ -171,100 +161,8 @@ const Tree: React.FC<iProps> = ({
         setExpand(!expand);
     };
 
-    /***
-     * @param {string} newName - New name for this Tree explorer.
-     *
-     * Dispatch change action to FilexContext to change path of the File.
-     * - renamingの時にonKeyDownで呼び出されるはず
-     *
-     * TODO: path情報が欠けている。完全なpathの取得
-     *  explorerデータの生成方法の改善か、treeのpropsを増やすか
-     *
-     *  --> explorer.pathは完全なpathであった
-     *
-     * TODO: isFolder: trueだと、リネームするのはpath文字列のうち中間の文字列なのでnewPathの生成方法を修正すること
-     *
-     * TODO: folder名の変更だとTypes.MultipleCangesになるので、そのフォルダのすべての連なるアイテムのpathを更新しなくてはならない
-     *
-     *  --> explorer.itemsからたどることができる
-     *
-     * actionをdispatchするところまでは実は期待通り。
-     * 問題は、FilesはiExplorerと異なりフォルダだけのFilesがないため
-     * dispatchはファイルに対して行われないと
-     * CHANGE_FILEアクションのf.getPath() === targetFilePathが一生ヒットしない
-     * そのためpathが変更されないのである
-     *
-     * TODO: explorerのitems以下のアイテム全てを抜き出して、それらすべてのアイテムに対してchangeアクションをディスパッチする
-     *
-     * 絶対パスが`src/components/Counters/index.tsx`というpathがあったとして
-     * explorerが`src/components/Counters`であったとして
-     * `src/components/Counters`と`src/components/Counters/index.tsx`の両方を修正しなくてはならない
-     *
-     *
-     * */
-    // const handleRename = (newName: string) => {
-    //     // Update all descendants tree object if explorer is folder.
-    //     if(explorer.isFolder) {
-    //         const _path = getPathExcludeFilename(explorer.path);
-    //         const updatedExplorerPath = (_path ? _path : '') + newName;
-    //         const descendantsPath = getAllDescendantsPath(explorer);
-
-    //         // create new path and pairs old path.
-    //         const updatedDescendantsPath = descendantsPath.map(dp => {
-    //             const d = {
-    //                 oldPath: dp,
-    //                 newPath: ""
-    //             };
-    //             if (dp.includes(explorer.path)) {
-    //               const unmodify = dp.split(explorer.path)[1];
-    //               d.newPath = updatedExplorerPath + unmodify;
-    //             } else {
-    //               d.newPath = dp;
-    //             }
-    //             return d;
-    //         });
-
-    //         const requests = updatedDescendantsPath.map(udp => {
-    //             return {
-    //                         targetFilePath: udp.oldPath,
-    //                         changeProps: {
-    //                             newPath: udp.newPath
-    //                         }
-    //                 };
-    //         });
-
-    //         dispatchFilesAction({
-    //             type: FilesActionTypes.ChangeMultiple,
-    //             payload: requests
-    //         });
-    //     }
-    //     else {
-    //         console.log(
-    //             `[Tree] handleRename: newPath: ${newPath} from ${explorer.path}`
-    //         );
-
-    //         // create new path
-    //         const _path = getPathExcludeFilename(explorer.path);
-    //         const newPath = (_path ? _path : '') + newName;
-    //         dispatchFilesAction({
-    //             type: FilesActionTypes.Change,
-    //             payload: {
-    //                 targetFilePath: explorer.path,
-    //                 changeProp: {
-    //                     newPath: newPath,
-    //                 },
-    //             },
-    //         });
-    //     }
-
-    //     setIsInputBegun(false);
-    //     setIsNameValid(false);
-    //     setIsNameEmpty(false);
-    //     setRenaming(false);
-    // };
-
     const handleRename = (newName: string) => {
-        // Update all descendants tree object if explorer is folder.
+        // Update all descendants tree object's path if explorer is folder.
         if (explorer.isFolder) {
             const _path = getPathExcludeFilename(explorer.path);
             const updatedExplorerPath = (_path ? _path : '') + newName;
@@ -323,6 +221,7 @@ const Tree: React.FC<iProps> = ({
         setIsNameValid(false);
         setIsNameEmpty(false);
         setRenaming(false);
+        setIsSameNameAlreadyExists(false);
     };
 
     /****************************************************
@@ -453,6 +352,7 @@ const Tree: React.FC<iProps> = ({
                         isNameEmpty={isNameEmpty}
                         isInputBegun={isInputBegun}
                         isNameValid={isNameValid}
+                        isSameNameAlreadyExists={isSameNameAlreadyExists}
                         handleNewItemNameInput={handleNewItemNameInput}
                         callbackOnKeyDown={handleRename}
                         setIsInputBegun={setIsInputBegun}
@@ -558,6 +458,9 @@ const Tree: React.FC<iProps> = ({
                                 isNameEmpty={isNameEmpty}
                                 isInputBegun={isInputBegun}
                                 isNameValid={isNameValid}
+                                isSameNameAlreadyExists={
+                                    isSameNameAlreadyExists
+                                }
                                 marginLeft={`calc(${columnIndent} + 20px)`}
                                 width={`calc(100% - ${columnIndent} - 20px)`}
                             />
@@ -641,6 +544,7 @@ const Tree: React.FC<iProps> = ({
                         isNameEmpty={isNameEmpty}
                         isInputBegun={isInputBegun}
                         isNameValid={isNameValid}
+                        isSameNameAlreadyExists={isSameNameAlreadyExists}
                         handleNewItemNameInput={handleNewItemNameInput}
                         callbackOnKeyDown={handleRename}
                         setIsInputBegun={setIsInputBegun}

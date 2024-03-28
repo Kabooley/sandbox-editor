@@ -174,6 +174,7 @@ function filesReducer(files: File[], action: iFilesActions) {
             return [...updatedFiles];
         }
         // Change file property.
+        // TODO: 同一pathがないか検査すること
         case 'CHANGE_FILE': {
             const { targetFilePath, changeProp } = action.payload;
 
@@ -181,7 +182,6 @@ function filesReducer(files: File[], action: iFilesActions) {
 
             const updatedFiles = files.map((f) => {
                 if (f.getPath() === targetFilePath) {
-                    console.log('file found');
 
                     const clone: File = Object.assign(
                         Object.create(Object.getPrototypeOf(f)),
@@ -205,6 +205,7 @@ function filesReducer(files: File[], action: iFilesActions) {
             return [...updatedFiles];
         }
         // Change multiple files property.
+        // TODO: 同一pathがないか検査すること
         case 'CHANGE_MULTIPLE_FILES': {
             console.log(`[FilesContext] CHANGE_MULTIPLE_FILES`);
 
@@ -229,7 +230,9 @@ function filesReducer(files: File[], action: iFilesActions) {
                 } else return f;
             });
 
-            console.dir(updatedFiles);
+            // DEBUG:
+            const _updatedFilesPath = updatedFiles.map((uf) => uf.getPath());
+            console.log(_updatedFilesPath);
 
             return [...updatedFiles];
         }
