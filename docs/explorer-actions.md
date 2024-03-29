@@ -351,6 +351,125 @@ log:
 
 ```
 
+```bash
+# new item
+ src
+ [Tree] check for same path exists: nullA
+ [Tree] handleNewItemNameInput A
+ [Tree] isNameValid: false
+ [Tree] isNameEmpty false
+ [Tree] isInputBegun false
+ [Tree] isSameNameAlreadyExists false
+ src
+ [Tree] check for same path exists: nullAp
+ [Tree] handleNewItemNameInput Ap
+ [Tree] isNameValid: true
+ [Tree] isNameEmpty false
+ [Tree] isInputBegun true
+ [Tree] isSameNameAlreadyExists false
+ src
+ [Tree] check for same path exists: nullApp
+ [Tree] handleNewItemNameInput App
+ [Tree] isNameValid: true
+ [Tree] isNameEmpty false
+ [Tree] isInputBegun true
+ [Tree] isSameNameAlreadyExists false
+ src
+ [Tree] check for same path exists: nullApp.
+ [Tree] handleNewItemNameInput App.
+ [Tree] isNameValid: true
+ [Tree] isNameEmpty false
+ [Tree] isInputBegun true
+ [Tree] isSameNameAlreadyExists false
+ src
+ [Tree] check for same path exists: nullApp.t
+ [Tree] handleNewItemNameInput App.t
+ [Tree] isNameValid: false
+ [Tree] isNameEmpty false
+ [Tree] isInputBegun true
+ [Tree] isSameNameAlreadyExists false
+ src
+ [Tree] check for same path exists: nullApp.ts
+ [Tree] handleNewItemNameInput App.ts
+ [Tree] isNameValid: true
+ [Tree] isNameEmpty false
+ [Tree] isInputBegun true
+ [Tree] isSameNameAlreadyExists false
+ src
+ [Tree] check for same path exists: nullApp.tsx
+ [Tree] handleNewItemNameInput App.tsx
+ [Tree] isNameValid: true
+ [Tree] isNameEmpty false
+ [Tree] isInputBegun true
+ [Tree] isSameNameAlreadyExists true
+# rename
+ [Tree] Clicked Rename action
+ src/styles.css
+ [Tree] check for same path exists: src/i
+ [Tree] handleNewItemNameInput i
+ [Tree] isNameValid: false
+ [Tree] isNameEmpty false
+ [Tree] isInputBegun false
+ [Tree] isSameNameAlreadyExists false
+ src/styles.css
+ [Tree] check for same path exists: src/in
+ [Tree] handleNewItemNameInput in
+ [Tree] isNameValid: true
+ [Tree] isNameEmpty false
+ [Tree] isInputBegun true
+ [Tree] isSameNameAlreadyExists false
+ src/styles.css
+ [Tree] check for same path exists: src/ind
+ [Tree] handleNewItemNameInput ind
+ [Tree] isNameValid: true
+ [Tree] isNameEmpty false
+ [Tree] isInputBegun true
+ [Tree] isSameNameAlreadyExists false
+ src/styles.css
+ [Tree] check for same path exists: src/inde
+ [Tree] handleNewItemNameInput inde
+ [Tree] isNameValid: true
+ [Tree] isNameEmpty false
+ [Tree] isInputBegun true
+ [Tree] isSameNameAlreadyExists false
+ src/styles.css
+ [Tree] check for same path exists: src/index
+ [Tree] handleNewItemNameInput index
+ [Tree] isNameValid: true
+ [Tree] isNameEmpty false
+ [Tree] isInputBegun true
+ [Tree] isSameNameAlreadyExists false
+ src/styles.css
+ [Tree] check for same path exists: src/index.
+ [Tree] handleNewItemNameInput index.
+ [Tree] isNameValid: true
+ [Tree] isNameEmpty false
+ [Tree] isInputBegun true
+ [Tree] isSameNameAlreadyExists false
+ src/styles.css
+ [Tree] check for same path exists: src/index.t
+ [Tree] handleNewItemNameInput index.t
+ [Tree] isNameValid: false
+ [Tree] isNameEmpty false
+ [Tree] isInputBegun true
+ [Tree] isSameNameAlreadyExists false
+ src/styles.css
+ [Tree] check for same path exists: src/index.ts
+ [Tree] handleNewItemNameInput index.ts
+ [Tree] isNameValid: true
+ [Tree] isNameEmpty false
+ [Tree] isInputBegun true
+ [Tree] isSameNameAlreadyExists false
+ src/styles.css
+ [Tree] check for same path exists: src/index.tsx
+ [Tree] handleNewItemNameInput index.tsx
+ [Tree] isNameValid: true
+ [Tree] isNameEmpty false
+ [Tree] isInputBegun true
+ [Tree] isSameNameAlreadyExists true
+sx:39 [FormColumn] on blur
+```
+
 #### 走り書き
 
 ```TypeScript

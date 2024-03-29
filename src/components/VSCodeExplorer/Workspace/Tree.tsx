@@ -154,10 +154,6 @@ const Tree: React.FC<iProps> = ({
             : setIsSameNameAlreadyExists(false);
 
         // Check if value is valid
-        //
-        // TODO: ValidMessageを修正すること
-        //
-        // folder
         if (
             isFolder &&
             isFolderNameValid(e.currentTarget.value) &&
@@ -172,12 +168,6 @@ const Tree: React.FC<iProps> = ({
         } else {
             setIsNameValid(false);
         }
-
-        console.log('[Tree] handleNewItemNameInput', e.currentTarget.value);
-        console.log('[Tree] isNameInvalid:', isNameValid);
-        console.log('[Tree] isNameEmpty', isNameEmpty);
-        console.log('[Tree] isInputBegun', isInputBegun);
-        console.log('[Tree] isSameNameAlreadyExists', isPathAlreadyExists);
     };
 
     const onDelete = () => {

@@ -55,6 +55,8 @@ const ValidMessage = ({
     const generateMessage = () => {
         if (isInputBegun && isNameEmpty)
             return 'File or folder name must be provided.';
+        if (isInputBegun && !isNameEmpty && isSameNameAlreadyExists)
+            return 'The provided name is already exists. Please provide antoher name.';
         if (isInputBegun && !isNameEmpty && !isNameValid)
             return 'File or folder name is invalid.';
         if (isInputBegun && isNameEmpty)
