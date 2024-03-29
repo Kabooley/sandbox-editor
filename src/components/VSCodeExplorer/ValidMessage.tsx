@@ -22,9 +22,9 @@ const ValidMessage = ({
     isInputBegun,
     isNameValid,
     isNameEmpty,
+    isSameNameAlreadyExists,
     marginLeft,
     width,
-    isSameNameAlreadyExists
 }: iProps) => {
     const _className =
         'inputContainer--validSign' +

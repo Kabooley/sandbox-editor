@@ -29,6 +29,7 @@ import {
 } from '../../../context/LayoutContext';
 import { ModalTypes } from '../../../context/LayoutContext';
 // import type { iFilesActions } from '../../../context/FilesContext';
+import { getPathExcludeFilename, getAllDescendantsPath } from '../../../utils';
 
 interface iProps {
     id: number;
@@ -271,6 +272,21 @@ const Workspace: React.FC<iProps> = ({
         }
     };
 
+    /***
+     * Check if passed path is already exists in explorer.
+     *
+     * */
+    const checkPathAlreadyExistsFromExplorer = (path: string): boolean => {
+        const pathList = getAllDescendantsPath(treeData);
+        let result = false;
+        pathList.forEach((p) => {
+            if (p === path) {
+                result = true;
+            }
+        });
+        return result;
+    };
+
     /****************************************
      * Action handlers for Stack PaneHeader
      ****************************************/
@@ -430,6 +446,9 @@ const Workspace: React.FC<iProps> = ({
                         handleReorderNode={handleReorderNode}
                         handleOpenFile={handleOpenFile}
                         handleSelectFile={handleSelectFile}
+                        checkPathAlreadyExistsFromExplorer={
+                            checkPathAlreadyExistsFromExplorer
+                        }
                     />
                 );
             })}

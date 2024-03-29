@@ -33,6 +33,7 @@ interface iProps {
     handleReorderNode: (droppedId: string, draggableId: string) => void;
     handleOpenFile: (explorer: iExplorer) => void;
     handleSelectFile: (explorer: iExplorer) => void;
+    checkPathAlreadyExistsFromExplorer: (path: string) => boolean;
 }
 
 const defaultNewFileName = 'Untitled.file.js';
@@ -63,6 +64,7 @@ const Tree: React.FC<iProps> = ({
     handleReorderNode,
     handleOpenFile,
     handleSelectFile,
+    checkPathAlreadyExistsFromExplorer,
 }) => {
     // Expand folder if true.
     const [expand, setExpand] = useState<boolean>(false);
@@ -88,7 +90,8 @@ const Tree: React.FC<iProps> = ({
     //     console.log('[Tree] isNameInvalid:', isNameValid);
     //     console.log('[Tree] isNameEmpty', isNameEmpty);
     //     console.log('[Tree] isInputBegun', isInputBegun);
-    // }, [isInputBegun, isNameValid, isNameEmpty]);
+    //     console.log('[Tree] isSameNameAlreadyExists', isSameNameAlreadyExists);
+    // }, [isInputBegun, isNameValid, isNameEmpty, isSameNameAlreadyExists]);
 
     const handleNewItem = (isFolder: boolean) => {
         setExpand(true);
@@ -124,24 +127,57 @@ const Tree: React.FC<iProps> = ({
             ? setIsNameEmpty(false)
             : setIsNameEmpty(true);
 
+        // Check if input path is already exists.
+        console.log(explorer.path);
+        console.log(
+            `[Tree] check for same path exists: ${
+                getPathExcludeFilename(explorer.path) + e.currentTarget.value
+            }`
+        );
+
+        //
+        // src/以下に新規アイテムを追加しようとした：戻り値null
+        // src/以下のアイテムをリネームした：戻り値'src/'
+        // NOTE: 以下の条件分岐は`renaming`の時と新規アイテム追加の時のみに対応している急ごしらえの処理である。
+        let isPathAlreadyExists = false;
+        if (renaming) {
+            isPathAlreadyExists = checkPathAlreadyExistsFromExplorer(
+                getPathExcludeFilename(explorer.path) + e.currentTarget.value
+            );
+        } else if (showInput) {
+            isPathAlreadyExists = checkPathAlreadyExistsFromExplorer(
+                explorer.path + '/' + e.currentTarget.value
+            );
+        }
+        isPathAlreadyExists
+            ? setIsSameNameAlreadyExists(true)
+            : setIsSameNameAlreadyExists(false);
+
         // Check if value is valid
         //
-        // TODO: 同一pathがないか調べること --> rename機能をindexへリフトアップするべきかと。そうしないとexplorer全体から同一pathを調べるの厳しい
-        // TODO: それが終わったらValidMessageを修正すること
+        // TODO: ValidMessageを修正すること
         //
         // folder
-        if (isFolder && isFolderNameValid(e.currentTarget.value)) {
+        if (
+            isFolder &&
+            isFolderNameValid(e.currentTarget.value) &&
+            !isPathAlreadyExists
+        ) {
             setIsNameValid(true);
-        } else if (isFilenameValid(e.currentTarget.value)) {
+        } else if (
+            isFilenameValid(e.currentTarget.value) &&
+            !isPathAlreadyExists
+        ) {
             setIsNameValid(true);
         } else {
             setIsNameValid(false);
         }
 
-        // console.log('[Tree] handleNewItemNameInput', e.currentTarget.value);
-        // console.log('[Tree] isNameInvalid:', isNameValid);
-        // console.log('[Tree] isNameEmpty', isNameEmpty);
-        // console.log('[Tree] isInputBegun', isInputBegun);
+        console.log('[Tree] handleNewItemNameInput', e.currentTarget.value);
+        console.log('[Tree] isNameInvalid:', isNameValid);
+        console.log('[Tree] isNameEmpty', isNameEmpty);
+        console.log('[Tree] isInputBegun', isInputBegun);
+        console.log('[Tree] isSameNameAlreadyExists', isPathAlreadyExists);
     };
 
     const onDelete = () => {
@@ -524,6 +560,9 @@ const Tree: React.FC<iProps> = ({
                                 handleReorderNode={handleReorderNode}
                                 handleOpenFile={handleOpenFile}
                                 handleSelectFile={handleSelectFile}
+                                checkPathAlreadyExistsFromExplorer={
+                                    checkPathAlreadyExistsFromExplorer
+                                }
                                 explorer={exp}
                                 nestDepth={nd}
                             />
