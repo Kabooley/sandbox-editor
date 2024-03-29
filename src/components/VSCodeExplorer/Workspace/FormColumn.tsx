@@ -43,7 +43,6 @@ const FormColumn: React.FC<iProps> = ({
     /***
      * Undisplay this form if form has been blurred.
      *
-     * TODO: 入力状態全部リセットしていないけど問題ないのか確認
      * */
     const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
         console.log('[FormColumn] on blur');

@@ -101,6 +101,8 @@ const Tree: React.FC<iProps> = ({
         });
     };
 
+    // showInput.isFolder
+
     const onAddItem = (e: React.KeyboardEvent<HTMLInputElement>) => {
         const requiredPath = explorer.path.length
             ? explorer.path + '/' + e.currentTarget.value
@@ -353,7 +355,14 @@ const Tree: React.FC<iProps> = ({
         renderRenameFunction,
     ];
     const fileTreeActions = [renderDeleteFunction, renderRenameFunction];
+
+    /************************************
+     * Determine styles
+     * **********************************/
+
     const columnIndent = `${nestDepth * 1.6}rem`;
+    // Indent for new item input form
+    const columnIndentForNewItemForm = `${nestDepth * 1.6 + 1.6}rem`;
     // input.inputContainer--inputの動的style
     let inputStyle = {};
     if (isInputBegun && isNameValid) {
@@ -430,69 +439,30 @@ const Tree: React.FC<iProps> = ({
                 )}
                 <div style={{ display: expand ? 'block' : 'none' }}>
                     {showInput.visible && (
-                        <div
-                            className="stack-body-list__item inputContainer"
-                            key={explorer.id}
-                            onClick={handleClickFolderColumn}
-                        >
-                            <div
-                                className="indent"
-                                style={{ paddingLeft: columnIndent }}
-                            ></div>
-                            <div className="codicon">
-                                {showInput.isFolder ? (
-                                    <img
-                                        src={chevronRightIcon}
-                                        alt="folder icon"
-                                    />
-                                ) : (
-                                    <img
-                                        src={chevronRightIcon}
-                                        alt="file icon"
-                                    />
-                                )}
-                            </div>
-                            <input
-                                type="text"
-                                className={
-                                    'inputContainer--input' +
-                                    ' ' +
-                                    (isNameValid ? '__valid' : '__invalid')
-                                }
-                                onKeyDown={onAddItem}
-                                // onKeyDown={(e) => onAddItem(e, explorer.path)}
-                                onBlur={() => {
-                                    setIsInputBegun(false);
+                        <FormColumn
+                            id={explorer.id}
+                            columnIndent={columnIndentForNewItemForm}
+                            isFolder={showInput.isFolder}
+                            name={explorer.name}
+                            isNameEmpty={isNameEmpty}
+                            isInputBegun={isInputBegun}
+                            isNameValid={isNameValid}
+                            isSameNameAlreadyExists={isSameNameAlreadyExists}
+                            handleNewItemNameInput={handleNewItemNameInput}
+                            callbackOnKeyDown={handleRename}
+                            setIsInputBegun={setIsInputBegun}
+                            displayForm={(flag: boolean) => {
+                                if (!flag) {
                                     setShowInput({
                                         ...showInput,
                                         visible: false,
                                     });
-                                }}
-                                onChange={(e) =>
-                                    handleNewItemNameInput(e, explorer.isFolder)
                                 }
-                                autoFocus
-                                placeholder={
-                                    explorer.isFolder
-                                        ? defaultNewDirectoryName
-                                        : defaultNewFileName
-                                }
-                                style={inputStyle}
-                            />
-                            {/* margin-left: indent + codicon */}
-                            <ValidMessage
-                                isNameEmpty={isNameEmpty}
-                                isInputBegun={isInputBegun}
-                                isNameValid={isNameValid}
-                                isSameNameAlreadyExists={
-                                    isSameNameAlreadyExists
-                                }
-                                marginLeft={`calc(${columnIndent} + 20px)`}
-                                width={`calc(100% - ${columnIndent} - 20px)`}
-                            />
-                        </div>
+                            }}
+                            inputStyle={inputStyle}
+                        />
                     )}
-                    {/* In case test input Container. */}
+                    {/* DEBUG: In case test input Container. */}
                     {/* {debug && (
             <div
               className="stack-body-list__item inputContainer"
