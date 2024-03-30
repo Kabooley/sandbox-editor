@@ -292,6 +292,8 @@ const Workspace: React.FC<iProps> = ({
      ****************************************/
 
     const handleNewItem = (isFolder: boolean) => {
+
+        console.log('[Workspace/index] handle new item');
         /***
          * TODO: Input form for new item must be place current focused folder. Implement this.
          *

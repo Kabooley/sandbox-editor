@@ -45,8 +45,6 @@ const FormColumn: React.FC<iProps> = ({
      *
      * */
     const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-        console.log('[FormColumn] on blur');
-
         e.stopPropagation();
         setIsInputBegun(false);
         displayForm(false);

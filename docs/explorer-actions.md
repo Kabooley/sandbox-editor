@@ -48,53 +48,22 @@
     2 日
 -   Workspace のタイトルバー上のファイル・フォルダの新規追加機能
     1 日
-
-## TODO: Workspace ファイル/フォルダのリネーム
-
-Tree.tsx::`folderTreeActions`にリネームアクションの追加
-Tree.tsx::`fileTreeActions`にリネームアクションの追加
-リネームアクションはFilesContext.tsxのChangeアクションをディスパッチしてnewPathを渡す
-
-リネーム対象のアイテムのカラムがフォームに置き換わる
-アイコン、インデントは残して他の領域がフォームになる
-他の領域をクリックする又は変更せずにエンターキーを押すとキャンセル
-ファイル名称を変更してエンタキーを押すとリネーム実行
-
-#### 置き換わるフォームのコンポーネント作成
-
-
-Tree.tsxの`{showInput...}の領域のJSXがそれ
-
-これをコンポーネント化する
-
-新規アイテムフォーム処理はどうやって行われているのか
-
-```sequence
-renderAdd[File|Folder]Function -> handleNewItem: true if it is folder
-handleNewItem -> setExpand(): true
-handleNewItem -> setShowInput(): visible: true, isFolder
-' これでフォームがレンダリングされる...
-' inputにonChange, onBlur, onKeyDownがあり...
-onChange -> handleNewItemNameInput: e.currentTarget.value
-' handleNewItemNameInputでは入力内容の状態管理をしている
-onKeyDown -> onAddItem: event, explorer, path
-' 入力状態のリセット
-' 入力内容をhandleInsertNodeへ渡す
-onAddItem -> handleInsertNode: requiredPath, showInput.isFolder
-' これでフォームが消える
+#### タイトルバーのアクション：Workspaceの新規アイテム追加機能
+```
+index.tsx
+    Stack.tsx
+        PaneHeader.tsx
+        ScrollableElement.tsx
+            Stack.tsx children
 ```
 
-ひとまず以下のように作った：
+index.tsxからStack.tsxへアクションを渡すことができるので、アクションの管理はindex.tsxで実施できる
 
-```sequence
--> clickHandler of renderRenameFunciton: click event
-clickHandler -> setRenaming: true
-' FormColumn must be displayed on the Tree column.
-' User inputs new item's name
-' handleNewItemNameInput watches input is valid
-change-event -> handleNewItemNameInput: change event
-keydown-event -> handleRename: keydown event
-handleRename -> dispatchFilesAction: Types.Change, newPath
+additemaction -> handleNewItem -> change state to show input form (and provide it is file or folder)
+-> watch input by onchangehandler -> dispatch value if valid 
+
+```TypeScript
+// NOTE: new added.
 ```
 
 ## OpenEditor
@@ -346,7 +315,6 @@ folder が「選択されていない状態」を知るのが今のところ難�
 iExplorer に selected プロパティをつけることはできるか
 
 ## 機能解説
-
 
 #### `iExplorer`
 
@@ -992,11 +960,13 @@ undefined
 
 `src/components/VSCodeExplorer/Workspace/Tree.tsx`:
 
+例：仮想フォルダの中で、`src/styles.css`を`src/styles.scss`にリネームするとする
+
 ```sequence
 ' On rename action fired.
 ' renderRenameFunction()
 -> clickHandler: click event
-clickHandler -> setRenaming: true
+clickHandler() -> setRenaming(): true
 ' FormColumnがアクションを実行したcolumn上にレンダされる
 ' User inputs new item's name
 ' handleNewItemNameInput watches input is valid
@@ -1006,4 +976,27 @@ handleRename -> dispatchFilesAction: Types.Change, newPath
 
 ```
 
+```TypeScript
+//
+const renderRenameFunction = () => {
+    const clickHandler = (e: React.MouseEvent<HTMLLIElement>) => {
+        e.stopPropagation();
+        e.preventDefault();
+        setRenaming(true);
+
+        console.log('[Tree] Clicked Rename action');
+    };
+    return (
+        <Action
+            handler={clickHandler}
+            icon={newFileIcon}
+            altMessage="Rename item"
+        />
+    );
+};
+```
+
 #### 新規アイテム追加機能
+
+`src/components/VSCodeExplorer/Workspace/index.tsx`
+`src/components/VSCodeExplorer/Workspace/Tree.tsx`
