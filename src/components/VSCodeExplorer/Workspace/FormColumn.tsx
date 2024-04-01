@@ -1,6 +1,6 @@
 /*******************************************************************
  * FormColumn for Workspace column.
- *
+ * 
  * *****************************************************************/
 import React from 'react';
 import ValidMessage from '../ValidMessage';

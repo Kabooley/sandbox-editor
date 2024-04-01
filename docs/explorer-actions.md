@@ -2,321 +2,35 @@
 
 未着手の Explorer のアクション機能を実装していく
 
+TODO: この記事のタイトルを変更して内容は機能説明だけにすること
+
+後で見返したときにすぐに理解できるようにするため
+
 ## TODOs
 
--   TODO: Workspace のタイトルバー上のアクション（新規ファイル追加など）が機能していない
--   [TODO: Workspace ファイル/フォルダのリネーム](#Workspace-ファイル/フォルダのリネーム)
--   TODO: Workspace Workspace の開いているフォルダをすべて閉じる
--   TODO: Workspace selected ファイルを含むフォルダは自動的に開いたままにする
 -   TODO: OpenEditor Opening ファイルをすべて閉じる
--   TODO: Workspace 新規アイテム追加するときのフォームのインデントの修正
--   TODO: Icon の追加
+-   TODO: Icon の修正
 -   TODO: ホバーしたらアイテムの説明が現れるようにする
--   TODO: seletcted: true のファイルを削除すると editor 上にその削除したファイルが残ってしまう件
+-   TODO: Workspace selected ファイルを含むフォルダは自動的に開いたままにする
+
+別件（本ブランチ外）：
+
+-   TODO: selected: true のファイルを削除すると、editor 上ではその削除したファイルが残ったままになり別のファイルが selected:true になっていない
 
 ## Summary
 
-[機能見直し](#機能見直し)
+[実装しない機能](#実装しない機能)
 [機能解説](#機能解説)
 
-## 機能見直し
+## 実装しない機能
 
-付けたい機能を欲張りすぎたか。Explorer の各アクションを見直して最小限の機能に制限する。
-
-付けようとしているアクション機能:
-
-見送る機能：
-
--   OpenEditor の開いているファイルをすべて閉じる機能
--   OpenEditor の「保存できた」ファイルをすべて閉じる機能
-
-実装することにした機能：
-
--   Workspace の開いているフォルダをすべて閉じる機能
--   Workspace のファイル・フォルダのリネーム機能
--   Workspace のタイトルバー上のファイル・フォルダの新規追加機能
-
-付けようとしているアクション機能以外の機能：
-
--   アイテムをホバーしたらアイテムの説明が現れるようにする機能
-
-#### 期限を切る
-
--   Workspace のファイル・フォルダのリネーム機能
-    2 日
--   Workspace の開いているフォルダをすべて閉じる機能
-    2 日
--   Workspace のタイトルバー上のファイル・フォルダの新規追加機能
-    1 日
-#### タイトルバーのアクション：Workspaceの新規アイテム追加機能
-```
-index.tsx
-    Stack.tsx
-        PaneHeader.tsx
-        ScrollableElement.tsx
-            Stack.tsx children
-```
-
-index.tsxからStack.tsxへアクションを渡すことができるので、アクションの管理はindex.tsxで実施できる
-
-additemaction -> handleNewItem -> change state to show input form (and provide it is file or folder)
--> watch input by onchangehandler -> dispatch value if valid 
-
-```TypeScript
-// NOTE: new added.
-```
-
-## OpenEditor
-
-## Workspace
-
-#### folder の開閉の改善
-
-現状、
-
--   iExplorer オブジェクトのうち isFolder: true のオブジェクトの開閉は、Tree.tsx の expand state に依存しており、files の status には依存していない。
--   files データが folder の場合、selected は常に false である（かも
-
-そうなると、たとえば selectedFile が変更されても Workspace 上のフォルダが該当のファイルを含んでいるフォルダでも自動で開いた表示をしてくれない。
-
-FilesContext.tsx では,
-
-ADD_FILE の時に新規 folder に`selected: true`としていない。
-
-```TypeScript
-// FilesContext.tsx
-
-function filesReducer(files: File[], action: iFilesActions) {
-    switch (action.type) {
-        // Add single file.
-        case 'ADD_FILE': {
-            const { requiredPath, isFolder } = action.payload;
-
-            // ...
-
-            const language = isFolder ? '' : getFileLanguage(requiredPath);
-
-            // Add new folder:
-            if (isFolder) {
-                console.log(`[FilesContext] ADD_FILE: folder ${requiredPath}`);
-                return [
-                    ...files,
-                    new File(
-                        requiredPath,
-                        '',
-                        language ? '' : language === undefined ? '' : language,
-                        isFolder
-                    ),
-                ];
-            }
-
-            // ...
-        }
-        // ...
-
-        case 'CHANGE_SELECTED_FILE': {
-            const { selectedFilePath } = action.payload;
-
-            const targetFile = files.find(
-                (f) => f.getPath() === selectedFilePath
-            );
-
-            if (targetFile !== undefined && targetFile.isSelected()) {
-                return files;
-            }
-
-            const updatedFiles = files.map((f) => {
-                const clone: File = Object.assign(
-                    Object.create(Object.getPrototypeOf(f)),
-                    f
-                );
-                f.getPath() === selectedFilePath
-                    ? clone.setSelected()
-                    : clone.unSelected();
-                return clone;
-            });
-
-            return [...updatedFiles];
-        }
-        /***
-         * OPEN FILE:
-         *
-         * - Set Opening flag as true
-         * - Give TabIndex if it's null.
-         * - Set selected to be true.
-         *
-         * TabIndex will be same as number of current tabs.
-         *
-         * TODO: 予め必ずいずれかのファイルがselected: trueになっていることが前提になっている。selected: trueのファイルがない場合に対応させること。
-         * */
-        case 'OPEN_FILE': {
-            const { path } = action.payload;
-            const target = files.find((f) => f.getPath() === path);
-            const currentSelectedFile = files.find((f) => f.isSelected());
-
-            const currentSelectedFilePath = currentSelectedFile
-                ? currentSelectedFile.getPath()
-                : undefined;
-
-            // Guard if it's folder or opening already.
-            if (target?.isFolder() || target?.isOpening()) {
-                return files;
-            }
-
-            console.log(
-                `[FilesContext] OPEN_FILE: ${path} Previous selected file: ${currentSelectedFilePath}`
-            );
-
-            const updatedFiles = files.map((f) => {
-                // Get file open and selected.
-                if (f.getPath() === path) {
-                    const clone: File = Object.assign(
-                        Object.create(Object.getPrototypeOf(f)),
-                        f
-                    );
-                    clone.setOpening(true);
-                    clone.setSelected();
-                    if (!clone.getTabIndex()) {
-                        const tabIndexes = files
-                            .filter((f) => f.getTabIndex !== null)
-                            .map((f) => f.getTabIndex());
-                        const currentTabTail = findMax(tabIndexes) + 1;
-                        clone.setTabIndex(currentTabTail);
-                    }
-                    return clone;
-                }
-                // Get selected file to be unselected.
-                else if (
-                    currentSelectedFilePath !== undefined &&
-                    f.getPath() === currentSelectedFilePath
-                ) {
-                    const clone: File = Object.assign(
-                        Object.create(Object.getPrototypeOf(f)),
-                        f
-                    );
-                    clone.unSelected();
-                    return clone;
-                } else return f;
-            });
-
-            return [...updatedFiles];
-        }
-        /**
-         * Close file:
-         * - `isSelected: true`のファイルをクローズしたときはいずれかの`isOpening:true`のファイルを選ぶ
-         * */
-        case 'CLOSE_FILE': {
-            const { path } = action.payload;
-            // Guard if it's folder or closing already.
-            const target = files.find((f) => f.getPath() === path);
-            if (target?.isFolder() || !target?.isOpening()) {
-                return files;
-            }
-
-            console.log(`[FilesContext] CLOSE_FILE: ${path}`);
-
-            // Was target file `isSelected` true?
-            let nextSelected: File | undefined;
-            if (target.isSelected()) {
-                nextSelected = files.find(
-                    (f) => f.isOpening() && !f.isSelected()
-                );
-            }
-
-            const updatedFiles = files.map((f) => {
-                // Close target file.
-                if (f.getPath() === path) {
-                    const clone: File = Object.assign(
-                        Object.create(Object.getPrototypeOf(f)),
-                        f
-                    );
-                    clone.setOpening(false);
-                    clone.setTabIndex(null);
-                    clone.unSelected();
-                    return clone;
-                }
-                // Select another file if target file was selected file.
-                else if (
-                    nextSelected &&
-                    f.getPath() === nextSelected.getPath()
-                ) {
-                    const clone: File = Object.assign(
-                        Object.create(Object.getPrototypeOf(f)),
-                        f
-                    );
-                    clone.setSelected();
-                    return clone;
-                } else return f;
-            });
-
-            return [...updatedFiles];
-        }
-        default: {
-            throw Error('Unknown action: ' + action.type);
-        }
-    }
-}
-
-```
-
-Tree.tsx
-
--   folder がクリックされても change select file が dispatch されない
-
-他
-
--   selected フラグは files のうち isFolder:true でない file であることが前提になっている
-    (EditorContainer.tsx では selectedFile)
-
-以下では TabsAndACtions と MonacoEditor が selectedFile を求めているが、
-
-selectedFile は folder でないことが前提となっている（修正は容易ですが）
-
-```TypeScript
-    render() {
-        // 修正案
-        // const selectedFilePath = this.props.files.find((f) => f.isSelected() && !f.isFolder());
-        // 現状
-        const selectedFilePath = this.props.files.find((f) => f.isSelected());
-        const filesOpening = this.getFilesOpening(this.props.files);
-
-        if (filesOpening.length) {
-            return (
-                <div className="editor-container">
-                    <TabsAndActionsContainer
-                        selectedFile={selectedFilePath}
-                        onChangeSelectedTab={this._onChangeSelectedTab}
-                        width={this.props.width}
-                        filesOpening={filesOpening}
-                    />
-                    <MonacoEditor
-                        files={this.props.files}
-                        selectedFile={selectedFilePath}
-                        onEditorContentChange={this._onEditorContentChange}
-                        onDidChangeModel={this._onDidChangeModel}
-                        {...editorConstructOptions}
-                    />
-                </div>
-            );
-        }
-    }
-```
-
-folder が開いている情報は Explorer/workspace でのみ必要な情報である。
-
-folder が「選択されていない状態」を知るのが今のところ難しい。
-
-#### どうなってほしいのか
-
--   selectedFile が含まれているフォルダは基本的に expand したままにしてほしい
--   workspace 内での dnd したときに drop 先であるフォルダは expand してほしい
--
-
-iExplorer に selected プロパティをつけることはできるか
+-   OpenEditor の PaneHeader アクション：すべて保存する
+-   OpenEditor の PaneHeader アクション：無名ファイルを追加する
+-   Workspace の PaneHeader アクション：フォルダをすべて閉じる
 
 ## 機能解説
 
-#### `iExplorer`
+## `iExplorer`
 
 `iExplorer`型のデータは`src/components/VSCodeExplorer/Workspace`で主に使われる、FilesContext.tsx から配信される File をツリー型のオブジェクトに変換したものである。
 
@@ -347,14 +61,7 @@ export interface iExplorer {
 
 フォルダというアイテムは File には存在せず、iExplorer へ変換する過程で発生するアイテムであるため。
 
-TODO:
-
--   ファイルが isSelected: true であるときその親フォルダの isOpening, isSelected は true になってほしい
--   フォルダアイテムが isSelected: true であるとき、該当アイテムカラムは選択中であるような見た目になってほしい
--   フォルダアイテムが isOpening: true であるとき、フォルダアイテムの Tree.tsx の expand:true になってほしい
--
-
-#### src/components/VSCodeExplorer/Workspace/Tree.tsx
+## src/components/VSCodeExplorer/Workspace/Tree.tsx
 
 ```TypeScript
 /****
@@ -423,7 +130,9 @@ const handleClickFileColumn = (e: React.MouseEvent<HTMLDivElement>) => {
 // 最終的にFilesContext.tsxのアクション`Add`がディスパッチされる。
 ```
 
-#### src/components/VSCodeExplorer/Workspace/generateTree.tsx
+## [Explorer/Workspace] File データから explorer データに変換する機能
+
+`src/components/VSCodeExplorer/Workspace/generateTree.tsx`
 
 オブジェクト配列のデータ（`File`）をツリー上のデータ（`iExplorer`）に変換する。
 
@@ -956,47 +665,411 @@ undefined
 
 ```
 
-#### アイテムリネーム機能
+## [Explorer/Workspace] アイテムリネーム機能
 
 `src/components/VSCodeExplorer/Workspace/Tree.tsx`:
 
 例：仮想フォルダの中で、`src/styles.css`を`src/styles.scss`にリネームするとする
 
-```sequence
-' On rename action fired.
-' renderRenameFunction()
--> clickHandler: click event
-clickHandler() -> setRenaming(): true
-' FormColumnがアクションを実行したcolumn上にレンダされる
-' User inputs new item's name
-' handleNewItemNameInput watches input is valid
-change-event -> handleNewItemNameInput: change event
-keydown-event -> handleRename: keydown event
-handleRename -> dispatchFilesAction: Types.Change, newPath
-
+```TypeScript
+// Tree.tsx rendering part
+    if (explorer.isFolder) {
+        return (
+            <div>
+                {renaming ? (
+                    // リネームアクション時に表示されるFormColumn
+                    <FormColumn
+                        // ...
+                    />
+                ) : (
+                    <DragNDrop
+                        // ...
+                    >
+                    // 本来のTreeアイテム
+                    </DragNDrop>
+                )}
+                <div style={{ display: expand ? 'block' : 'none' }}>
+                    {showInput.visible && (
+                        // 新規アイテムアクション時に表示されるFormColumn
+                        <FormColumn
+                            // ...
+                        />
+                    )}
+                    // ...
+                </div>
+            </div>
+        );
+    } else {
+        return (
+            <div>
+                {renaming ? (
+                    <FormColumn
+                        // ...
+                    />
+                ) : (
+                    <DragNDrop
+                        // ...
+                    >
+                        // 本来のTreeアイテム
+                    </DragNDrop>
+                )}
+            </div>
+        );
+    }
+    // ...
 ```
+
+リネーム・アクションがクリックされると、その Tree.tsx の`renaming: true`になり、
+本来の Tree.tsx が表示するはずの explorer アイテムを表示する代わりに、
+入力フォームである FormColumn.tsx を出力する
+
+-   onChange イベント：入力内容の検証 handleNewItemNameInput
+-   onKeyDown イベント：入力内容が決定された
+-   onBlur イベント：他の要素がクリックされた判定
+
+Tree.tsx の`handleNewItemNameInput()`で入力内容が問題ないか常に検証する
+たとえば、
+
+-   既存の path になるような名前にしていないか ()
+-   ファイル名に含めてはならない値を入力していないか
+-   入力内容が空でないか
+
+入力内容に問題があるときは、入力完了のエンターキーの keydown イベントが無効になるようにしてあるので、無効な値のままディスパッチされることはない。
+
+入力内容に問題ない場合にのみエンタキーが押された onKeyDown イベント発火時に、
+FilesContext へ内容が dispatch されてリネーム内容が反映される
+同時に、FormColumn の役目が終わるので、`renaming: false`に更新する。
+これで FormColumn がアンマウントされる。
+
+仮想ツリーの中で、フォルダアイテムをリネームするときは、そのフォルダアイテム以下のすべてのアイテムもリネームすることになる。
+
+そのため Tree.tsx::handleRename()では folder の場合とそうでない場合の 2 通りに処理を分けている。
 
 ```TypeScript
-//
-const renderRenameFunction = () => {
-    const clickHandler = (e: React.MouseEvent<HTMLLIElement>) => {
-        e.stopPropagation();
-        e.preventDefault();
-        setRenaming(true);
+// Tree.tsx
+    const handleRename = (newName: string) => {
+        // Update all descendants tree object's path if explorer is folder.
+        if (explorer.isFolder) {
+            const _path = getPathExcludeFilename(explorer.path);
+            const updatedExplorerPath = (_path ? _path : '') + newName;
 
-        console.log('[Tree] Clicked Rename action');
+            // `getAllDescendantsPath()`で、渡したexplorerのitems以下のすべてのアイテムのpathを取得する
+            const descendantsPath = getAllDescendantsPath(explorer);
+
+            // そのすべてのアイテムのpathを、リネーム値に合わせて更新し、
+            // dipatch用のデータを生成する
+            const updatedDescendantsPath = descendantsPath.map((dp) => {
+                const d = {
+                    oldPath: dp,
+                    newPath: '',
+                };
+                if (dp.includes(explorer.path)) {
+                    const unmodify = dp.split(explorer.path)[1];
+                    d.newPath = updatedExplorerPath + unmodify;
+                } else {
+                    d.newPath = dp;
+                }
+                return d;
+            });
+
+            const requests = updatedDescendantsPath.map((udp) => {
+                return {
+                    targetFilePath: udp.oldPath,
+                    changeProp: {
+                        newPath: udp.newPath,
+                    },
+                };
+            });
+            requests.push({
+                targetFilePath: explorer.path,
+                changeProp: {
+                    newPath: updatedExplorerPath,
+                },
+            });
+
+            dispatchFilesAction({
+                type: FilesActionTypes.ChangeMultiple,
+                payload: requests,
+            });
+        } else {
+            // create new path
+            const _path = getPathExcludeFilename(explorer.path);
+            const newPath = (_path ? _path : '') + newName;
+            dispatchFilesAction({
+                type: FilesActionTypes.Change,
+                payload: {
+                    targetFilePath: explorer.path,
+                    changeProp: {
+                        newPath: newPath,
+                    },
+                },
+            });
+        }
+
+        setIsInputBegun(false);
+        setIsNameValid(false);
+        setIsNameEmpty(false);
+        setRenaming(false);
+        setIsSameNameAlreadyExists(false);
     };
-    return (
-        <Action
-            handler={clickHandler}
-            icon={newFileIcon}
-            altMessage="Rename item"
-        />
-    );
-};
+
 ```
 
-#### 新規アイテム追加機能
+## [Explorer/Workspace] 新規アイテム追加機能
 
-`src/components/VSCodeExplorer/Workspace/index.tsx`
-`src/components/VSCodeExplorer/Workspace/Tree.tsx`
+#### Tree.tsx の各アイテムアクションから
+
+各 Tree.tsx のレンダリングされているファイル/フォルダ追加アクションをクリックすることで、一連の追加処理が開始される
+
+sequence diagram: https://sequencediagram.org/
+
+```plantuml
+->
+-> handleNewItem
+```
+
+#### PaneHeader.tsx のアクションから
+
+## [Explorer/Workspace] folder の開閉
+
+現状、
+
+-   iExplorer オブジェクトのうち isFolder: true のオブジェクトの開閉は、Tree.tsx の expand state に依存しており、files の status には依存していない。
+-   files データが folder の場合、selected は常に false である（かも
+
+そうなると、たとえば selectedFile が変更されても Workspace 上のフォルダが該当のファイルを含んでいるフォルダでも自動で開いた表示をしてくれない。
+
+FilesContext.tsx では,
+
+ADD_FILE の時に新規 folder に`selected: true`としていない。
+
+```TypeScript
+// FilesContext.tsx
+
+function filesReducer(files: File[], action: iFilesActions) {
+    switch (action.type) {
+        // Add single file.
+        case 'ADD_FILE': {
+            const { requiredPath, isFolder } = action.payload;
+
+            // ...
+
+            const language = isFolder ? '' : getFileLanguage(requiredPath);
+
+            // Add new folder:
+            if (isFolder) {
+                console.log(`[FilesContext] ADD_FILE: folder ${requiredPath}`);
+                return [
+                    ...files,
+                    new File(
+                        requiredPath,
+                        '',
+                        language ? '' : language === undefined ? '' : language,
+                        isFolder
+                    ),
+                ];
+            }
+
+            // ...
+        }
+        // ...
+
+        case 'CHANGE_SELECTED_FILE': {
+            const { selectedFilePath } = action.payload;
+
+            const targetFile = files.find(
+                (f) => f.getPath() === selectedFilePath
+            );
+
+            if (targetFile !== undefined && targetFile.isSelected()) {
+                return files;
+            }
+
+            const updatedFiles = files.map((f) => {
+                const clone: File = Object.assign(
+                    Object.create(Object.getPrototypeOf(f)),
+                    f
+                );
+                f.getPath() === selectedFilePath
+                    ? clone.setSelected()
+                    : clone.unSelected();
+                return clone;
+            });
+
+            return [...updatedFiles];
+        }
+        /***
+         * OPEN FILE:
+         *
+         * - Set Opening flag as true
+         * - Give TabIndex if it's null.
+         * - Set selected to be true.
+         *
+         * TabIndex will be same as number of current tabs.
+         *
+         * TODO: 予め必ずいずれかのファイルがselected: trueになっていることが前提になっている。selected: trueのファイルがない場合に対応させること。
+         * */
+        case 'OPEN_FILE': {
+            const { path } = action.payload;
+            const target = files.find((f) => f.getPath() === path);
+            const currentSelectedFile = files.find((f) => f.isSelected());
+
+            const currentSelectedFilePath = currentSelectedFile
+                ? currentSelectedFile.getPath()
+                : undefined;
+
+            // Guard if it's folder or opening already.
+            if (target?.isFolder() || target?.isOpening()) {
+                return files;
+            }
+
+            console.log(
+                `[FilesContext] OPEN_FILE: ${path} Previous selected file: ${currentSelectedFilePath}`
+            );
+
+            const updatedFiles = files.map((f) => {
+                // Get file open and selected.
+                if (f.getPath() === path) {
+                    const clone: File = Object.assign(
+                        Object.create(Object.getPrototypeOf(f)),
+                        f
+                    );
+                    clone.setOpening(true);
+                    clone.setSelected();
+                    if (!clone.getTabIndex()) {
+                        const tabIndexes = files
+                            .filter((f) => f.getTabIndex !== null)
+                            .map((f) => f.getTabIndex());
+                        const currentTabTail = findMax(tabIndexes) + 1;
+                        clone.setTabIndex(currentTabTail);
+                    }
+                    return clone;
+                }
+                // Get selected file to be unselected.
+                else if (
+                    currentSelectedFilePath !== undefined &&
+                    f.getPath() === currentSelectedFilePath
+                ) {
+                    const clone: File = Object.assign(
+                        Object.create(Object.getPrototypeOf(f)),
+                        f
+                    );
+                    clone.unSelected();
+                    return clone;
+                } else return f;
+            });
+
+            return [...updatedFiles];
+        }
+        /**
+         * Close file:
+         * - `isSelected: true`のファイルをクローズしたときはいずれかの`isOpening:true`のファイルを選ぶ
+         * */
+        case 'CLOSE_FILE': {
+            const { path } = action.payload;
+            // Guard if it's folder or closing already.
+            const target = files.find((f) => f.getPath() === path);
+            if (target?.isFolder() || !target?.isOpening()) {
+                return files;
+            }
+
+            console.log(`[FilesContext] CLOSE_FILE: ${path}`);
+
+            // Was target file `isSelected` true?
+            let nextSelected: File | undefined;
+            if (target.isSelected()) {
+                nextSelected = files.find(
+                    (f) => f.isOpening() && !f.isSelected()
+                );
+            }
+
+            const updatedFiles = files.map((f) => {
+                // Close target file.
+                if (f.getPath() === path) {
+                    const clone: File = Object.assign(
+                        Object.create(Object.getPrototypeOf(f)),
+                        f
+                    );
+                    clone.setOpening(false);
+                    clone.setTabIndex(null);
+                    clone.unSelected();
+                    return clone;
+                }
+                // Select another file if target file was selected file.
+                else if (
+                    nextSelected &&
+                    f.getPath() === nextSelected.getPath()
+                ) {
+                    const clone: File = Object.assign(
+                        Object.create(Object.getPrototypeOf(f)),
+                        f
+                    );
+                    clone.setSelected();
+                    return clone;
+                } else return f;
+            });
+
+            return [...updatedFiles];
+        }
+        default: {
+            throw Error('Unknown action: ' + action.type);
+        }
+    }
+}
+
+```
+
+Tree.tsx
+
+-   folder がクリックされても change select file が dispatch されない
+
+他
+
+-   selected フラグは files のうち isFolder:true でない file であることが前提になっている
+    (EditorContainer.tsx では selectedFile)
+
+以下では TabsAndACtions と MonacoEditor が selectedFile を求めているが、
+
+selectedFile は folder でないことが前提となっている（修正は容易ですが）
+
+```TypeScript
+    render() {
+        // 修正案
+        // const selectedFilePath = this.props.files.find((f) => f.isSelected() && !f.isFolder());
+        // 現状
+        const selectedFilePath = this.props.files.find((f) => f.isSelected());
+        const filesOpening = this.getFilesOpening(this.props.files);
+
+        if (filesOpening.length) {
+            return (
+                <div className="editor-container">
+                    <TabsAndActionsContainer
+                        selectedFile={selectedFilePath}
+                        onChangeSelectedTab={this._onChangeSelectedTab}
+                        width={this.props.width}
+                        filesOpening={filesOpening}
+                    />
+                    <MonacoEditor
+                        files={this.props.files}
+                        selectedFile={selectedFilePath}
+                        onEditorContentChange={this._onEditorContentChange}
+                        onDidChangeModel={this._onDidChangeModel}
+                        {...editorConstructOptions}
+                    />
+                </div>
+            );
+        }
+    }
+```
+
+folder が開いている情報は Explorer/workspace でのみ必要な情報である。
+
+folder が「選択されていない状態」を知るのが今のところ難しい。
+
+#### どうなってほしいのか
+
+-   selectedFile が含まれているフォルダは基本的に expand したままにしてほしい
+-   workspace 内での dnd したときに drop 先であるフォルダは expand してほしい
+-
+
+iExplorer に selected プロパティをつけることはできるか

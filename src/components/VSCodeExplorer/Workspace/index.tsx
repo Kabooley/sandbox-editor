@@ -1,7 +1,7 @@
 /*******************************************************************************
  * Workspace stack of VSCodeExplorer
  * *****************************************************************************/
-import React from 'react';
+import React, { useState } from 'react';
 import Stack from '../Stack';
 import Action from '../Action';
 import closeIcon from '../../../assets/vscode/dark/close.svg';
@@ -10,6 +10,7 @@ import newFolderIcon from '../../../assets/vscode/dark/new-folder.svg';
 import collapseAllIcon from '../../../assets/vscode/dark/collapse-all.svg';
 
 import Tree from './Tree';
+import TreeAsForm from './TreeAsForm';
 import {
     isNodeIncludedUnderExplorer,
     getNodeById,
@@ -49,6 +50,11 @@ const Workspace: React.FC<iProps> = ({
     height,
     width,
 }) => {
+    // Descides show form for new item.
+    const [showInput, setShowInput] = useState<{
+        visible: boolean;
+        isFolder: boolean;
+    }>({ visible: false, isFolder: false });
     const files = useFiles();
     const filesDispatch = useFilesDispatch();
     const dispatchLayoutContextAction = useLayoutDispatch();
@@ -291,59 +297,22 @@ const Workspace: React.FC<iProps> = ({
      * Action handlers for Stack PaneHeader
      ****************************************/
 
+    /**
+     * - ペインヘッダのアクションは常に「開いているとき」に有効になるので、ペインを開く処理を行う必要はない
+     * - FormColumnをどうやってどこに挿入するのか手だてがない
+     *    --> Treeを一つ追加するのは？
+     * - FormColumnを適切な位置に挿入したい
+     *    --> explorerをいじれるか？
+     *
+     * new state: showInput
+     *
+     * */
     const handleNewItem = (isFolder: boolean) => {
-
-        console.log('[Workspace/index] handle new item');
-        /***
-         * TODO: Input form for new item must be place current focused folder. Implement this.
-         *
-         * */
-        // setExpand(true);
-        // setShowInput({
-        //     visible: true,
-        //     isFolder,
-        // });
+        setShowInput({
+            visible: true,
+            isFolder,
+        });
     };
-
-    // const onAddItem = (
-    //     e: React.KeyboardEvent<HTMLInputElement>,
-    //     addTo: string
-    // ) => {
-    //     const requiredPath = addTo.length
-    //         ? addTo + '/' + e.currentTarget.value
-    //         : e.currentTarget.value;
-    //     if (e.keyCode === 13 && requiredPath && isNameValid) {
-    //         handleInsertNode(requiredPath, showInput.isFolder);
-    //         // Clear states
-    //         setShowInput({ ...showInput, visible: false });
-    //         setIsInputBegun(false);
-    //         setIsNameValid(false);
-    //         setIsNameEmpty(false);
-    //     }
-    // };
-
-    // const handleNewItemNameInput = (
-    //     e: React.ChangeEvent<HTMLInputElement>,
-    //     isFolder: boolean
-    // ) => {
-    //     // DEBUG:
-
-    //     setIsInputBegun(true);
-
-    //     // Check if input form is empty.
-    //     e.currentTarget.value.length
-    //         ? setIsNameEmpty(false)
-    //         : setIsNameEmpty(true);
-
-    //     // Check if value is valid
-    //     if (isFolder && isFolderNameValid(e.currentTarget.value)) {
-    //         setIsNameValid(true);
-    //     } else if (isFilenameValid(e.currentTarget.value)) {
-    //         setIsNameValid(true);
-    //     } else {
-    //         setIsNameValid(false);
-    //     }
-    // };
 
     const handleOpenFile = (explorer: iExplorer) => {
         filesDispatch({
@@ -418,6 +387,18 @@ const Workspace: React.FC<iProps> = ({
         return <Action handler={clickHandler} icon={closeIcon} altMessage="" />;
     };
 
+    if (showInput.visible) {
+        treeData.items.unshift({
+            id: '9999',
+            name: '',
+            isFolder: showInput.isFolder,
+            items: [],
+            path: '',
+            isOpening: false,
+            isSelected: false,
+        });
+    }
+
     console.log('[Workspace] tree data:');
     console.dir(treeData);
 
@@ -438,21 +419,38 @@ const Workspace: React.FC<iProps> = ({
         >
             {treeData.items.map((exp: iExplorer, index: number) => {
                 const nestDepth = 1;
-                return (
-                    <Tree
-                        key={index}
-                        explorer={exp}
-                        nestDepth={nestDepth}
-                        handleInsertNode={handleInsertNode}
-                        handleDeleteNode={handleDeleteNode}
-                        handleReorderNode={handleReorderNode}
-                        handleOpenFile={handleOpenFile}
-                        handleSelectFile={handleSelectFile}
-                        checkPathAlreadyExistsFromExplorer={
-                            checkPathAlreadyExistsFromExplorer
-                        }
-                    />
-                );
+                if (exp.id === '9999') {
+                    // 新規アイテム用の一時的なTreeの生成
+                    return (
+                        <TreeAsForm
+                            key={index}
+                            explorer={exp}
+                            nestDepth={nestDepth}
+                            handleInsertNode={handleInsertNode}
+                            showInput={showInput}
+                            setShowInput={setShowInput}
+                            checkPathAlreadyExistsFromExplorer={
+                                checkPathAlreadyExistsFromExplorer
+                            }
+                        />
+                    );
+                } else {
+                    return (
+                        <Tree
+                            key={index}
+                            explorer={exp}
+                            nestDepth={nestDepth}
+                            handleInsertNode={handleInsertNode}
+                            handleDeleteNode={handleDeleteNode}
+                            handleReorderNode={handleReorderNode}
+                            handleOpenFile={handleOpenFile}
+                            handleSelectFile={handleSelectFile}
+                            checkPathAlreadyExistsFromExplorer={
+                                checkPathAlreadyExistsFromExplorer
+                            }
+                        />
+                    );
+                }
             })}
         </Stack>
     );
