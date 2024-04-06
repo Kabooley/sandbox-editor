@@ -22,6 +22,7 @@ import chevronDownIcon from '../../../assets/vscode/dark/chevron-down.svg';
 import newFileIcon from '../../../assets/vscode/dark/new-file.svg';
 import newFolderIcon from '../../../assets/vscode/dark/new-folder.svg';
 import trashIcon from '../../../assets/vscode/dark/trash.svg';
+import editIcon from '../../../assets/vscode/dark/edit.svg';
 
 interface iProps {
     nestDepth: number;
@@ -307,7 +308,7 @@ const Tree: React.FC<iProps> = ({
         return (
             <Action
                 handler={clickHandler}
-                icon={newFileIcon}
+                icon={editIcon}
                 altMessage="Rename item"
             />
         );

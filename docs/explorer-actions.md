@@ -815,6 +815,174 @@ FilesContext へ内容が dispatch されてリネーム内容が反映される
 
 ```
 
+#### TODO: アイテムリネームに伴う monaco-editor extraLibs の更新
+
+extraLibs の更新はどんな時に行うべきか
+
+-   File の path が変更されたとき（language の変更、path の変更、folder でなくなるとか）
+-   File の value が変更されたとき
+-   File を削除したとき
+-   File を追加したとき
+
+内、value に関しては MonacoEditor が間接的に担っており、明示的に extraLibs の更新が必要なく、ファイルの編集、ファイルの切り替えのタイミングで更新される
+
+となると、
+
+-   File を追加したときの処理
+-   File の path を変更したときの処理
+
+を実装すればいいのかと
+
+extraLibs を更新しているのは`EditorContainer.tsx`の componentDidUpdate
+
+`this.props.files`と`prevProp.files`の二つの比較となる
+
+```TypeScript
+
+```
+
+src/styles.css を src/stylus.css に変更したとき：
+
+リネーム後の files (this.props.files)
+
+```bash
+[
+    {
+        "_path": "package.json",
+        "_value": "{\n  \"name\": \"react-typescript\",\n  \"version\": \"1.0.0\",\n  \"description\": \"React and TypeScript example starter project\",\n  \"keywords\": [\n    \"typescript\",\n    \"react\",\n    \"starter\"\n  ],\n  \"main\": \"src/index.tsx\",\n  \"dependencies\": {\n    \"@types/react\": \"18.0.25\",\n    \"@types/react-dom\": \"18.0.9\",\n    \"react\": \"18.2.0\",\n    \"react-dom\": \"18.2.0\",\n    \"react-scripts\": \"5.0.1\",\n    \"typescript\": \"4.4.2\"\n  },\n  \"devDependencies\": {},\n  \"scripts\": {\n    \"start\": \"react-scripts start\",\n    \"build\": \"react-scripts build\",\n    \"test\": \"react-scripts test --env=jsdom\",\n    \"eject\": \"react-scripts eject\"\n  },\n  \"browserslist\": [\n    \">0.2%\",\n    \"not dead\",\n    \"not ie <= 11\",\n    \"not op_mini all\"\n  ]\n}",
+        "_language": "json",
+        "_isFolder": false,
+        "_selected": false,
+        "_opening": false,
+        "_tabIndex": null
+    },
+    {
+        "_path": "public/index.html",
+        "_value": "\n<!DOCTYPE html>\n<html>\n  <head>\n    <meta charset=\"utf-8\" />\n    <title>React TypeScript</title>\n  </head>\n  <body>\n    <div id=\"root\"></div>\n  </body>\n</html>",
+        "_language": "html",
+        "_isFolder": false,
+        "_selected": false,
+        "_opening": false,
+        "_tabIndex": null
+    },
+    {
+        "_path": "soMuchLongDirectoryName/superUltraHyperTooLongBaddaaasssssFile.txt",
+        "_value": "so much text might be here...",
+        "_language": "txt",
+        "_isFolder": false,
+        "_selected": false,
+        "_opening": false,
+        "_tabIndex": null
+    },
+    {
+        "_path": "src/App.tsx",
+        "_value": "\nimport React from 'react';\nimport \"./styles.css\";\n\nexport default function App(): React.JSX.Element {\n  return (\n    <div className=\"App\">\n      <h1>Hello CodeSandbox</h1>\n      <h2>Start editing to see some magic happen!</h2>\n    </div>\n  );\n};\n      ",
+        "_language": "typescript",
+        "_isFolder": false,
+        "_selected": true,
+        "_opening": true,
+        "_tabIndex": null
+    },
+    {
+        "_path": "src/index.tsx",
+        "_value": "\nimport React from \"react\";\nimport ReactDOM from \"react-dom/client\";\nimport App from \"./App\";\n\nconst rootElement = document.getElementById(\"root\");\nif(rootElement) {\n  const root = ReactDOM.createRoot(rootElement);\n\n  root.render(\n    <React.StrictMode>\n      <App />\n    </React.StrictMode>\n  );   \n}",
+        "_language": "typescript",
+        "_isFolder": false,
+        "_selected": false,
+        "_opening": false,
+        "_tabIndex": null
+    },
+    {
+        "_path": "src/stylus.css",
+        "_value": ".App {\n        font-family: sans-serif;\n        text-align: center;\n      }\n      ",
+        "_language": "css",
+        "_isFolder": false,
+        "_selected": false,
+        "_opening": false,
+        "_tabIndex": null
+    },
+    {
+        "_path": "tsconfig.json",
+        "_value": "{\n      \"include\": [\n          \"./src/**/*\"\n      ],\n      \"compilerOptions\": {\n          \"strict\": true,\n          \"esModuleInterop\": true,\n          \"lib\": [\n              \"dom\",\n              \"es2015\"\n          ],\n          \"jsx\": \"react-jsx\"\n      }\n  }",
+        "_language": "json",
+        "_isFolder": false,
+        "_selected": false,
+        "_opening": false,
+        "_tabIndex": null
+    }
+]
+```
+
+リネーム前の files (prevProps.files)
+
+```bash
+[
+    {
+        "_path": "package.json",
+        "_value": "{\n  \"name\": \"react-typescript\",\n  \"version\": \"1.0.0\",\n  \"description\": \"React and TypeScript example starter project\",\n  \"keywords\": [\n    \"typescript\",\n    \"react\",\n    \"starter\"\n  ],\n  \"main\": \"src/index.tsx\",\n  \"dependencies\": {\n    \"@types/react\": \"18.0.25\",\n    \"@types/react-dom\": \"18.0.9\",\n    \"react\": \"18.2.0\",\n    \"react-dom\": \"18.2.0\",\n    \"react-scripts\": \"5.0.1\",\n    \"typescript\": \"4.4.2\"\n  },\n  \"devDependencies\": {},\n  \"scripts\": {\n    \"start\": \"react-scripts start\",\n    \"build\": \"react-scripts build\",\n    \"test\": \"react-scripts test --env=jsdom\",\n    \"eject\": \"react-scripts eject\"\n  },\n  \"browserslist\": [\n    \">0.2%\",\n    \"not dead\",\n    \"not ie <= 11\",\n    \"not op_mini all\"\n  ]\n}",
+        "_language": "json",
+        "_isFolder": false,
+        "_selected": false,
+        "_opening": false,
+        "_tabIndex": null
+    },
+    {
+        "_path": "public/index.html",
+        "_value": "\n<!DOCTYPE html>\n<html>\n  <head>\n    <meta charset=\"utf-8\" />\n    <title>React TypeScript</title>\n  </head>\n  <body>\n    <div id=\"root\"></div>\n  </body>\n</html>",
+        "_language": "html",
+        "_isFolder": false,
+        "_selected": false,
+        "_opening": false,
+        "_tabIndex": null
+    },
+    {
+        "_path": "soMuchLongDirectoryName/superUltraHyperTooLongBaddaaasssssFile.txt",
+        "_value": "so much text might be here...",
+        "_language": "txt",
+        "_isFolder": false,
+        "_selected": false,
+        "_opening": false,
+        "_tabIndex": null
+    },
+    {
+        "_path": "src/App.tsx",
+        "_value": "\nimport React from 'react';\nimport \"./styles.css\";\n\nexport default function App(): React.JSX.Element {\n  return (\n    <div className=\"App\">\n      <h1>Hello CodeSandbox</h1>\n      <h2>Start editing to see some magic happen!</h2>\n    </div>\n  );\n};\n      ",
+        "_language": "typescript",
+        "_isFolder": false,
+        "_selected": true,
+        "_opening": true,
+        "_tabIndex": null
+    },
+    {
+        "_path": "src/index.tsx",
+        "_value": "\nimport React from \"react\";\nimport ReactDOM from \"react-dom/client\";\nimport App from \"./App\";\n\nconst rootElement = document.getElementById(\"root\");\nif(rootElement) {\n  const root = ReactDOM.createRoot(rootElement);\n\n  root.render(\n    <React.StrictMode>\n      <App />\n    </React.StrictMode>\n  );   \n}",
+        "_language": "typescript",
+        "_isFolder": false,
+        "_selected": false,
+        "_opening": false,
+        "_tabIndex": null
+    },
+    {
+        "_path": "src/styles.css",
+        "_value": ".App {\n        font-family: sans-serif;\n        text-align: center;\n      }\n      ",
+        "_language": "css",
+        "_isFolder": false,
+        "_selected": false,
+        "_opening": false,
+        "_tabIndex": null
+    },
+    {
+        "_path": "tsconfig.json",
+        "_value": "{\n      \"include\": [\n          \"./src/**/*\"\n      ],\n      \"compilerOptions\": {\n          \"strict\": true,\n          \"esModuleInterop\": true,\n          \"lib\": [\n              \"dom\",\n              \"es2015\"\n          ],\n          \"jsx\": \"react-jsx\"\n      }\n  }",
+        "_language": "json",
+        "_isFolder": false,
+        "_selected": false,
+        "_opening": false,
+        "_tabIndex": null
+    }
+]
+```
+
 ## [Explorer/Workspace] 新規アイテム追加機能
 
 #### Tree.tsx の各アイテムアクションから
@@ -1073,3 +1241,7 @@ folder が「選択されていない状態」を知るのが今のところ難�
 -
 
 iExplorer に selected プロパティをつけることはできるか
+
+## [Explorer/OpenEditor] エディタをすべて閉じる
+
+つまり、すべてのファイルを閉じる機能。
