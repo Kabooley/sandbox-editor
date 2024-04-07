@@ -117,18 +117,17 @@ class EditorContainer extends React.Component<iProps, iState> {
      * Not handles when file has...
      * changed file.selected, file.isOpened, file.value
      *
-     * 最悪、path変更されても変更前のファイルはextralibsから削除しない。どれがそうなのかわからないから。
-     * もしもextralibsに登録済のファイルと全く同じpathのファイルが新規に作成されても、その際は該当pathのextraLibsのデータはdisposeされるので
-     * 仮想ファイル群に存在しないファイルがいきなり出てくるなんてことはない
+     * NOTE: renameされたfileのリネーム前の該当ファイルはextraLibsから削除されていない。
+     * どのデータが該当のファイルか特定できないからである。
+     * すべてthis.props.filesに基づいて毎度まるっとextralibsをすべて更新した方がいいのかも
      * */
     componentDidUpdate(prevProp: iProps, prevState: iState) {
+        // // DEBUG: ----
         console.log('[EditorContainer] did update');
-
-        // DEBUG: ----
-        // monaco.languages.typescript.IExtraLibs:
-        // [path: string]: {
-        //      content: string; version: number;
-        // }
+        // // monaco.languages.typescript.IExtraLibs:
+        // // [path: string]: {
+        // //      content: string; version: number;
+        // // }
         const currentJSLibs =
             monaco.languages.typescript.javascriptDefaults.getExtraLibs();
         const currentTSLibs =
@@ -138,7 +137,6 @@ class EditorContainer extends React.Component<iProps, iState> {
         console.dir(prevProp.files);
 
         const didFileDelete = prevProp.files.length > this.props.files.length;
-        // const didFileAdd = prevProp.files.length < this.props.files.length;
 
         // this.props.filesが更新されたら
         if (prevProp.files !== this.props.files) {
@@ -152,18 +150,10 @@ class EditorContainer extends React.Component<iProps, iState> {
                     // いずれの場合も結局`this.addExtraLibs`へ渡すだけ
                     // rename前のpathに該当するextralibsファイルは削除できない
                     // どれか判別できないけど、extralibsに残っていても問題ないから
-                    console.log('[EditorContainer] file added or renamed');
                     this.addExtraLibs(file.getValue(), file.getPath());
-                } 
-                // このelseは要らんかも
-                // else {
-                //     // Exist File.
-                //     // TODO: selectedファイルでなくてもextraLibsの該当データのvalueは更新されるか確認
-                //     console.log('[EditorContainer] file is still exists');
-                // }
+                }
             }
             if (didFileDelete) {
-                console.log('[EditorContainer] file removed.');
                 const prevFilesPath = prevProp.files.map((pf) => pf.getPath());
                 const currentFilesPath = this.props.files.map((pf) =>
                     pf.getPath()

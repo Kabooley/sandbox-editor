@@ -9,8 +9,10 @@ TODO: この記事のタイトルを変更して内容は機能説明だけに�
 ## TODOs
 
 -   TODO: OpenEditor Opening ファイルをすべて閉じる
--   TODO: Icon の修正
+-   TODO: 実装しないことにした各アクションコンポーネントの削除
 -   TODO: ホバーしたらアイテムの説明が現れるようにする
+-   TODO: Dependencies の依存関係リストの delete アクションが実装されていない
+-   TODO: Dependencies の依存関係取得機能が実装されていない
 -   TODO: Workspace selected ファイルを含むフォルダは自動的に開いたままにする
 
 別件（本ブランチ外）：
@@ -1245,3 +1247,12 @@ iExplorer に selected プロパティをつけることはできるか
 ## [Explorer/OpenEditor] エディタをすべて閉じる
 
 つまり、すべてのファイルを閉じる機能。
+
+
+## [Explorer/Dependencies] 依存関係取得機能
+
+本当に実装されていないのか？別ブランチで開発中でマージしていないだけとか？確認
+
+## [Explorer/Dependencies] 取得済依存関係削除機能
+
+本当に実装されていないのか？別ブランチで開発中でマージしていないだけとか？確認

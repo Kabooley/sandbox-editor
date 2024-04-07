@@ -348,7 +348,11 @@ const Workspace: React.FC<iProps> = ({
             handleNewItem(false);
         };
         return (
-            <Action handler={clickHandler} icon={newFileIcon} altMessage="" />
+            <Action
+                handler={clickHandler}
+                icon={newFileIcon}
+                altMessage="New file..."
+            />
         );
     };
 
@@ -359,7 +363,11 @@ const Workspace: React.FC<iProps> = ({
             handleNewItem(true);
         };
         return (
-            <Action handler={clickHandler} icon={newFolderIcon} altMessage="" />
+            <Action
+                handler={clickHandler}
+                icon={newFolderIcon}
+                altMessage="New folder..."
+            />
         );
     };
 
@@ -374,7 +382,7 @@ const Workspace: React.FC<iProps> = ({
             <Action
                 handler={clickHandler}
                 icon={collapseAllIcon}
-                altMessage=""
+                altMessage="Collapse folders in explorer"
             />
         );
     };
@@ -384,7 +392,13 @@ const Workspace: React.FC<iProps> = ({
             e.stopPropagation();
             e.preventDefault();
         };
-        return <Action handler={clickHandler} icon={closeIcon} altMessage="" />;
+        return (
+            <Action
+                handler={clickHandler}
+                icon={closeIcon}
+                altMessage="Close"
+            />
+        );
     };
 
     if (showInput.visible) {

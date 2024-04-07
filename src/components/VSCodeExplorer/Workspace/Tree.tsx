@@ -305,13 +305,7 @@ const Tree: React.FC<iProps> = ({
             e.preventDefault();
             setRenaming(true);
         };
-        return (
-            <Action
-                handler={clickHandler}
-                icon={editIcon}
-                altMessage="Rename item"
-            />
-        );
+        return <Action handler={clickHandler} icon={editIcon} altMessage="" />;
     };
 
     const renderDeleteFunction = () => {

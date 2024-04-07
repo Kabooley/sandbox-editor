@@ -211,16 +211,16 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
         return () => clearTimeout(timer);
     }, [packageJson]);
 
-    // // DEBUG:
-    // useEffect(() => {
-    //     console.log('[TypingLibsContext] did update.');
-    //     console.log(dependencies);
-    //     console.log(requestingDependencies);
-    //     console.log(setOfDependency);
-    //     console.log(
-    //         monaco.languages.typescript.typescriptDefaults.getExtraLibs()
-    //     );
-    // });
+    // DEBUG:
+    useEffect(() => {
+        console.log('[TypingLibsContext] did update.');
+        console.log(dependencies);
+        console.log(requestingDependencies);
+        console.log(setOfDependency);
+        console.log(
+            monaco.languages.typescript.typescriptDefaults.getExtraLibs()
+        );
+    });
 
     /**
      * Callback of onmessage event with agent worker.
