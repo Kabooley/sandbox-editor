@@ -1248,11 +1248,36 @@ iExplorer に selected プロパティをつけることはできるか
 
 つまり、すべてのファイルを閉じる機能。
 
-
 ## [Explorer/Dependencies] 依存関係取得機能
 
 本当に実装されていないのか？別ブランチで開発中でマージしていないだけとか？確認
 
 ## [Explorer/Dependencies] 取得済依存関係削除機能
 
-本当に実装されていないのか？別ブランチで開発中でマージしていないだけとか？確認
+-   explorer/Dependencies の依存関係一覧 UI から任意の依存関係の削除ボタンが押される
+-   TypingLibsContext.tsx の useCommand 経由で remove リクエストが removeLibrary()を呼び出すことで実行される
+-   TypingLibsContext.tsx::setOfDependency が更新される
+-   TypingLibsContext.tsx::dependencies が更新される
+-   TypingLibsContext.tsx::packageJson が更新される
+-   `reflectToPackageJson()`が更新された dependencies を引数として呼び出される
+-   `reflectToPackageJson()`が更新された dependencies を反映するように FilesContext へ change アクションをディスパッチする
+-   files の`package.json`が更新される
+
+#### TypingLibsContext.tsx の依存関係更新処理の流れ
+
+-   useFiles()から更新された`package.json`ファイルが渡される
+-   `useEffect(,[packageJson])`が呼び出される
+-   `snapshot`と files の package.json の各 dependencies と devDependencies を比較して、削除、追加、変更された依存関係を検出する
+-   削除された依存関係は`removeLibrary`へ
+-   追加された依存関係は`requestFetchTypings`へ
+-   変更された依存関係も`requestFetchTypings`へ
+-   最後に files の package.json を`snapshot`として保存する
+    -   `requestFetchTypings`はリクエストされた依存関係がキャッシュ済でない場合はリクエストの依存関係を worker を通して fetch する
+    -   worker からのレスポンスに基づいて`dependencies`を更新、`reflectTpPackageJson`を呼び出す
+    -   `reflectToPackageJson`は引数の dependencies と state の dependencies を比較して packageJson の dependencies を更新する。
+    -   `reflectToPackageJson`は`dependencies`を更新後`snapshot`をとる
+
+ということで、
+
+-   `setDependencies`は`handleWorkerMessage`、`removeLibrary`から呼び出されている
+-   `reflectToPackageJson`は package.json ファイルを更新させるために FilesContext へ change アクションを dispatch している

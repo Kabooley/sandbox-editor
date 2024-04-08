@@ -4,6 +4,8 @@ import Action from '../Action';
 import Form from './Form';
 import trashIcon from '../../../assets/vscode/dark/trash.svg';
 // import chevronRightIcon from "../../../assets/vscode/dark/chevron-right.svg";
+import { useDependencies, useCommand } from '../../../context/TypingLibsContext';
+import type { iDependencyState } from '../../../context/TypingLibsContext';
 
 interface iProps {
     id: number;
@@ -13,15 +15,6 @@ interface iProps {
     width: number;
 }
 
-const dummyDependencies = [
-    { name: 'react', version: '17.0.2' },
-    { name: 'react-dom', version: '17.0.2' },
-    { name: 'axios', version: '^1.4.0' },
-    { name: 'localforage', version: '^1.10.0' },
-    { name: '@types/react', version: '17.0.39' },
-    { name: 'prettier', version: '2.8.8' },
-    { name: 'tooMuchLongNameModule/suchAWaste', version: '9.9.9' },
-];
 
 const Dependencies: React.FC<iProps> = ({
     id,
@@ -31,6 +24,8 @@ const Dependencies: React.FC<iProps> = ({
     width,
 }) => {
     const title = 'dependencies';
+    const dependencies = useDependencies();
+    const typeLibsCommand = useCommand();
 
     /***
      * - Validate value
@@ -50,20 +45,20 @@ const Dependencies: React.FC<iProps> = ({
         const dependencyName = splittedName.join(`@`);
 
         // NOTE: omit fetching module functions.
-        console.log(`[Dependencies] fetch request: ${dependencyName}`);
+        console.log(`[Dependencies] fetch request:
+         ${dependencyName}`);
+         
+         typeLibsCommand('request', splittedName[0], version);
     };
 
-    const renderActionDeleteDependency = (dependency: {
-        name: string;
-        version: string;
-    }) => {
+    const renderActionDeleteDependency = (dependency: iDependencyState) => {
         const clickHandler = (e: React.MouseEvent<HTMLLIElement>) => {
             e.stopPropagation();
 
             console.log(
-                `[Dependencies] delete action: ${dependency.name}@${dependency.version}`
+                `[Dependencies] delete action: ${dependency.moduleName}@${dependency.version}`
             );
-            // TODO: implement handler
+            typeLibsCommand('remove', dependency.moduleName, dependency.version);
         };
         return (
             <Action
@@ -87,13 +82,13 @@ const Dependencies: React.FC<iProps> = ({
             actions={[]}
         >
             <Form send={send} />
-            {dummyDependencies.map((dd, index) => (
+            {dependencies.map((dd, index) => (
                 <div className="stack-body-list__item dependencies" key={index}>
                     <div
                         className="indent"
                         style={{ paddingLeft: `${nestDepth * 1.6}rem` }}
                     ></div>
-                    <h3 className="item-label">{dd.name}</h3>
+                    <h3 className="item-label">{dd.moduleName}</h3>
                     <span>{dd.version}</span>
                     <div
                         className="indent"

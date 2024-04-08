@@ -78,7 +78,7 @@ const packageJsonNecessary = `
 const TypingLibsDependenciesContext = createContext<iTypingLibsContext>([]);
 const TypingLibsCommandContext = createContext<iCommandContext>(() => null);
 
-const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
+const TypingLibsProvider = ({ children }: iProps) => {
     const [dependencies, setDependencies] = useState<iDependencyState[]>([]);
     /***
      * Map of typing Libraries.
@@ -169,8 +169,8 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
      *
      * */
     useEffect(() => {
-        // console.log('[TypingLibsContext] Updated packageJson');
-        // console.log(packageJson);
+        console.log('[TypingLibsContext] Updated packageJson');
+        console.log(packageJson);
 
         const timer = setTimeout(() => {
             const { deleted, created, modifiedVal } = getDiffOfPackageJson();
@@ -178,7 +178,7 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
                 deleted.forEach((d) => {
                     const key = Object.keys(d)[0];
 
-                    // console.log(`[TypingLibsContext] Delete ${key}@${d[key]}`);
+                    console.log(`[TypingLibsContext] Delete ${key}@${d[key]}`);
 
                     removeLibrary(key, d[key]);
                 });
@@ -187,7 +187,7 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
                 created.forEach((d) => {
                     const key = Object.keys(d)[0];
 
-                    // console.log(`[TypingLibsContext] Fetch ${key}@${d[key]}`);
+                    console.log(`[TypingLibsContext] Fetch ${key}@${d[key]}`);
 
                     requestFetchTypings(key, d[key]);
                 });
@@ -197,14 +197,14 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
                     const key = Object.keys(d)[0];
                     const { prev, current } = d[key];
 
-                    // console.log(
-                    //     `[TypingLibsContext] modified. ${key}@${prev} --> ${key}@${current}`
-                    // );
+                    console.log(
+                        `[TypingLibsContext] modified. ${key}@${prev} --> ${key}@${current}`
+                    );
 
                     requestFetchTypings(key, current);
                 });
             }
-            // NOTE: 必ずsnapshotをとること
+            // NOTE: MUST SNAPSHOT HERE!!
             setSnapshot(packageJson);
         }, $FiveSec);
 
@@ -217,9 +217,10 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
         console.log(dependencies);
         console.log(requestingDependencies);
         console.log(setOfDependency);
-        console.log(
+
+        Object.keys(
             monaco.languages.typescript.typescriptDefaults.getExtraLibs()
-        );
+        ).forEach((key) => console.log(key));
     });
 
     /**
@@ -329,6 +330,7 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
             );
             setDependencies([...updatedDependencies]);
             // NOTE: この呼出時点でまだsetDependencies()の反映が完了していない
+            // workerのイベントリスナから呼び出されているから。
             // そのため更新されたdependenciesを必ず渡すこと
             reflectToPackageJson(updatedDependencies);
 
@@ -471,12 +473,19 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
 
     /***
      * Remove all libraries from monaco language service defaults.
+     * Updates datas to remove requested module.
+     *
+     * - update monaco.languages.typescript.[type|java]scriptDefaults extralibs
+     * - update setOfDependency
+     * - update dependencies
+     *
+     * NOTE: 今のところ、removeLibraryを呼び出してもpackage.jsonは更新されない
      * */
     const removeLibrary = (moduleName: string, version: string) => {
         if (setOfDependency.current.has(`${moduleName}@${version}`)) {
-            // console.log(
-            //     `[TypingLibsContext] delete ${moduleName}@${version} related libraries`
-            // );
+            console.log(
+                `[TypingLibsContext] delete ${moduleName}@${version} related libraries`
+            );
 
             const paths = setOfDependency.current.get(
                 `${moduleName}@${version}`
@@ -490,9 +499,11 @@ const TypingLibsProvider: React.FC<iProps> = ({ children }) => {
             });
             setOfDependency.current.delete(`${moduleName}@${version}`);
         }
-        setDependencies([
-            ...dependencies.filter((dep) => dep.moduleName !== moduleName),
-        ]);
+        const updatedDependencies = dependencies.filter(
+            (dep) => dep.moduleName !== moduleName
+        );
+        setDependencies([...updatedDependencies]);
+        reflectToPackageJson(updatedDependencies);
     };
 
     /***
