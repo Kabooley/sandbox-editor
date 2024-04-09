@@ -23,6 +23,7 @@ enum Types {
     // Actions from Explorer.
     Open = 'OPEN_FILE',
     Close = 'CLOSE_FILE',
+    CloseAll = 'CLOSE_ALL',
 }
 
 type ActionMap<M extends { [index: string]: any }> = {
@@ -72,6 +73,7 @@ type iFilesActionPayload = {
     [Types.Close]: {
         path: string;
     };
+    [Types.CloseAll]: {};
 };
 
 type iFilesActions =
@@ -182,7 +184,6 @@ function filesReducer(files: File[], action: iFilesActions) {
 
             const updatedFiles = files.map((f) => {
                 if (f.getPath() === targetFilePath) {
-
                     const clone: File = Object.assign(
                         Object.create(Object.getPrototypeOf(f)),
                         f
@@ -373,6 +374,25 @@ function filesReducer(files: File[], action: iFilesActions) {
 
             return [...updatedFiles];
         }
+        // Close all files on editor.
+        case 'CLOSE_ALL': {
+            console.log('[FilesContext] action close all');
+
+            const updatedFiles = files.map((f) => {
+                if (f.isOpening()) {
+                    const clone: File = Object.assign(
+                        Object.create(Object.getPrototypeOf(f)),
+                        f
+                    );
+
+                    clone.setOpening(false);
+                    clone.unSelected();
+                    clone.setTabIndex(null);
+                    return clone;
+                } else return f;
+            });
+            return [...updatedFiles];
+        }
         default: {
             throw Error('Unknown action: ' + action.type);
         }
@@ -400,6 +420,8 @@ defaultFile?.setOpening(true);
 // https://stackoverflow.com/a/57253387/22007575
 const FilesProvider = ({ children }: { children: React.ReactNode }) => {
     const [files, dispatch] = useReducer(filesReducer, initialFiles);
+
+    console.log(files);
 
     return (
         <FilesContext.Provider value={files}>

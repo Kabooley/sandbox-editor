@@ -2,9 +2,9 @@ import React from 'react';
 import Stack from '../Stack';
 import Action from '../Action';
 import closeAllIcon from '../../../assets/vscode/dark/close-all.svg';
-import saveAllIcon from '../../../assets/vscode/dark/save-all.svg';
 import closeIcon from '../../../assets/vscode/dark/close.svg';
 import chevronRightIcon from '../../../assets/vscode/dark/chevron-right.svg';
+// import saveAllIcon from '../../../assets/vscode/dark/save-all.svg';
 
 import {
     useFiles,
@@ -75,7 +75,12 @@ const OpenEditor: React.FC<iProps> = ({
     };
 
     const handleCloseAllEditors = () => {
-        // TODO: Implement.
+        console.log('[OpenEditor] action close all');
+
+        filesDispatch({
+            type: FilesActionTypes.CloseAll,
+            payload: {},
+        });
     };
 
     /************************************************
@@ -98,19 +103,19 @@ const OpenEditor: React.FC<iProps> = ({
         );
     };
 
-    const renderActionSaveAllFiles = () => {
-        const clickHandler = (e: React.MouseEvent<HTMLLIElement>) => {
-            e.stopPropagation();
-            e.preventDefault();
-        };
-        return (
-            <Action
-                handler={clickHandler}
-                icon={saveAllIcon}
-                altMessage="Save all"
-            />
-        );
-    };
+    // const renderActionSaveAllFiles = () => {
+    //     const clickHandler = (e: React.MouseEvent<HTMLLIElement>) => {
+    //         e.stopPropagation();
+    //         e.preventDefault();
+    //     };
+    //     return (
+    //         <Action
+    //             handler={clickHandler}
+    //             icon={saveAllIcon}
+    //             altMessage="Save all"
+    //         />
+    //     );
+    // };
 
     const renderActionCloseAFile = (file: File) => {
         const clickHandler = (e: React.MouseEvent<HTMLLIElement>) => {
@@ -131,7 +136,7 @@ const OpenEditor: React.FC<iProps> = ({
             onClick={onClick}
             height={height}
             width={width}
-            actions={[renderActionSaveAllFiles, renderActionCloseAllEditors]}
+            actions={[renderActionCloseAllEditors]}
         >
             {filesOpening.map((f, index) => (
                 <div

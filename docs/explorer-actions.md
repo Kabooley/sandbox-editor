@@ -8,12 +8,10 @@ TODO: この記事のタイトルを変更して内容は機能説明だけに�
 
 ## TODOs
 
--   TODO: OpenEditor Opening ファイルをすべて閉じる
--   TODO: 実装しないことにした各アクションコンポーネントの削除
--   TODO: ホバーしたらアイテムの説明が現れるようにする
--   TODO: Dependencies の依存関係リストの delete アクションが実装されていない
--   TODO: Dependencies の依存関係取得機能が実装されていない
+-   TODO: Dependencies の Form にツールチップと検索アイコンをつける
+-   TODO: bing に icon の使用は違法かどうか訊ねる
 -   TODO: Workspace selected ファイルを含むフォルダは自動的に開いたままにする
+-   TODO: icon ファイルアイテム用に。
 
 別件（本ブランチ外）：
 
@@ -46,7 +44,6 @@ export interface iExplorer {
     isFolder: boolean;
     items: iExplorer[];
     path: string;
-    // NOTE: new added
     // `isOpening` doesn't means folder is expanded (showing its items) in explorer.
     // This means the file related to this data is now on editor.
     // So isOpening is always false if this data is folder.

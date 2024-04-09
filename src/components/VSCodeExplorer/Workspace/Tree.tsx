@@ -431,54 +431,6 @@ const Tree: React.FC<iProps> = ({
                             inputStyle={inputStyle}
                         />
                     )}
-                    {/* DEBUG: In case test input Container. */}
-                    {/* {debug && (
-            <div
-              className="stack-body-list__item inputContainer"
-              key={explorer.id}
-              onClick={handleClickFolderColumn}
-            >
-              <div
-                className="indent"
-                style={{ paddingLeft: columnIndent }}
-              ></div>
-              <div className="codicon">
-                {showInput.isFolder ? (
-                  <img src={chevronRightIcon} alt="folder icon" />
-                ) : (
-                  <img src={chevronRightIcon} alt="file icon" />
-                )}
-              </div>
-              <input
-                type="text"
-                className={
-                  "inputContainer--input" +
-                  " " +
-                  (isNameValid ? "__valid" : "__invalid")
-                }
-                onKeyDown={(e) => onAddItem(e, explorer.path)}
-                onBlur={() => {
-                  setIsInputBegun(false);
-                  setShowInput({ ...showInput, visible: false });
-                }}
-                onChange={(e) => handleNewItemNameInput(e, explorer.isFolder)}
-                autoFocus
-                placeholder={
-                  explorer.isFolder
-                    ? defaultNewDirectoryName
-                    : defaultNewFileName
-                }
-                style={inputStyle}
-              />
-              <ValidMessage
-                isNameEmpty={isNameEmpty}
-                isInputBegun={isInputBegun}
-                isNameValid={isNameValid}
-                marginLeft={`calc(${columnIndent} + 20px)`}
-                width={`calc(100% - ${columnIndent} - 20px)`}
-              />
-            </div>
-          )}*/}
                     {explorer.items.map((exp: iExplorer) => {
                         const nd = nestDepth + 1;
                         return (

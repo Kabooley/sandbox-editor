@@ -3,8 +3,10 @@ import Stack from '../Stack';
 import Action from '../Action';
 import Form from './Form';
 import trashIcon from '../../../assets/vscode/dark/trash.svg';
-// import chevronRightIcon from "../../../assets/vscode/dark/chevron-right.svg";
-import { useDependencies, useCommand } from '../../../context/TypingLibsContext';
+import {
+    useDependencies,
+    useCommand,
+} from '../../../context/TypingLibsContext';
 import type { iDependencyState } from '../../../context/TypingLibsContext';
 
 interface iProps {
@@ -14,7 +16,6 @@ interface iProps {
     height: number;
     width: number;
 }
-
 
 const Dependencies: React.FC<iProps> = ({
     id,
@@ -44,21 +45,17 @@ const Dependencies: React.FC<iProps> = ({
         }
         const dependencyName = splittedName.join(`@`);
 
-        // NOTE: omit fetching module functions.
-        console.log(`[Dependencies] fetch request:
-         ${dependencyName}`);
-         
-         typeLibsCommand('request', splittedName[0], version);
+        typeLibsCommand('request', splittedName[0], version);
     };
 
     const renderActionDeleteDependency = (dependency: iDependencyState) => {
         const clickHandler = (e: React.MouseEvent<HTMLLIElement>) => {
             e.stopPropagation();
-
-            console.log(
-                `[Dependencies] delete action: ${dependency.moduleName}@${dependency.version}`
+            typeLibsCommand(
+                'remove',
+                dependency.moduleName,
+                dependency.version
             );
-            typeLibsCommand('remove', dependency.moduleName, dependency.version);
         };
         return (
             <Action

@@ -29,8 +29,8 @@ import {
     Types as LayoutContextActionType,
 } from '../../../context/LayoutContext';
 import { ModalTypes } from '../../../context/LayoutContext';
+import { getAllDescendantsPath } from '../../../utils';
 // import type { iFilesActions } from '../../../context/FilesContext';
-import { getPathExcludeFilename, getAllDescendantsPath } from '../../../utils';
 
 interface iProps {
     id: number;
@@ -327,8 +327,6 @@ const Workspace: React.FC<iProps> = ({
      *
      * */
     const handleSelectFile = (explorer: iExplorer) => {
-        console.log(`[Workspace] on select ${explorer.path}`);
-
         filesDispatch({
             type: Types.ChangeSelectedFile,
             payload: {
@@ -371,35 +369,20 @@ const Workspace: React.FC<iProps> = ({
         );
     };
 
-    const renderActionCollapseAll = () => {
-        const clickHandler = (e: React.MouseEvent<HTMLLIElement>) => {
-            e.stopPropagation();
-            e.preventDefault();
-            // TODO: implement this.
-            // handleCollapseAllFolders(e)
-        };
-        return (
-            <Action
-                handler={clickHandler}
-                icon={collapseAllIcon}
-                altMessage="Collapse folders in explorer"
-            />
-        );
-    };
-
-    const renderActionCloseAFile = () => {
-        const clickHandler = (e: React.MouseEvent<HTMLLIElement>) => {
-            e.stopPropagation();
-            e.preventDefault();
-        };
-        return (
-            <Action
-                handler={clickHandler}
-                icon={closeIcon}
-                altMessage="Close"
-            />
-        );
-    };
+    // const renderActionCollapseAll = () => {
+    //     const clickHandler = (e: React.MouseEvent<HTMLLIElement>) => {
+    //         e.stopPropagation();
+    //         e.preventDefault();
+    //         // handleCollapseAllFolders(e)
+    //     };
+    //     return (
+    //         <Action
+    //             handler={clickHandler}
+    //             icon={collapseAllIcon}
+    //             altMessage="Collapse folders in explorer"
+    //         />
+    //     );
+    // };
 
     if (showInput.visible) {
         treeData.items.unshift({
@@ -413,8 +396,8 @@ const Workspace: React.FC<iProps> = ({
         });
     }
 
-    console.log('[Workspace] tree data:');
-    console.dir(treeData);
+    // console.log('[Workspace] tree data:');
+    // console.dir(treeData);
 
     return (
         <Stack
@@ -424,11 +407,7 @@ const Workspace: React.FC<iProps> = ({
             onClick={onClick}
             height={height}
             width={width}
-            actions={[
-                renderActionNewFile,
-                renderActionNewFolder,
-                renderActionCollapseAll,
-            ]}
+            actions={[renderActionNewFile, renderActionNewFolder]}
             // listItems={listItems}
         >
             {treeData.items.map((exp: iExplorer, index: number) => {
