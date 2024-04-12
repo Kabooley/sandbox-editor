@@ -1,18 +1,18 @@
 import React from 'react';
 import Stack from '../Stack';
 import Action from '../Action';
-import closeAllIcon from '../../../assets/vscode/dark/close-all.svg';
-import closeIcon from '../../../assets/vscode/dark/close.svg';
-import chevronRightIcon from '../../../assets/vscode/dark/chevron-right.svg';
-// import saveAllIcon from '../../../assets/vscode/dark/save-all.svg';
-
 import {
     useFiles,
     useFilesDispatch,
     Types as FilesActionTypes,
 } from '../../../context/FilesContext';
 import { File } from '../../../data/files';
-import { getFilenameFromPath } from '../../../utils';
+import { getFilenameFromPath, getFileIconName } from '../../../utils';
+import { Icon } from '../../Icon';
+import closeAllIcon from '../../../assets/vscode/dark/close-all.svg';
+import closeIcon from '../../../assets/vscode/dark/close.svg';
+// import chevronRightIcon from '../../../assets/vscode/dark/chevron-right.svg';
+// import saveAllIcon from '../../../assets/vscode/dark/save-all.svg';
 
 interface iProps {
     id: number;
@@ -156,7 +156,7 @@ const OpenEditor: React.FC<iProps> = ({
                         </div>
                     </div>
                     <div className="codicon">
-                        <img src={chevronRightIcon} />
+                        <Icon name={getFileIconName(f.getPath())} size="16px" />
                     </div>
                     <h3 className="item-label">
                         {getFilenameFromPath(f.getPath())}

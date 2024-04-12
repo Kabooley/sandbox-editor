@@ -14,10 +14,11 @@ import {
     Types as LayoutContextType,
     useLayoutDispatch,
 } from '../../context/LayoutContext';
-import { getFilenameFromPath, moveInArray } from '../../utils';
+import { getFilenameFromPath, moveInArray, getFileIconName } from '../../utils';
 import type { File } from '../../data/files';
 import ScrollableElement from '../ScrollableElement';
 import Action from '../VSCodeExplorer/Action';
+import { Icon } from '../Icon';
 import closeButtonIcon from '../../assets/vscode/dark/close.svg';
 import chevronRightIcon from '../../assets/vscode/dark/chevron-right.svg';
 import ellipsisIcon from '../../assets/vscode/dark/ellipsis.svg';
@@ -273,7 +274,10 @@ const TabsAndActionsContainer = ({
                             >
                                 <div className="monaco-icon-label">
                                     <div className="codicon">
-                                        <img src={chevronRightIcon} />
+                                        <Icon
+                                            name={getFileIconName(f.getPath())}
+                                            size="16px"
+                                        />
                                     </div>
                                     <div className="monaco-icon-label__container">
                                         <span className="label-name">

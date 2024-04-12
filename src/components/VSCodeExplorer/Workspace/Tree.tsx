@@ -13,6 +13,8 @@ import {
     isFolderNameValid,
     getPathExcludeFilename,
     getAllDescendantsPath,
+    getFileLanguage,
+    getFileType,
 } from '../../../utils';
 import type { iExplorer } from '../../../data/types';
 
@@ -23,6 +25,7 @@ import newFileIcon from '../../../assets/vscode/dark/new-file.svg';
 import newFolderIcon from '../../../assets/vscode/dark/new-folder.svg';
 import trashIcon from '../../../assets/vscode/dark/trash.svg';
 import editIcon from '../../../assets/vscode/dark/edit.svg';
+import { Icon } from '../../Icon';
 
 interface iProps {
     nestDepth: number;
@@ -341,6 +344,15 @@ const Tree: React.FC<iProps> = ({
         // 入力（フォーカス）中且つ入力内容に問題あり
         inputStyle = { border: '1px solid red' };
     }
+
+    /****************************************
+     * Determine file's icon
+     * **************************************/
+    let iconName = getFileType(explorer.path);
+    if (iconName === undefined) {
+        iconName = 'blank-file';
+    }
+
     // DEBUG:
     // const debug = true;
 
@@ -493,7 +505,8 @@ const Tree: React.FC<iProps> = ({
                                 style={{ paddingLeft: columnIndent }}
                             ></div>
                             <div className="codicon">
-                                <img src={chevronRightIcon} />
+                                {/* <img src={chevronRightIcon} /> */}
+                                <Icon name={iconName} size="16px" />
                             </div>
                             <h3 className="item-label">{explorer.name}</h3>
                             <div className="actions hover-to-appear">

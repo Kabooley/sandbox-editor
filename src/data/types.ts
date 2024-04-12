@@ -19,3 +19,22 @@ export interface iExplorer {
     // True is only for file which is on editor.
     isOpening?: boolean;
 }
+
+export type Language =
+    | 'javascript'
+    | 'typescript'
+    | 'react'
+    | 'react-typescript'
+    | 'json'
+    | 'css'
+    | 'html'
+    | 'markdown';
+
+export type FileTypes =
+    | Language
+    | 'image'
+    | 'svg'
+    | 'folder'
+    | 'markdown'
+    | 'json'
+    | 'blank-file';

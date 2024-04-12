@@ -5,10 +5,6 @@
  * - onDidChangeModelContentのたびに値をFilesContextへdispatch()する
  *
  *
- * NOTE: 一時的にaddTypingsをクラスメソッドとする(TypingLibsContext.tsxのテストの為)
- * TODO: 仮想explorer上のファイルの中身が更新されたときに、addExtraLibsを適切に更新させる方法の追究。どうやって更新させ
-るのが適切か、キャッシュできるのかなど
- * TODO: lodashの使用を避ける。debounceはclassコンポーネントでも使えるものを１から作れないか?
  * ***************************************/
 import React from 'react';
 import * as monaco from 'monaco-editor';
@@ -25,7 +21,6 @@ import {
 } from '../worker/types';
 import MonacoEditor from './Monaco/MonacoEditor';
 import debounce from 'lodash.debounce';
-// TODO: 以下の全部取得は避けた方がいいかも。lodashは巨大なライブラリである
 import type * as lodash from 'lodash';
 import { generateTreeForBundler, getFilenameFromPath } from '../utils';
 import TabsAndActionsContainer from './TabsAndActions';
@@ -111,10 +106,10 @@ class EditorContainer extends React.Component<iProps, iState> {
     /***
      * File may changes its properties or added, and deleted.
      *
-     * This function handles when file has...
+     * This function handles when file has been...
      * added, deleted, changed file.path.
      *
-     * Not handles when file has...
+     * Not handles when file has been...
      * changed file.selected, file.isOpened, file.value
      *
      * NOTE: renameされたfileのリネーム前の該当ファイルはextraLibsから削除されていない。

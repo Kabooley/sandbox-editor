@@ -1,26 +1,18 @@
-# Explorer Actions 実装
+# Explorer Actions
 
-未着手の Explorer のアクション機能を実装していく
+## 開発ブランチ
 
-TODO: この記事のタイトルを変更して内容は機能説明だけにすること
-
-後で見返したときにすぐに理解できるようにするため
+`feat/explorer--actions`
 
 ## TODOs
 
 -   TODO: Dependencies の Form にツールチップと検索アイコンをつける
--   TODO: bing に icon の使用は違法かどうか訊ねる
 -   TODO: Workspace selected ファイルを含むフォルダは自動的に開いたままにする
--   TODO: icon ファイルアイテム用に。
-
-別件（本ブランチ外）：
-
--   TODO: selected: true のファイルを削除すると、editor 上ではその削除したファイルが残ったままになり別のファイルが selected:true になっていない
 
 ## Summary
 
-[実装しない機能](#実装しない機能)
 [機能解説](#機能解説)
+[実装しない機能](#実装しない機能)
 
 ## 実装しない機能
 
@@ -30,104 +22,13 @@ TODO: この記事のタイトルを変更して内容は機能説明だけに�
 
 ## 機能解説
 
-## `iExplorer`
-
-`iExplorer`型のデータは`src/components/VSCodeExplorer/Workspace`で主に使われる、FilesContext.tsx から配信される File をツリー型のオブジェクトに変換したものである。
-
-各 File の状態（プロパティ）も iExplorer データに反映させる。
-
-```TypeScript
-// data/types.ts
-export interface iExplorer {
-    id: string;
-    name: string;
-    isFolder: boolean;
-    items: iExplorer[];
-    path: string;
-    // `isOpening` doesn't means folder is expanded (showing its items) in explorer.
-    // This means the file related to this data is now on editor.
-    // So isOpening is always false if this data is folder.
-    // True is only for file which is on editor.
-    isOpening?: boolean;
-    isSelected: boolean;
-}
-```
-
--   `isOpening`はその iExplorer データに該当する File が現在エディタに展開されていることを示す
--   `isSelected`は iExplorer データに該当する File が現在エディタに表示されていることを示す
-
-ということでフォルダアイテムにとっては現状意味のないプロパティとなっている。
-
-フォルダというアイテムは File には存在せず、iExplorer へ変換する過程で発生するアイテムであるため。
-
-## src/components/VSCodeExplorer/Workspace/Tree.tsx
-
-```TypeScript
-/****
- * @param {number} nestDepth - iExplorer itemsの層の深さ。
- * @param {iExplorer} explorer - iExplorer
- * @param {Function} handleInsertNode: (requiredPath: string, isFolder: boolean) => void
- * @param {Function} handleDeleteNode: (explorer: iExplorer) => void;
- * @param {Function} handleReorderNode: (droppedId: string, draggableId: string) => void;
- * @param {Function} handleOpenFile: (explorer: iExplorer) => void;
- * @param {Function} handleSelectFile: (explorer: iExplorer) => void;
- *
- * */
-```
-
-フォルダをクリックしたとき：
-
-```TypeScript
-// `expand`はこのファイルのstateである。
-const handleClickFolderColumn = (e: React.MouseEvent<HTMLDivElement>) => {
-    e.stopPropagation();
-    setExpand(!expand);
-};
-```
-
-ファイルをクリックしたとき：
-
-```TypeScript
-// 既に開いているファイルをクリックする場合もあるので
-// その場合は該当のファイルをselected:trueにすること
-const handleClickFileColumn = (e: React.MouseEvent<HTMLDivElement>) => {
-    e.stopPropagation();
-    handleOpenFile(explorer);
-    handleSelectFile(explorer);
-};
-```
-
-新規アイテム(ファイル、フォルダ)アクションをクリックしたとき：
-
-```TypeScript
-// `showInput`このファイルのstateで、新規アイテム入力フォームを表示する
-    const handleNewItem = (isFolder: boolean) => {
-        setExpand(true);
-        setShowInput({
-            visible: true,
-            isFolder,
-        });
-    };
-// 新規アイテム入力フォームでエンタキーが押されたら
-// 入力された値が有効であるならhandleInsertNodeを呼び出す
-    const onAddItem = (
-        e: React.KeyboardEvent<HTMLInputElement>,
-        addTo: string
-    ) => {
-        const requiredPath = addTo.length
-            ? addTo + '/' + e.currentTarget.value
-            : e.currentTarget.value;
-        if (e.keyCode === 13 && requiredPath && isNameValid) {
-            handleInsertNode(requiredPath, showInput.isFolder);
-            // Clear states
-            setShowInput({ ...showInput, visible: false });
-            setIsInputBegun(false);
-            setIsNameValid(false);
-            setIsNameEmpty(false);
-        }
-    };
-// 最終的にFilesContext.tsxのアクション`Add`がディスパッチされる。
-```
+-   [[Explorer/Workspace] File データから explorer データに変換する機能](#explorerworkspace-file-データから-explorer-データに変換する機能)
+-   [[Explorer/Workspace] アイテムリネーム機能](#explorerworkspace-アイテムリネーム機能)
+-   [[Explorer/Workspace] 新規アイテム追加機能](#explorerworkspace-新規アイテム追加機能)
+-   [[Explorer/Workspace] folder の開閉](#explorerworkspace-folder-の開閉)
+-   [[Explorer/Dependencies] 依存関係取得機能](#explorerdependencies-依存関係取得機能)
+-   [[Explorer/Dependencies] 取得済依存関係削除機能](#explorerdependencies-取得済依存関係削除機能)
+-   [他](#他)
 
 ## [Explorer/Workspace] File データから explorer データに変換する機能
 
@@ -814,173 +715,79 @@ FilesContext へ内容が dispatch されてリネーム内容が反映される
 
 ```
 
-#### TODO: アイテムリネームに伴う monaco-editor extraLibs の更新
+#### リネーム時に monaco-editor の extraLibs を更新する
 
-extraLibs の更新はどんな時に行うべきか
+file をリネームしたとき、新規追加したとき、削除したときなど extraLibs に登録されている該当データがその変化に応じて更新されるようにする
 
--   File の path が変更されたとき（language の変更、path の変更、folder でなくなるとか）
--   File の value が変更されたとき
--   File を削除したとき
--   File を追加したとき
-
-内、value に関しては MonacoEditor が間接的に担っており、明示的に extraLibs の更新が必要なく、ファイルの編集、ファイルの切り替えのタイミングで更新される
-
-となると、
-
--   File を追加したときの処理
--   File の path を変更したときの処理
-
-を実装すればいいのかと
-
-extraLibs を更新しているのは`EditorContainer.tsx`の componentDidUpdate
-
-`this.props.files`と`prevProp.files`の二つの比較となる
+`EditorContainer.tsx`より
 
 ```TypeScript
+    /***
+     * File may changes its properties or added, and deleted.
+     *
+     * This function handles when file has been...
+     * added, deleted, changed file.path.
+     *
+     * Not handles when file has...
+     * changed file.selected, file.isOpened, file.value
+     *
+     * NOTE: renameされたfileのリネーム前の該当ファイルはextraLibsから削除されていない。
+     * どのデータが該当のファイルか特定できないからである。
+     * すべてthis.props.filesに基づいて毎度まるっとextralibsをすべて更新した方がいいのかも
+     * */
+    componentDidUpdate(prevProp: iProps, prevState: iState) {
 
-```
+        const didFileDelete = prevProp.files.length > this.props.files.length;
 
-src/styles.css を src/stylus.css に変更したとき：
-
-リネーム後の files (this.props.files)
-
-```bash
-[
-    {
-        "_path": "package.json",
-        "_value": "{\n  \"name\": \"react-typescript\",\n  \"version\": \"1.0.0\",\n  \"description\": \"React and TypeScript example starter project\",\n  \"keywords\": [\n    \"typescript\",\n    \"react\",\n    \"starter\"\n  ],\n  \"main\": \"src/index.tsx\",\n  \"dependencies\": {\n    \"@types/react\": \"18.0.25\",\n    \"@types/react-dom\": \"18.0.9\",\n    \"react\": \"18.2.0\",\n    \"react-dom\": \"18.2.0\",\n    \"react-scripts\": \"5.0.1\",\n    \"typescript\": \"4.4.2\"\n  },\n  \"devDependencies\": {},\n  \"scripts\": {\n    \"start\": \"react-scripts start\",\n    \"build\": \"react-scripts build\",\n    \"test\": \"react-scripts test --env=jsdom\",\n    \"eject\": \"react-scripts eject\"\n  },\n  \"browserslist\": [\n    \">0.2%\",\n    \"not dead\",\n    \"not ie <= 11\",\n    \"not op_mini all\"\n  ]\n}",
-        "_language": "json",
-        "_isFolder": false,
-        "_selected": false,
-        "_opening": false,
-        "_tabIndex": null
-    },
-    {
-        "_path": "public/index.html",
-        "_value": "\n<!DOCTYPE html>\n<html>\n  <head>\n    <meta charset=\"utf-8\" />\n    <title>React TypeScript</title>\n  </head>\n  <body>\n    <div id=\"root\"></div>\n  </body>\n</html>",
-        "_language": "html",
-        "_isFolder": false,
-        "_selected": false,
-        "_opening": false,
-        "_tabIndex": null
-    },
-    {
-        "_path": "soMuchLongDirectoryName/superUltraHyperTooLongBaddaaasssssFile.txt",
-        "_value": "so much text might be here...",
-        "_language": "txt",
-        "_isFolder": false,
-        "_selected": false,
-        "_opening": false,
-        "_tabIndex": null
-    },
-    {
-        "_path": "src/App.tsx",
-        "_value": "\nimport React from 'react';\nimport \"./styles.css\";\n\nexport default function App(): React.JSX.Element {\n  return (\n    <div className=\"App\">\n      <h1>Hello CodeSandbox</h1>\n      <h2>Start editing to see some magic happen!</h2>\n    </div>\n  );\n};\n      ",
-        "_language": "typescript",
-        "_isFolder": false,
-        "_selected": true,
-        "_opening": true,
-        "_tabIndex": null
-    },
-    {
-        "_path": "src/index.tsx",
-        "_value": "\nimport React from \"react\";\nimport ReactDOM from \"react-dom/client\";\nimport App from \"./App\";\n\nconst rootElement = document.getElementById(\"root\");\nif(rootElement) {\n  const root = ReactDOM.createRoot(rootElement);\n\n  root.render(\n    <React.StrictMode>\n      <App />\n    </React.StrictMode>\n  );   \n}",
-        "_language": "typescript",
-        "_isFolder": false,
-        "_selected": false,
-        "_opening": false,
-        "_tabIndex": null
-    },
-    {
-        "_path": "src/stylus.css",
-        "_value": ".App {\n        font-family: sans-serif;\n        text-align: center;\n      }\n      ",
-        "_language": "css",
-        "_isFolder": false,
-        "_selected": false,
-        "_opening": false,
-        "_tabIndex": null
-    },
-    {
-        "_path": "tsconfig.json",
-        "_value": "{\n      \"include\": [\n          \"./src/**/*\"\n      ],\n      \"compilerOptions\": {\n          \"strict\": true,\n          \"esModuleInterop\": true,\n          \"lib\": [\n              \"dom\",\n              \"es2015\"\n          ],\n          \"jsx\": \"react-jsx\"\n      }\n  }",
-        "_language": "json",
-        "_isFolder": false,
-        "_selected": false,
-        "_opening": false,
-        "_tabIndex": null
+        // this.props.filesが更新されたら
+        if (prevProp.files !== this.props.files) {
+            for (const file of this.props.files) {
+                if (
+                    prevProp.files.find(
+                        (f) => f.getPath() === file.getPath()
+                    ) === undefined
+                ) {
+                    // New File has added, or file's path changed.
+                    // いずれの場合も結局`this.addExtraLibs`へ渡すだけ
+                    // rename前のpathに該当するextralibsファイルは削除できない
+                    // どれか判別できないけど、extralibsに残っていても問題ないから
+                    this.addExtraLibs(file.getValue(), file.getPath());
+                }
+            }
+            if (didFileDelete) {
+                const prevFilesPath = prevProp.files.map((pf) => pf.getPath());
+                const currentFilesPath = this.props.files.map((pf) =>
+                    pf.getPath()
+                );
+                // deletedFile: prevFilesPathには存在してcurrentFilesPathには存在しない要素駆らなる配列
+                const deletedFiles = prevFilesPath.filter(
+                    (pf) => currentFilesPath.indexOf(pf) === -1
+                );
+                deletedFiles.forEach((df) => this._removeFileFromExtraLibs(df));
+            }
+        }
     }
-]
 ```
 
-リネーム前の files (prevProps.files)
+`prevProp.files !== this.props.files`の厳密な等価比較は、前回と同じ files の参照が返れていないかどうかを比較する。
 
-```bash
-[
-    {
-        "_path": "package.json",
-        "_value": "{\n  \"name\": \"react-typescript\",\n  \"version\": \"1.0.0\",\n  \"description\": \"React and TypeScript example starter project\",\n  \"keywords\": [\n    \"typescript\",\n    \"react\",\n    \"starter\"\n  ],\n  \"main\": \"src/index.tsx\",\n  \"dependencies\": {\n    \"@types/react\": \"18.0.25\",\n    \"@types/react-dom\": \"18.0.9\",\n    \"react\": \"18.2.0\",\n    \"react-dom\": \"18.2.0\",\n    \"react-scripts\": \"5.0.1\",\n    \"typescript\": \"4.4.2\"\n  },\n  \"devDependencies\": {},\n  \"scripts\": {\n    \"start\": \"react-scripts start\",\n    \"build\": \"react-scripts build\",\n    \"test\": \"react-scripts test --env=jsdom\",\n    \"eject\": \"react-scripts eject\"\n  },\n  \"browserslist\": [\n    \">0.2%\",\n    \"not dead\",\n    \"not ie <= 11\",\n    \"not op_mini all\"\n  ]\n}",
-        "_language": "json",
-        "_isFolder": false,
-        "_selected": false,
-        "_opening": false,
-        "_tabIndex": null
-    },
-    {
-        "_path": "public/index.html",
-        "_value": "\n<!DOCTYPE html>\n<html>\n  <head>\n    <meta charset=\"utf-8\" />\n    <title>React TypeScript</title>\n  </head>\n  <body>\n    <div id=\"root\"></div>\n  </body>\n</html>",
-        "_language": "html",
-        "_isFolder": false,
-        "_selected": false,
-        "_opening": false,
-        "_tabIndex": null
-    },
-    {
-        "_path": "soMuchLongDirectoryName/superUltraHyperTooLongBaddaaasssssFile.txt",
-        "_value": "so much text might be here...",
-        "_language": "txt",
-        "_isFolder": false,
-        "_selected": false,
-        "_opening": false,
-        "_tabIndex": null
-    },
-    {
-        "_path": "src/App.tsx",
-        "_value": "\nimport React from 'react';\nimport \"./styles.css\";\n\nexport default function App(): React.JSX.Element {\n  return (\n    <div className=\"App\">\n      <h1>Hello CodeSandbox</h1>\n      <h2>Start editing to see some magic happen!</h2>\n    </div>\n  );\n};\n      ",
-        "_language": "typescript",
-        "_isFolder": false,
-        "_selected": true,
-        "_opening": true,
-        "_tabIndex": null
-    },
-    {
-        "_path": "src/index.tsx",
-        "_value": "\nimport React from \"react\";\nimport ReactDOM from \"react-dom/client\";\nimport App from \"./App\";\n\nconst rootElement = document.getElementById(\"root\");\nif(rootElement) {\n  const root = ReactDOM.createRoot(rootElement);\n\n  root.render(\n    <React.StrictMode>\n      <App />\n    </React.StrictMode>\n  );   \n}",
-        "_language": "typescript",
-        "_isFolder": false,
-        "_selected": false,
-        "_opening": false,
-        "_tabIndex": null
-    },
-    {
-        "_path": "src/styles.css",
-        "_value": ".App {\n        font-family: sans-serif;\n        text-align: center;\n      }\n      ",
-        "_language": "css",
-        "_isFolder": false,
-        "_selected": false,
-        "_opening": false,
-        "_tabIndex": null
-    },
-    {
-        "_path": "tsconfig.json",
-        "_value": "{\n      \"include\": [\n          \"./src/**/*\"\n      ],\n      \"compilerOptions\": {\n          \"strict\": true,\n          \"esModuleInterop\": true,\n          \"lib\": [\n              \"dom\",\n              \"es2015\"\n          ],\n          \"jsx\": \"react-jsx\"\n      }\n  }",
-        "_language": "json",
-        "_isFolder": false,
-        "_selected": false,
-        "_opening": false,
-        "_tabIndex": null
-    }
-]
-```
+つまり、配列が新しくなっているかどうかを検査している。
+
+`this.props.files`が以前の props より増えているまたは以前の files に存在しない path の file が含まれているときは
+
+新規ファイルが追加された、またはリネームされたと判断し extraLibs を更新する(`this.addExtraLibs`を呼び出して)
+
+`this.props.files`の長さが以前より短くなっている場合は file が削除されたと判断する
+
+削除されたファイルを特定して extraLibs の該当データを expose する(this.\_removeFileFromExtraLibs())
+
+リネーム処理が extraLibs の該当ファイルに対して実行できていません。
+
+理由はリネームした後だとリネーム前の path が不明になるので extraLIbs に登録されているリネーム前のデータを探すのが不可能になるから。
+
+これを良しとしているのはそのまま残しておいても問題にならないと判断したから。
+
+たとえば extraLibs に残ったままのデータと全く同じ path のファイルを新たに追加するときは、新規ファイルの追加時には必ずその path で expose を施すので必ず削除されるから。
 
 ## [Explorer/Workspace] 新規アイテム追加機能
 
@@ -1247,7 +1054,7 @@ iExplorer に selected プロパティをつけることはできるか
 
 ## [Explorer/Dependencies] 依存関係取得機能
 
-本当に実装されていないのか？別ブランチで開発中でマージしていないだけとか？確認
+実装済。未文章化。
 
 ## [Explorer/Dependencies] 取得済依存関係削除機能
 
@@ -1278,3 +1085,104 @@ iExplorer に selected プロパティをつけることはできるか
 
 -   `setDependencies`は`handleWorkerMessage`、`removeLibrary`から呼び出されている
 -   `reflectToPackageJson`は package.json ファイルを更新させるために FilesContext へ change アクションを dispatch している
+
+## 他
+
+## `iExplorer`
+
+`iExplorer`型のデータは`src/components/VSCodeExplorer/Workspace`で主に使われる、FilesContext.tsx から配信される File をツリー型のオブジェクトに変換したものである。
+
+各 File の状態（プロパティ）も iExplorer データに反映させる。
+
+```TypeScript
+// data/types.ts
+export interface iExplorer {
+    id: string;
+    name: string;
+    isFolder: boolean;
+    items: iExplorer[];
+    path: string;
+    // `isOpening` doesn't means folder is expanded (showing its items) in explorer.
+    // This means the file related to this data is now on editor.
+    // So isOpening is always false if this data is folder.
+    // True is only for file which is on editor.
+    isOpening?: boolean;
+    isSelected: boolean;
+}
+```
+
+-   `isOpening`はその iExplorer データに該当する File が現在エディタに展開されていることを示す
+-   `isSelected`は iExplorer データに該当する File が現在エディタに表示されていることを示す
+
+ということでフォルダアイテムにとっては現状意味のないプロパティとなっている。
+
+フォルダというアイテムは File には存在せず、iExplorer へ変換する過程で発生するアイテムであるため。
+
+## src/components/VSCodeExplorer/Workspace/Tree.tsx
+
+```TypeScript
+/****
+ * @param {number} nestDepth - iExplorer itemsの層の深さ。
+ * @param {iExplorer} explorer - iExplorer
+ * @param {Function} handleInsertNode: (requiredPath: string, isFolder: boolean) => void
+ * @param {Function} handleDeleteNode: (explorer: iExplorer) => void;
+ * @param {Function} handleReorderNode: (droppedId: string, draggableId: string) => void;
+ * @param {Function} handleOpenFile: (explorer: iExplorer) => void;
+ * @param {Function} handleSelectFile: (explorer: iExplorer) => void;
+ *
+ * */
+```
+
+フォルダをクリックしたとき：
+
+```TypeScript
+// `expand`はこのファイルのstateである。
+const handleClickFolderColumn = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    setExpand(!expand);
+};
+```
+
+ファイルをクリックしたとき：
+
+```TypeScript
+// 既に開いているファイルをクリックする場合もあるので
+// その場合は該当のファイルをselected:trueにすること
+const handleClickFileColumn = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    handleOpenFile(explorer);
+    handleSelectFile(explorer);
+};
+```
+
+新規アイテム(ファイル、フォルダ)アクションをクリックしたとき：
+
+```TypeScript
+// `showInput`このファイルのstateで、新規アイテム入力フォームを表示する
+    const handleNewItem = (isFolder: boolean) => {
+        setExpand(true);
+        setShowInput({
+            visible: true,
+            isFolder,
+        });
+    };
+// 新規アイテム入力フォームでエンタキーが押されたら
+// 入力された値が有効であるならhandleInsertNodeを呼び出す
+    const onAddItem = (
+        e: React.KeyboardEvent<HTMLInputElement>,
+        addTo: string
+    ) => {
+        const requiredPath = addTo.length
+            ? addTo + '/' + e.currentTarget.value
+            : e.currentTarget.value;
+        if (e.keyCode === 13 && requiredPath && isNameValid) {
+            handleInsertNode(requiredPath, showInput.isFolder);
+            // Clear states
+            setShowInput({ ...showInput, visible: false });
+            setIsInputBegun(false);
+            setIsNameValid(false);
+            setIsNameEmpty(false);
+        }
+    };
+// 最終的にFilesContext.tsxのアクション`Add`がディスパッチされる。
+```

@@ -19,6 +19,7 @@ const Form = ({ send }: iProps) => {
             style={{
                 padding: '16px',
             }}
+            title="fetch npm form"
         >
             <form onSubmit={handleSubmit}>
                 <label>
