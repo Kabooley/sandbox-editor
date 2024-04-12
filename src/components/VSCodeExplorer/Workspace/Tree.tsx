@@ -2,9 +2,20 @@
  * Tree
  * *****************************************************************************/
 import React, { useState } from 'react';
-import ValidMessage from '../ValidMessage';
+import FormColumn from './FormColumn';
+import {
+    useFilesDispatch,
+    Types as FilesActionTypes,
+} from '../../../context/FilesContext';
 import DragNDrop from '../DragNDrop';
-import { isFilenameValid, isFolderNameValid } from '../../../utils';
+import {
+    isFilenameValid,
+    isFolderNameValid,
+    getPathExcludeFilename,
+    getAllDescendantsPath,
+    getFileLanguage,
+    getFileType,
+} from '../../../utils';
 import type { iExplorer } from '../../../data/types';
 
 import Action from '../Action';
@@ -13,6 +24,8 @@ import chevronDownIcon from '../../../assets/vscode/dark/chevron-down.svg';
 import newFileIcon from '../../../assets/vscode/dark/new-file.svg';
 import newFolderIcon from '../../../assets/vscode/dark/new-folder.svg';
 import trashIcon from '../../../assets/vscode/dark/trash.svg';
+import editIcon from '../../../assets/vscode/dark/edit.svg';
+import { Icon } from '../../Icon';
 
 interface iProps {
     nestDepth: number;
@@ -22,6 +35,7 @@ interface iProps {
     handleReorderNode: (droppedId: string, draggableId: string) => void;
     handleOpenFile: (explorer: iExplorer) => void;
     handleSelectFile: (explorer: iExplorer) => void;
+    checkPathAlreadyExistsFromExplorer: (path: string) => boolean;
 }
 
 const defaultNewFileName = 'Untitled.file.js';
@@ -35,17 +49,29 @@ const Tree: React.FC<iProps> = ({
     handleReorderNode,
     handleOpenFile,
     handleSelectFile,
+    checkPathAlreadyExistsFromExplorer,
 }) => {
+    // Expand folder if true.
     const [expand, setExpand] = useState<boolean>(false);
+    // Display new item form under this explorer.
     const [showInput, setShowInput] = useState({
         visible: false,
         isFolder: false,
     });
-    // Use this state while being input form for new item.
+    // true if FormColumn input has started to be input.
     const [isInputBegun, setIsInputBegun] = useState<boolean>(false);
+    // true if provided value to FormColun input is valid as file|folder name.
     const [isNameValid, setIsNameValid] = useState<boolean>(false);
+    // true if provided value to FormColun input is empty.
     const [isNameEmpty, setIsNameEmpty] = useState<boolean>(false);
+    // true if provided value to FormColumn input makes path which is already exists.
+    const [isSameNameAlreadyExists, setIsSameNameAlreadyExists] =
+        useState<boolean>(false);
+    // true if any item is now dragging.
     const [dragging, setDragging] = useState<boolean>(false);
+    // true if rename action has been clicked.
+    const [renaming, setRenaming] = useState<boolean>(false);
+    const dispatchFilesAction = useFilesDispatch();
 
     const handleNewItem = (isFolder: boolean) => {
         setExpand(true);
@@ -55,23 +81,29 @@ const Tree: React.FC<iProps> = ({
         });
     };
 
-    const onAddItem = (
-        e: React.KeyboardEvent<HTMLInputElement>,
-        addTo: string
-    ) => {
-        const requiredPath = addTo.length
-            ? addTo + '/' + e.currentTarget.value
-            : e.currentTarget.value;
-        if (e.keyCode === 13 && requiredPath && isNameValid) {
-            handleInsertNode(requiredPath, showInput.isFolder);
-            // Clear states
-            setShowInput({ ...showInput, visible: false });
-            setIsInputBegun(false);
-            setIsNameValid(false);
-            setIsNameEmpty(false);
-        }
+    /***
+     * Dispatches passed value to transform as path to
+     * FilesContext to add item
+     * when FormColumn input form emit formevent.
+     *
+     * */
+    const onAddItem = (providedValue: string) => {
+        const requiredPath = explorer.path.length
+            ? explorer.path + '/' + providedValue
+            : providedValue;
+
+        handleInsertNode(requiredPath, showInput.isFolder);
+        setShowInput({ ...showInput, visible: false });
+        setIsInputBegun(false);
+        setIsNameValid(false);
+        setIsNameEmpty(false);
+        setIsSameNameAlreadyExists(false);
     };
 
+    /**
+     * This method will be invoked by FormColumn onchange event
+     * to check provided value/state is valid.
+     * */
     const handleNewItemNameInput = (
         e: React.ChangeEvent<HTMLInputElement>,
         isFolder: boolean
@@ -83,10 +115,34 @@ const Tree: React.FC<iProps> = ({
             ? setIsNameEmpty(false)
             : setIsNameEmpty(true);
 
+        // NOTE: renamingなのか新規アイテム追加なのかでisPathAlreadyExistsの処理方法が異なる
+        // src/以下に新規アイテムを追加しようとした：戻り値null
+        // src/以下のアイテムをリネームした：戻り値'src/'
+        let isPathAlreadyExists = false;
+        if (renaming) {
+            isPathAlreadyExists = checkPathAlreadyExistsFromExplorer(
+                getPathExcludeFilename(explorer.path) + e.currentTarget.value
+            );
+        } else if (showInput) {
+            isPathAlreadyExists = checkPathAlreadyExistsFromExplorer(
+                explorer.path + '/' + e.currentTarget.value
+            );
+        }
+        isPathAlreadyExists
+            ? setIsSameNameAlreadyExists(true)
+            : setIsSameNameAlreadyExists(false);
+
         // Check if value is valid
-        if (isFolder && isFolderNameValid(e.currentTarget.value)) {
+        if (
+            isFolder &&
+            isFolderNameValid(e.currentTarget.value) &&
+            !isPathAlreadyExists
+        ) {
             setIsNameValid(true);
-        } else if (isFilenameValid(e.currentTarget.value)) {
+        } else if (
+            isFilenameValid(e.currentTarget.value) &&
+            !isPathAlreadyExists
+        ) {
             setIsNameValid(true);
         } else {
             setIsNameValid(false);
@@ -108,6 +164,72 @@ const Tree: React.FC<iProps> = ({
     const handleClickFolderColumn = (e: React.MouseEvent<HTMLDivElement>) => {
         e.stopPropagation();
         setExpand(!expand);
+    };
+
+    /***
+     *
+     * */
+    const handleRename = (newName: string) => {
+        // Update all descendants tree object's path if explorer is folder.
+        if (explorer.isFolder) {
+            const _path = getPathExcludeFilename(explorer.path);
+            const updatedExplorerPath = (_path ? _path : '') + newName;
+            const descendantsPath = getAllDescendantsPath(explorer);
+
+            // create new path and pairs old path.
+            const updatedDescendantsPath = descendantsPath.map((dp) => {
+                const d = {
+                    oldPath: dp,
+                    newPath: '',
+                };
+                if (dp.includes(explorer.path)) {
+                    const unmodify = dp.split(explorer.path)[1];
+                    d.newPath = updatedExplorerPath + unmodify;
+                } else {
+                    d.newPath = dp;
+                }
+                return d;
+            });
+
+            const requests = updatedDescendantsPath.map((udp) => {
+                return {
+                    targetFilePath: udp.oldPath,
+                    changeProp: {
+                        newPath: udp.newPath,
+                    },
+                };
+            });
+            requests.push({
+                targetFilePath: explorer.path,
+                changeProp: {
+                    newPath: updatedExplorerPath,
+                },
+            });
+
+            dispatchFilesAction({
+                type: FilesActionTypes.ChangeMultiple,
+                payload: requests,
+            });
+        } else {
+            // create new path
+            const _path = getPathExcludeFilename(explorer.path);
+            const newPath = (_path ? _path : '') + newName;
+            dispatchFilesAction({
+                type: FilesActionTypes.Change,
+                payload: {
+                    targetFilePath: explorer.path,
+                    changeProp: {
+                        newPath: newPath,
+                    },
+                },
+            });
+        }
+
+        setIsInputBegun(false);
+        setIsNameValid(false);
+        setIsNameEmpty(false);
+        setRenaming(false);
+        setIsSameNameAlreadyExists(false);
     };
 
     /****************************************************
@@ -180,6 +302,15 @@ const Tree: React.FC<iProps> = ({
         );
     };
 
+    const renderRenameFunction = () => {
+        const clickHandler = (e: React.MouseEvent<HTMLLIElement>) => {
+            e.stopPropagation();
+            e.preventDefault();
+            setRenaming(true);
+        };
+        return <Action handler={clickHandler} icon={editIcon} altMessage="" />;
+    };
+
     const renderDeleteFunction = () => {
         const clickHandler = (e: React.MouseEvent<HTMLLIElement>) => {
             e.stopPropagation();
@@ -193,9 +324,17 @@ const Tree: React.FC<iProps> = ({
         renderAddFileFunction,
         renderAddFolderFunction,
         renderDeleteFunction,
+        renderRenameFunction,
     ];
-    const fileTreeActions = [renderDeleteFunction];
+    const fileTreeActions = [renderDeleteFunction, renderRenameFunction];
+
+    /************************************
+     * Determine styles
+     * **********************************/
+
     const columnIndent = `${nestDepth * 1.6}rem`;
+    // Indent for new item input form
+    const columnIndentForNewItemForm = `${nestDepth * 1.6 + 1.6}rem`;
     // input.inputContainer--inputの動的style
     let inputStyle = {};
     if (isInputBegun && isNameValid) {
@@ -205,55 +344,51 @@ const Tree: React.FC<iProps> = ({
         // 入力（フォーカス）中且つ入力内容に問題あり
         inputStyle = { border: '1px solid red' };
     }
+
+    /****************************************
+     * Determine file's icon
+     * **************************************/
+    let iconName = getFileType(explorer.path);
+    if (iconName === undefined) {
+        iconName = 'blank-file';
+    }
+
     // DEBUG:
     // const debug = true;
 
     if (explorer.isFolder) {
         return (
             <div>
-                <DragNDrop
-                    key={explorer.id}
-                    id={explorer.id}
-                    index={Number(explorer.id)}
-                    isDraggable={true}
-                    onDragStart={(e) => onDragStart(e, explorer.id)}
-                    onDragEnter={onDragEnter}
-                    onDragLeave={onDragLeave}
-                    onDrop={(e) => onDrop(e, explorer.id)}
-                    onDragOver={onDragOver}
-                >
-                    <div
-                        className="stack-body-list__item virtual-folder"
+                {renaming ? (
+                    <FormColumn
+                        id={explorer.id}
+                        columnIndent={columnIndent}
+                        isFolder={explorer.isFolder}
+                        name={explorer.name}
+                        isNameEmpty={isNameEmpty}
+                        isInputBegun={isInputBegun}
+                        isNameValid={isNameValid}
+                        isSameNameAlreadyExists={isSameNameAlreadyExists}
+                        handleNewItemNameInput={handleNewItemNameInput}
+                        callbackOnKeyDown={handleRename}
+                        setIsInputBegun={setIsInputBegun}
+                        displayForm={setRenaming}
+                        inputStyle={inputStyle}
+                    />
+                ) : (
+                    <DragNDrop
                         key={explorer.id}
-                        onClick={handleClickFolderColumn}
+                        id={explorer.id}
+                        index={Number(explorer.id)}
+                        isDraggable={true}
+                        onDragStart={(e) => onDragStart(e, explorer.id)}
+                        onDragEnter={onDragEnter}
+                        onDragLeave={onDragLeave}
+                        onDrop={(e) => onDrop(e, explorer.id)}
+                        onDragOver={onDragOver}
                     >
                         <div
-                            className="indent"
-                            style={{ paddingLeft: columnIndent }}
-                        ></div>
-                        <div className="codicon">
-                            <img
-                                src={
-                                    expand ? chevronDownIcon : chevronRightIcon
-                                }
-                            />
-                        </div>
-                        <h3 className="item-label">{explorer.name}</h3>
-                        <div className="actions hover-to-appear">
-                            <div className="actions-bar">
-                                <ul className="actions-container">
-                                    {folderTreeActions.map((action) =>
-                                        action()
-                                    )}
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                </DragNDrop>
-                <div style={{ display: expand ? 'block' : 'none' }}>
-                    {showInput.visible && (
-                        <div
-                            className="stack-body-list__item inputContainer"
+                            className="stack-body-list__item virtual-folder"
                             key={explorer.id}
                             onClick={handleClickFolderColumn}
                         >
@@ -262,102 +397,52 @@ const Tree: React.FC<iProps> = ({
                                 style={{ paddingLeft: columnIndent }}
                             ></div>
                             <div className="codicon">
-                                {showInput.isFolder ? (
-                                    <img
-                                        src={chevronRightIcon}
-                                        alt="folder icon"
-                                    />
-                                ) : (
-                                    <img
-                                        src={chevronRightIcon}
-                                        alt="file icon"
-                                    />
-                                )}
+                                <img
+                                    src={
+                                        expand
+                                            ? chevronDownIcon
+                                            : chevronRightIcon
+                                    }
+                                />
                             </div>
-                            <input
-                                type="text"
-                                className={
-                                    'inputContainer--input' +
-                                    ' ' +
-                                    (isNameValid ? '__valid' : '__invalid')
-                                }
-                                onKeyDown={(e) => onAddItem(e, explorer.path)}
-                                onBlur={() => {
-                                    setIsInputBegun(false);
+                            <h3 className="item-label">{explorer.name}</h3>
+                            <div className="actions hover-to-appear">
+                                <div className="actions-bar">
+                                    <ul className="actions-container">
+                                        {folderTreeActions.map((action) =>
+                                            action()
+                                        )}
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </DragNDrop>
+                )}
+                <div style={{ display: expand ? 'block' : 'none' }}>
+                    {showInput.visible && (
+                        <FormColumn
+                            id={explorer.id}
+                            columnIndent={columnIndentForNewItemForm}
+                            isFolder={showInput.isFolder}
+                            name={explorer.name}
+                            isNameEmpty={isNameEmpty}
+                            isInputBegun={isInputBegun}
+                            isNameValid={isNameValid}
+                            isSameNameAlreadyExists={isSameNameAlreadyExists}
+                            handleNewItemNameInput={handleNewItemNameInput}
+                            callbackOnKeyDown={onAddItem}
+                            setIsInputBegun={setIsInputBegun}
+                            displayForm={(flag: boolean) => {
+                                if (!flag) {
                                     setShowInput({
                                         ...showInput,
                                         visible: false,
                                     });
-                                }}
-                                onChange={(e) =>
-                                    handleNewItemNameInput(e, explorer.isFolder)
                                 }
-                                autoFocus
-                                placeholder={
-                                    explorer.isFolder
-                                        ? defaultNewDirectoryName
-                                        : defaultNewFileName
-                                }
-                                style={inputStyle}
-                            />
-                            {/* margin-left: indent + codicon */}
-                            <ValidMessage
-                                isNameEmpty={isNameEmpty}
-                                isInputBegun={isInputBegun}
-                                isNameValid={isNameValid}
-                                marginLeft={`calc(${columnIndent} + 20px)`}
-                                width={`calc(100% - ${columnIndent} - 20px)`}
-                            />
-                        </div>
+                            }}
+                            inputStyle={inputStyle}
+                        />
                     )}
-                    {/* In case test input Container. */}
-                    {/* {debug && (
-            <div
-              className="stack-body-list__item inputContainer"
-              key={explorer.id}
-              onClick={handleClickFolderColumn}
-            >
-              <div
-                className="indent"
-                style={{ paddingLeft: columnIndent }}
-              ></div>
-              <div className="codicon">
-                {showInput.isFolder ? (
-                  <img src={chevronRightIcon} alt="folder icon" />
-                ) : (
-                  <img src={chevronRightIcon} alt="file icon" />
-                )}
-              </div>
-              <input
-                type="text"
-                className={
-                  "inputContainer--input" +
-                  " " +
-                  (isNameValid ? "__valid" : "__invalid")
-                }
-                onKeyDown={(e) => onAddItem(e, explorer.path)}
-                onBlur={() => {
-                  setIsInputBegun(false);
-                  setShowInput({ ...showInput, visible: false });
-                }}
-                onChange={(e) => handleNewItemNameInput(e, explorer.isFolder)}
-                autoFocus
-                placeholder={
-                  explorer.isFolder
-                    ? defaultNewDirectoryName
-                    : defaultNewFileName
-                }
-                style={inputStyle}
-              />
-              <ValidMessage
-                isNameEmpty={isNameEmpty}
-                isInputBegun={isInputBegun}
-                isNameValid={isNameValid}
-                marginLeft={`calc(${columnIndent} + 20px)`}
-                width={`calc(100% - ${columnIndent} - 20px)`}
-              />
-            </div>
-          )}*/}
                     {explorer.items.map((exp: iExplorer) => {
                         const nd = nestDepth + 1;
                         return (
@@ -368,6 +453,9 @@ const Tree: React.FC<iProps> = ({
                                 handleReorderNode={handleReorderNode}
                                 handleOpenFile={handleOpenFile}
                                 handleSelectFile={handleSelectFile}
+                                checkPathAlreadyExistsFromExplorer={
+                                    checkPathAlreadyExistsFromExplorer
+                                }
                                 explorer={exp}
                                 nestDepth={nd}
                             />
@@ -378,39 +466,62 @@ const Tree: React.FC<iProps> = ({
         );
     } else {
         return (
-            <DragNDrop
-                key={explorer.id}
-                id={explorer.id}
-                index={Number(explorer.id)}
-                isDraggable={true}
-                onDragStart={(e) => onDragStart(e, explorer.id)}
-                onDragEnter={onDragEnter}
-                onDragLeave={onDragLeave}
-                onDrop={(e) => onDrop(e, explorer.id)}
-                onDragOver={onDragOver}
-            >
-                <div
-                    className="stack-body-list__item virtual-folder"
-                    key={explorer.id}
-                    onClick={handleClickFileColumn}
-                >
-                    <div
-                        className="indent"
-                        style={{ paddingLeft: columnIndent }}
-                    ></div>
-                    <div className="codicon">
-                        <img src={chevronRightIcon} />
-                    </div>
-                    <h3 className="item-label">{explorer.name}</h3>
-                    <div className="actions hover-to-appear">
-                        <div className="actions-bar">
-                            <ul className="actions-container">
-                                {fileTreeActions.map((action) => action())}
-                            </ul>
+            <div>
+                {renaming ? (
+                    <FormColumn
+                        id={explorer.id}
+                        columnIndent={columnIndent}
+                        isFolder={explorer.isFolder}
+                        name={explorer.name}
+                        isNameEmpty={isNameEmpty}
+                        isInputBegun={isInputBegun}
+                        isNameValid={isNameValid}
+                        isSameNameAlreadyExists={isSameNameAlreadyExists}
+                        handleNewItemNameInput={handleNewItemNameInput}
+                        callbackOnKeyDown={handleRename}
+                        setIsInputBegun={setIsInputBegun}
+                        displayForm={setRenaming}
+                        inputStyle={inputStyle}
+                    />
+                ) : (
+                    <DragNDrop
+                        key={explorer.id}
+                        id={explorer.id}
+                        index={Number(explorer.id)}
+                        isDraggable={true}
+                        onDragStart={(e) => onDragStart(e, explorer.id)}
+                        onDragEnter={onDragEnter}
+                        onDragLeave={onDragLeave}
+                        onDrop={(e) => onDrop(e, explorer.id)}
+                        onDragOver={onDragOver}
+                    >
+                        <div
+                            className="stack-body-list__item virtual-folder"
+                            key={explorer.id}
+                            onClick={handleClickFileColumn}
+                        >
+                            <div
+                                className="indent"
+                                style={{ paddingLeft: columnIndent }}
+                            ></div>
+                            <div className="codicon">
+                                {/* <img src={chevronRightIcon} /> */}
+                                <Icon name={iconName} size="16px" />
+                            </div>
+                            <h3 className="item-label">{explorer.name}</h3>
+                            <div className="actions hover-to-appear">
+                                <div className="actions-bar">
+                                    <ul className="actions-container">
+                                        {fileTreeActions.map((action) =>
+                                            action()
+                                        )}
+                                    </ul>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </div>
-            </DragNDrop>
+                    </DragNDrop>
+                )}
+            </div>
         );
     }
 };

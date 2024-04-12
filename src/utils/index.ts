@@ -1,5 +1,6 @@
 export { getModelByPath } from './getModelByPath';
 export { getFileLanguage } from './getFileLanguage';
+export { getFileType } from './getFileType';
 export { getFilenameFromPath } from './getFilenameFromPath';
 export { isFolderNameValid } from './isFolderNameValid';
 export { isFilenameValid } from './isFilenameValid';
@@ -20,3 +21,6 @@ export { sortPropertiesByKey } from './sortPropertiesByKey';
 export { getValidSemver } from './getValidSemver';
 export { isSameShallowObject } from './isSameShallowObject';
 export { mustache } from './mustache';
+export { getPathExcludeFilename } from './getPathExcludeFilename';
+export { getAllDescendantsPath } from './getAllDescendantsPath';
+export { getFileIconName } from "./getFileIconName";

@@ -5,10 +5,6 @@
  * - onDidChangeModelContentのたびに値をFilesContextへdispatch()する
  *
  *
- * NOTE: 一時的にaddTypingsをクラスメソッドとする(TypingLibsContext.tsxのテストの為)
- * TODO: 仮想explorer上のファイルの中身が更新されたときに、addExtraLibsを適切に更新させる方法の追究。どうやって更新させ
-るのが適切か、キャッシュできるのかなど
- * TODO: lodashの使用を避ける。debounceはclassコンポーネントでも使えるものを１から作れないか?
  * ***************************************/
 import React from 'react';
 import * as monaco from 'monaco-editor';
@@ -25,7 +21,6 @@ import {
 } from '../worker/types';
 import MonacoEditor from './Monaco/MonacoEditor';
 import debounce from 'lodash.debounce';
-// TODO: 以下の全部取得は避けた方がいいかも。lodashは巨大なライブラリである
 import type * as lodash from 'lodash';
 import { generateTreeForBundler, getFilenameFromPath } from '../utils';
 import TabsAndActionsContainer from './TabsAndActions';
@@ -108,29 +103,62 @@ class EditorContainer extends React.Component<iProps, iState> {
         }
     }
 
+    /***
+     * File may changes its properties or added, and deleted.
+     *
+     * This function handles when file has been...
+     * added, deleted, changed file.path.
+     *
+     * Not handles when file has been...
+     * changed file.selected, file.isOpened, file.value
+     *
+     * NOTE: renameされたfileのリネーム前の該当ファイルはextraLibsから削除されていない。
+     * どのデータが該当のファイルか特定できないからである。
+     * すべてthis.props.filesに基づいて毎度まるっとextralibsをすべて更新した方がいいのかも
+     * */
     componentDidUpdate(prevProp: iProps, prevState: iState) {
+        // // DEBUG: ----
         console.log('[EditorContainer] did update');
-
-        // monaco.languages.typescript.IExtraLibs:
-        // [path: string]: {
-        //      content: string; version: number;
-        // }
+        // // monaco.languages.typescript.IExtraLibs:
+        // // [path: string]: {
+        // //      content: string; version: number;
+        // // }
         const currentJSLibs =
             monaco.languages.typescript.javascriptDefaults.getExtraLibs();
         const currentTSLibs =
             monaco.languages.typescript.typescriptDefaults.getExtraLibs();
-
         console.log(currentTSLibs);
+        console.dir(this.props.files);
+        console.dir(prevProp.files);
 
-        if (prevProp.files.length > this.props.files.length) {
-            console.log('[EditorContainer] SOme file must have deleted.');
-            const prevFilesPath = prevProp.files.map((pf) => pf.getPath());
-            const currentFilesPath = this.props.files.map((pf) => pf.getPath());
-            // deletedFile: prevFilesPathには存在してcurrentFilesPathには存在しない要素駆らなる配列
-            const deletedFiles = prevFilesPath.filter(
-                (pf) => currentFilesPath.indexOf(pf) === -1
-            );
-            deletedFiles.forEach((df) => this._removeFileFromExtraLibs(df));
+        const didFileDelete = prevProp.files.length > this.props.files.length;
+
+        // this.props.filesが更新されたら
+        if (prevProp.files !== this.props.files) {
+            for (const file of this.props.files) {
+                if (
+                    prevProp.files.find(
+                        (f) => f.getPath() === file.getPath()
+                    ) === undefined
+                ) {
+                    // New File has added, or file's path changed.
+                    // いずれの場合も結局`this.addExtraLibs`へ渡すだけ
+                    // rename前のpathに該当するextralibsファイルは削除できない
+                    // どれか判別できないけど、extralibsに残っていても問題ないから
+                    this.addExtraLibs(file.getValue(), file.getPath());
+                }
+            }
+            if (didFileDelete) {
+                const prevFilesPath = prevProp.files.map((pf) => pf.getPath());
+                const currentFilesPath = this.props.files.map((pf) =>
+                    pf.getPath()
+                );
+                // deletedFile: prevFilesPathには存在してcurrentFilesPathには存在しない要素駆らなる配列
+                const deletedFiles = prevFilesPath.filter(
+                    (pf) => currentFilesPath.indexOf(pf) === -1
+                );
+                deletedFiles.forEach((df) => this._removeFileFromExtraLibs(df));
+            }
         }
     }
 
