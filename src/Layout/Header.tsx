@@ -6,18 +6,9 @@ import {
     useLayoutDispatch,
     Types as LayoutActions,
 } from '../context/LayoutContext';
+// import { $heightOfHeader } from '../constants';
 
-const styleOfNav: React.CSSProperties = {
-    alignItems: 'center',
-    // backgroundColor: "",
-    // color: "",
-    display: 'flex',
-    flexShrink: '0',
-    height: '100%',
-    width: '100%',
-    // z-index: 100"",
-    // -webkit-app-region: drag;
-};
+const $IconSize = '24px';
 
 const Header = (): JSX.Element => {
     const { isSidebarDisplay } = useLayoutState();
@@ -37,10 +28,10 @@ const Header = (): JSX.Element => {
 
     return (
         <div className="header-section">
-            <nav style={styleOfNav}>
-                <div className="header-sction nav--item">
+            <nav>
+                <div className="header-section nav--item">
                     <button onClick={handleClick}>
-                        <MDIcon path={iconPath} size={'36px'} />
+                        <MDIcon path={iconPath} size={$IconSize} />
                     </button>
                 </div>
             </nav>
