@@ -1,10 +1,12 @@
-import React from "react";
+import React from 'react';
+import Header from '../components/Header';
 
-const Header = (): JSX.Element => {
+const HeaderSection = (): JSX.Element => {
     return (
-      <div className="header-section">
-        HEADER
-      </div>);
+        <>
+            <Header />
+        </>
+    );
 };
-  
-export default Header;
+
+export default HeaderSection;
