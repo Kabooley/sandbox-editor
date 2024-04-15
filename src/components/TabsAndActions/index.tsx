@@ -6,6 +6,8 @@
  * *************************************************************/
 import React, { useRef, useState, useEffect } from 'react';
 import DragNDrop from '../VSCodeExplorer/DragNDrop';
+import { CollapseIcon } from "./CollapseIcon";
+import { MoreActionsMenu } from './MoreActionsMenu';
 import {
     Types as FilesContextType,
     useFilesDispatch,
@@ -13,6 +15,7 @@ import {
 import {
     Types as LayoutContextType,
     useLayoutDispatch,
+    useLayoutState
 } from '../../context/LayoutContext';
 import { getFilenameFromPath, moveInArray, getFileIconName } from '../../utils';
 import type { File } from '../../data/files';
@@ -20,7 +23,6 @@ import ScrollableElement from '../ScrollableElement';
 import Action from '../VSCodeExplorer/Action';
 import { Icon } from '../Icon';
 import closeButtonIcon from '../../assets/vscode/dark/close.svg';
-import chevronRightIcon from '../../assets/vscode/dark/chevron-right.svg';
 import ellipsisIcon from '../../assets/vscode/dark/ellipsis.svg';
 
 // NOTE: 無理やり型を合わせている。
@@ -52,6 +54,7 @@ const TabsAndActionsContainer = ({
 }: iProps) => {
     // Dragging Tab. Not slider.
     const [dragging, setDragging] = useState<boolean>(false);
+    const { isPreviewDisplay } = useLayoutState();
     const dispatch = useFilesDispatch();
     const dispatchLayout = useLayoutDispatch();
     const refTabArea = useRef<HTMLDivElement>(null);
@@ -206,6 +209,13 @@ const TabsAndActionsContainer = ({
         });
     };
 
+    const handleTogglePreview = () => {
+        dispatchLayout({
+            type: LayoutContextType.TogglePreview,
+            payload: {}
+        });
+    }
+
     /********************************************
      * RENDERER
      * ******************************************/
@@ -226,7 +236,25 @@ const TabsAndActionsContainer = ({
         );
     };
 
-    const actions = [renderActionThreeDots];
+    const renderTogglePreviewAction = () => {
+        const clickHandler = (e: React.MouseEvent<HTMLLIElement>) => {
+            e.stopPropagation();
+            e.preventDefault();
+            handleTogglePreview();
+        };
+        return (
+            <Action
+                handler={clickHandler}
+                icon={null}
+                altMessage=''
+            >
+                <CollapseIcon isCollapsing={!isPreviewDisplay}/>
+            </Action>
+        );
+        
+    }
+
+    const actions = [renderActionThreeDots, renderTogglePreviewAction];
 
     return (
         <div className="scrollable-tabs" style={{ width: `${width}px` }}>
