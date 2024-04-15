@@ -6,14 +6,15 @@
 
 ## 機能
 
+- TODO: ローディング機能（ローディング完了するまで触れないようにする機能）
 - TODO: サンドボックス化
 - TODO: レスポンシブレイアウト
 
-- TODO: ボタンなどをホバーしたらそれが何者なのか excel のコメントみたいに窓が浮かび上がる機能
-- TODO: TabsAndActions と Preview に action の追加（Preview は閉じるボタンなど、TabsAndActions は開いているファイルを閉じるボタンなど）
-- TODO: Header: preview と pane をトグルするボタン
+- TODO: 重要アイテム要素にtitle属性をつける（何者なのかホバーしたら表示されるようにする）
+- TODO: TabsAndActions と Preview に action の追加（Preview トグルボタン、エディタに展開しているファイルを閉じるボタンなど）
 
-TODO: JSX色付け
+- TODO: JSX色付け
+- TODO: monaco-editorの最低限の設定機能の提供（ミニマップの表示非表示など）
 
 ## 修正
 

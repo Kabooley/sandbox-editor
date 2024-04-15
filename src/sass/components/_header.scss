@@ -16,8 +16,6 @@
         color: inherit;
         margin: auto 0;
         padding: 0 4px;
-    }
-    & > button:hover {
-        background-color: #0f2c60;
+        cursor: pointer;
     }
 }
