@@ -1,4 +1,5 @@
-import React, { useEffect } from 'react';
+import React, { useRef } from 'react';
+import { useClickOutside } from '../../hooks';
 
 interface iProps {
     menuItems: {
@@ -11,18 +12,11 @@ interface iProps {
 // 他の要素がクリックされたら自動的に消えるようにする
 // どの座標に出現させるのか座標を取得する機能
 export const MoreActionsMenu = ({ menuItems }: iProps) => {
-    useEffect(() => {
-        const checkClickOutside = (e: React.MouseEvent<HTMLElement>) => {
-            // 要素の内側か外側か
-        };
-        if (window) {
-            window.addEventListener('click', checkClickOutside);
-        }
-
-        return () => {
-            window.removeEventListener('click', checkClickOutside);
-        };
-    }, []);
+    const refMenu = useRef<HTMLElement>(null);
+    useClickOutside(refMenu, (event) => {
+        
+    })
+    
 
     const handleClick = (
         e: React.MouseEvent<HTMLDivElement>,
@@ -46,6 +40,7 @@ export const MoreActionsMenu = ({ menuItems }: iProps) => {
             role="menu"
             style={styleOfNav}
             tabIndex={-1}
+            ref={refMenu}
         >
             {menuItems.map((mi) => (
                 <div
