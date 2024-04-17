@@ -1,19 +1,20 @@
-import React, { useState, useRef, useEffect } from 'react';
-
-interface iProps {
-    refTarget: React.RefObject<HTMLElement | null>;
-    onClickOutside: (e: MouseEvent) => void;
-}
+import React, { useRef, useEffect } from 'react';
 
 /***
+ * Runs callback when click event outside of referencing dom.
+ *
+ * @param {React.RefObject<HTMLElement | null>} refTarget -
+ * @param {(e: MouseEvent) => void} onClickOutside -
+ *
+ * reference:
  * https://stackoverflow.com/questions/32553158/detect-click-outside-react-component
  * https://github.com/streamich/react-use/blob/master/docs/useClickAway.md
  *
- * refを渡している要素の外をクリックしたときに実行するcallbackを渡す
- *
- * 呼び出し側は監視したい要素へrefを渡す必要がある
  * */
-export const useClickOutside = ({ refTarget, onClickOutside }: iProps) => {
+export const useClickOutside = (
+    refTarget: React.RefObject<HTMLElement | null>,
+    onClickOutside: (e: MouseEvent) => void
+) => {
     const savedCallback = useRef(onClickOutside);
 
     useEffect(() => {
@@ -25,7 +26,9 @@ export const useClickOutside = ({ refTarget, onClickOutside }: iProps) => {
             const { current: el } = refTarget;
             // ref.currentがundefinedでない、かつイベントトリガー要素を含んでいるとき
             // callbackを実行する
-            el && !el.contains(event.target) && savedCallback.current(event);
+            el &&
+                !el.contains(event.target as Node) &&
+                savedCallback.current(event);
         };
         document.addEventListener('click', handler, false);
         return () => {

@@ -6,17 +6,24 @@ interface iProps {
         title: string;
         handleClick: () => void;
     }[];
+    x: number;
+    y: number;
+    hideMenu: (flag: boolean) => void;
 }
 
-// TODO:
-// 他の要素がクリックされたら自動的に消えるようにする
-// どの座標に出現させるのか座標を取得する機能
-export const MoreActionsMenu = ({ menuItems }: iProps) => {
+/***
+ *
+ * TODO: styleをcssに移す
+ * TODO: backgroundカラー
+ * TODO: menu-itemのホバースタイル, カラーはcppinkで
+ * TODO: 別件だけどpreview toggleのアイコンが逆である
+ *
+ * */
+export const MoreActionsMenu = ({ menuItems, x, y, hideMenu }: iProps) => {
     const refMenu = useRef<HTMLElement>(null);
-    useClickOutside(refMenu, (event) => {
-        
-    })
-    
+    useClickOutside(refMenu, () => {
+        hideMenu(false);
+    });
 
     const handleClick = (
         e: React.MouseEvent<HTMLDivElement>,
@@ -30,8 +37,15 @@ export const MoreActionsMenu = ({ menuItems }: iProps) => {
     const styleOfNav: React.CSSProperties = {
         position: 'fixed',
         opacity: '1',
-        top: '',
-        left: '',
+        top: `${y}px`,
+        left: `${x - 100}px`,
+        backgroundColor: 'red',
+        padding: '12px 24px',
+        zIndex: '10',
+        display: 'flex',
+        fontSize: '13px',
+        fontWeight: '400',
+        lineHeight: '1.2307',
     };
 
     return (

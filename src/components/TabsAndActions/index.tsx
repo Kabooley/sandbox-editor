@@ -6,7 +6,7 @@
  * *************************************************************/
 import React, { useRef, useState, useEffect } from 'react';
 import DragNDrop from '../VSCodeExplorer/DragNDrop';
-import { CollapseIcon } from "./CollapseIcon";
+import { CollapseIcon } from './CollapseIcon';
 import { MoreActionsMenu } from './MoreActionsMenu';
 import {
     Types as FilesContextType,
@@ -15,7 +15,7 @@ import {
 import {
     Types as LayoutContextType,
     useLayoutDispatch,
-    useLayoutState
+    useLayoutState,
 } from '../../context/LayoutContext';
 import { getFilenameFromPath, moveInArray, getFileIconName } from '../../utils';
 import type { File } from '../../data/files';
@@ -54,6 +54,11 @@ const TabsAndActionsContainer = ({
 }: iProps) => {
     // Dragging Tab. Not slider.
     const [dragging, setDragging] = useState<boolean>(false);
+    const [mouseCoord, setMouseCoord] = useState<{ x: number; y: number }>({
+        x: 0,
+        y: 0,
+    });
+    const [displayMenu, setDisplayMenu] = useState<boolean>(false);
     const { isPreviewDisplay } = useLayoutState();
     const dispatch = useFilesDispatch();
     const dispatchLayout = useLayoutDispatch();
@@ -212,9 +217,16 @@ const TabsAndActionsContainer = ({
     const handleTogglePreview = () => {
         dispatchLayout({
             type: LayoutContextType.TogglePreview,
-            payload: {}
+            payload: {},
         });
-    }
+    };
+
+    const handleCloseAll = () => {
+        dispatch({
+            type: FilesContextType.CloseAll,
+            payload: {},
+        });
+    };
 
     /********************************************
      * RENDERER
@@ -225,6 +237,8 @@ const TabsAndActionsContainer = ({
             e.stopPropagation();
             e.preventDefault();
             // TODO: implement this.
+            setMouseCoord({ x: e.pageX, y: e.pageY });
+            setDisplayMenu(true);
             // handleThreeDotsMenuOpen(e);
         };
         return (
@@ -243,18 +257,14 @@ const TabsAndActionsContainer = ({
             handleTogglePreview();
         };
         return (
-            <Action
-                handler={clickHandler}
-                icon={null}
-                altMessage=''
-            >
-                <CollapseIcon isCollapsing={!isPreviewDisplay}/>
+            <Action handler={clickHandler} icon={null} altMessage="">
+                <CollapseIcon isCollapsing={!isPreviewDisplay} />
             </Action>
         );
-        
-    }
+    };
 
     const actions = [renderActionThreeDots, renderTogglePreviewAction];
+    const menuItems = [{ title: 'save all', handleClick: handleCloseAll }];
 
     return (
         <div className="scrollable-tabs" style={{ width: `${width}px` }}>
@@ -339,6 +349,14 @@ const TabsAndActionsContainer = ({
                     </ul>
                 </div>
             </div>
+            {displayMenu ? (
+                <MoreActionsMenu
+                    menuItems={menuItems}
+                    x={mouseCoord.x}
+                    y={mouseCoord.y}
+                    hideMenu={setDisplayMenu}
+                />
+            ) : null}
         </div>
     );
 };

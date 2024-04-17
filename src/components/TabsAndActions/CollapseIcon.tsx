@@ -1,3 +1,4 @@
+import React from "react";
 import { mdiArrowCollapseLeft, mdiArrowCollapseRight } from '@mdi/js';
 import Icon from '@mdi/react';
 
