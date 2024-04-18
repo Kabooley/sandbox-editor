@@ -13,9 +13,6 @@ interface iProps {
 
 /***
  *
- * TODO: styleをcssに移す
- * TODO: backgroundカラー
- * TODO: menu-itemのホバースタイル, カラーはcppinkで
  * TODO: 別件だけどpreview toggleのアイコンが逆である
  *
  * */
@@ -34,30 +31,22 @@ export const MoreActionsMenu = ({ menuItems, x, y, hideMenu }: iProps) => {
         callback();
     };
 
-    const styleOfNav: React.CSSProperties = {
-        position: 'fixed',
-        opacity: '1',
+    const fixedPosition: React.CSSProperties = {
         top: `${y}px`,
         left: `${x - 100}px`,
-        backgroundColor: 'red',
-        padding: '12px 24px',
-        zIndex: '10',
-        display: 'flex',
-        fontSize: '13px',
-        fontWeight: '400',
-        lineHeight: '1.2307',
     };
 
     return (
         <nav
-            className="more-actions--menu"
+            className="more-actions--menu fade-in"
             role="menu"
-            style={styleOfNav}
+            style={fixedPosition}
             tabIndex={-1}
             ref={refMenu}
         >
-            {menuItems.map((mi) => (
+            {menuItems.map((mi, index) => (
                 <div
+                    key={index}
                     className="menu-item"
                     role="menuitem"
                     tabIndex={-1}

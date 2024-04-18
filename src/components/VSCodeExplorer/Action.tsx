@@ -4,13 +4,21 @@ interface iProps {
     handler: (e: React.MouseEvent<HTMLLIElement>) => void;
     icon: any;
     altMessage: string;
+    additionalClassNames?: string[];
     children?: React.ReactElement;
 }
 
-const Action: React.FC<iProps> = ({ handler, icon, altMessage, children }) => {
+const Action: React.FC<iProps> = ({
+    handler,
+    icon,
+    altMessage,
+    additionalClassNames = [],
+    children,
+}) => {
+    const classNames = ['action-item', ...additionalClassNames].join(' ');
     if (children === undefined) {
         return (
-            <li className="action-item" onClick={handler}>
+            <li className={classNames} onClick={handler}>
                 <img
                     className="codicon"
                     src={icon}
@@ -21,7 +29,7 @@ const Action: React.FC<iProps> = ({ handler, icon, altMessage, children }) => {
         );
     } else {
         return (
-            <li className="action-item" onClick={handler}>
+            <li className={classNames} onClick={handler}>
                 {children}
             </li>
         );

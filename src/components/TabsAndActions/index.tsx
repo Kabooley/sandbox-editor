@@ -236,10 +236,8 @@ const TabsAndActionsContainer = ({
         const clickHandler = (e: React.MouseEvent<HTMLLIElement>) => {
             e.stopPropagation();
             e.preventDefault();
-            // TODO: implement this.
             setMouseCoord({ x: e.pageX, y: e.pageY });
             setDisplayMenu(true);
-            // handleThreeDotsMenuOpen(e);
         };
         return (
             <Action
@@ -264,7 +262,7 @@ const TabsAndActionsContainer = ({
     };
 
     const actions = [renderActionThreeDots, renderTogglePreviewAction];
-    const menuItems = [{ title: 'save all', handleClick: handleCloseAll }];
+    const menuItems = [{ title: 'Close All', handleClick: handleCloseAll }];
 
     return (
         <div className="scrollable-tabs" style={{ width: `${width}px` }}>

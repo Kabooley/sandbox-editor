@@ -4,6 +4,7 @@
     -webkit-box-sizing: border-box;
     height: calc(100% - 1px);
 }
+
 .stack:not(:lst-child) {
     border-bottom: 1px solid #999999;
 }
@@ -92,22 +93,20 @@
     & > .codicon {
         margin: 1px 4px 2px 0;
     }
-}
 
-.codicon {
-    font-size: 16px;
-    font: 16px/1 codicon;
-    display: inline-block;
-    text-decoration: none;
-    text-rendering: auto;
-    text-align: center;
-    text-transform: none;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    user-select: none;
-    -webkit-user-select: none;
-    margin: 0 2px;
-    margin-top: 2px;
+    & > .actions {
+        & > .actions-bar {
+            & > .actions-container {
+                & > .action-item {
+                    & > img:hover {
+                        background-color: $color-action-item-hover;
+                        outline: 1px dashed blue;
+                        outline-offset: -1px;
+                    }
+                }
+            }
+        }
+    }
 }
 
 .pane-header > h3 {
@@ -122,59 +121,13 @@
     text-transform: uppercase;
 }
 
-.actions {
-    display: none;
-    height: 100%;
-    margin-left: auto;
-}
-
-/********
-  このようにclassを追加すればdisplayを上書きできる
-********/
+/* OVERRIDING `display` */
 .pane-header > .display.actions {
     display: block;
 }
 
-.actions-bar {
-    white-space: nowrap;
-    height: 100%;
-}
-
-.actions-container {
-    display: flex;
-    margin: 0 auto;
-    padding: 0;
-    height: 100%;
-    width: 100%;
-    align-items: center;
-}
-
-.action-item {
-    margin-right: 4px;
-    display: block;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    position: relative;
-}
-
-.action-item > img {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 3px !important;
-    border-radius: 4px;
-    font-size: 16px;
-}
-
-.action-item > img:hover {
-    background-color: $color-hovered-item-primary;
-    outline: 1px dshed blue;
-    outline-offset: -1px;
-}
-
 /**********************************************
-  stack-body-lit
+  stack-body-list
 ***********************************************/
 .stack-body-list {
     // width: 100%;

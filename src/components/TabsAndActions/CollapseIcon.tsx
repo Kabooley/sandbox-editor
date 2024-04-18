@@ -1,4 +1,4 @@
-import React from "react";
+import React from 'react';
 import { mdiArrowCollapseLeft, mdiArrowCollapseRight } from '@mdi/js';
 import Icon from '@mdi/react';
 
@@ -13,7 +13,7 @@ export const CollapseIcon = ({
     size = '16px',
     color = 'currentColor',
 }: iProps) => {
-    const path = isCollapsing ? mdiArrowCollapseRight : mdiArrowCollapseLeft;
+    const path = isCollapsing ? mdiArrowCollapseLeft : mdiArrowCollapseRight;
     return (
         <>
             <Icon

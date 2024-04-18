@@ -1,0 +1,67 @@
+/*************************************
+ * common actions style
+ ************************************/
+
+.actions {
+    display: none;
+    height: 100%;
+    margin-left: auto;
+}
+
+.actions-bar {
+    white-space: nowrap;
+    height: 100%;
+}
+
+.actions-container {
+    display: flex;
+    margin: 0 auto;
+    padding: 0;
+    height: 100%;
+    width: 100%;
+    align-items: center;
+}
+
+.action-item {
+    margin-right: 4px;
+    display: block;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+}
+
+.action-item > img {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3px !important;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+// .action-item > img:hover {
+//     background-color: $color-hovered-item-primary;
+//     outline: 1px dshed blue;
+//     outline-offset: -1px;
+// }
+
+/*************************************
+ * icon styles
+ ************************************/
+
+ .codicon {
+    font-size: 16px;
+    font: 16px/1 codicon;
+    display: inline-block;
+    text-decoration: none;
+    text-rendering: auto;
+    text-align: center;
+    text-transform: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    user-select: none;
+    -webkit-user-select: none;
+    margin: 0 2px;
+    margin-top: 2px;
+}

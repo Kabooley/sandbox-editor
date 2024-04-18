@@ -1,0 +1,6 @@
+// To disable :hover definition exceptionally
+// NOTE: 例えばbackground-colorの適用だけ無効にしたいとかはできない。
+// cursor: pointerの適用も無効になる。
+.no-hover-action {
+    pointer-events: none;
+}

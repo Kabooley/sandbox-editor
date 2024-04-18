@@ -5,33 +5,45 @@ TODO: 整理して！
 $color-white: #fff;
 $color-black: #000;
 
-// body
+/*********************************************
+    body
+**********************************************/
 $color-background-dark: rgb(14, 14, 14);
-
 $color-bg-dark: rgb(21, 21, 21);
 $color-font: #999;
-
 // headerやfileexplorerなどの領域を区切るborderの色
 $color-border: rgb(52, 52, 52);
 
-// FONT
+
+/*********************************************
+    font
+**********************************************/
 $default-font-size: 1.6rem;
 
-// PANE
+
+/*********************************************
+    pane
+**********************************************/
 $pane-font-size: 1.4rem;
 $pane-min-width: 19rem;
 $pane-max-width: 40rem;
 
-// ----
 
-// layout/main
+/*********************************************
+    layout/main
+**********************************************/
 $color-border: rgb(52, 52, 52);
 
-// --- header ---
+
+/*********************************************
+    header
+**********************************************/
 $--height-header-section: 48px;
 
-// --- pane ---
 
+/*********************************************
+    pane
+**********************************************/
 $color-hovered-item-primary: #0f2c60;
 $color-hovered-item-secondary: #16408c;
 $color-focused-border: #ea00d9;
@@ -66,6 +78,11 @@ $font-color-tertiary: #999999;
 $--color-primary: #0954a5;
 $--color-border: #3a3f42;
 $--color-background: rgb(46, 39, 55);
+
+/*********************************************
+    actions
+**********************************************/
+$color-action-item-hover: $color-hovered-item-primary;
 
 // naming example...
 
