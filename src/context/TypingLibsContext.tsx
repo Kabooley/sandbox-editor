@@ -34,6 +34,9 @@ import {
 } from './FilesContext';
 import type { iRequestFetchLibs, iResponseFetchLibs } from '../worker/types';
 
+// DEBUG:
+import { useLoadingSurvey } from '../hooks/useLoadingSurvey';
+
 type iTypingLibsContext = iDependencyState[];
 type iCommandContext = (
     order: 'request' | 'remove',
@@ -170,7 +173,7 @@ const TypingLibsProvider = ({ children }: iProps) => {
      * */
     useEffect(() => {
         console.log('[TypingLibsContext] Updated packageJson');
-        console.log(packageJson);
+        // console.log(packageJson);
 
         const timer = setTimeout(() => {
             const { deleted, created, modifiedVal } = getDiffOfPackageJson();
@@ -178,7 +181,7 @@ const TypingLibsProvider = ({ children }: iProps) => {
                 deleted.forEach((d) => {
                     const key = Object.keys(d)[0];
 
-                    console.log(`[TypingLibsContext] Delete ${key}@${d[key]}`);
+                    // console.log(`[TypingLibsContext] Delete ${key}@${d[key]}`);
 
                     removeLibrary(key, d[key]);
                 });
@@ -187,7 +190,7 @@ const TypingLibsProvider = ({ children }: iProps) => {
                 created.forEach((d) => {
                     const key = Object.keys(d)[0];
 
-                    console.log(`[TypingLibsContext] Fetch ${key}@${d[key]}`);
+                    // console.log(`[TypingLibsContext] Fetch ${key}@${d[key]}`);
 
                     requestFetchTypings(key, d[key]);
                 });
@@ -197,9 +200,9 @@ const TypingLibsProvider = ({ children }: iProps) => {
                     const key = Object.keys(d)[0];
                     const { prev, current } = d[key];
 
-                    console.log(
-                        `[TypingLibsContext] modified. ${key}@${prev} --> ${key}@${current}`
-                    );
+                    // console.log(
+                    //     `[TypingLibsContext] modified. ${key}@${prev} --> ${key}@${current}`
+                    // );
 
                     requestFetchTypings(key, current);
                 });
@@ -211,17 +214,26 @@ const TypingLibsProvider = ({ children }: iProps) => {
         return () => clearTimeout(timer);
     }, [packageJson]);
 
-    // DEBUG:
-    useEffect(() => {
-        console.log('[TypingLibsContext] did update.');
-        console.log(dependencies);
-        console.log(requestingDependencies);
-        console.log(setOfDependency);
+    // // DEBUG:
+    // useEffect(() => {
+    //     console.log('[TypingLibsContext] did update.');
+    //     console.log(dependencies);
+    //     console.log(requestingDependencies);
+    //     console.log(setOfDependency);
 
-        Object.keys(
-            monaco.languages.typescript.typescriptDefaults.getExtraLibs()
-        ).forEach((key) => console.log(key));
-    });
+    //     Object.keys(
+    //         monaco.languages.typescript.typescriptDefaults.getExtraLibs()
+    //     ).forEach((key) => console.log(key));
+    // });
+
+    // DEBUG:
+    useLoadingSurvey(
+        'typing-libs-context',
+        false,
+        dependencies,
+        snapshot,
+        requestingDependencies
+    );
 
     /**
      * Callback of onmessage event with agent worker.

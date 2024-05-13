@@ -11,6 +11,9 @@ import React, { createContext, useContext, useReducer, Dispatch } from 'react';
 import { files, File } from '../data/files';
 import { getFileLanguage, findMax } from '../utils';
 
+// DEBUG:
+import { useLoadingSurvey } from '../hooks/useLoadingSurvey';
+
 // --- Types ---
 
 enum Types {
@@ -421,7 +424,10 @@ defaultFile?.setOpening(true);
 const FilesProvider = ({ children }: { children: React.ReactNode }) => {
     const [files, dispatch] = useReducer(filesReducer, initialFiles);
 
-    console.log(files);
+    // console.log(files);
+
+    // DEBUG:
+    useLoadingSurvey('files-context', false, files);
 
     return (
         <FilesContext.Provider value={files}>

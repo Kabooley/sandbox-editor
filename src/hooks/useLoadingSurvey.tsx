@@ -1,29 +1,23 @@
-import React, { useState, useEffect, useRef } from 'react';
-
-interface iProps {
-    trigger: any[];
-    name: string;
-    disableEverytimeEffect?: boolean;
-}
+import React, { useEffect } from 'react';
 
 /***
  * For debug purpose only.
  *
  * */
-export const useLoadingSurvey = ({
-    trigger,
-    name,
-    disableEverytimeEffect = false,
-}: iProps) => {
+export const useLoadingSurvey = (
+    name: string,
+    disableEverytimeEffect: boolean = false,
+    ...trigger: any[]
+) => {
     useEffect(() => {
         if (!disableEverytimeEffect) {
             // DEBUG:
-            console.log(`[update] ${name}`);
+            console.log(`[rerendered] ${name}`);
         }
     });
 
     useEffect(() => {
         // DEBUG:
-        console.log(`[updated by trigger] ${name}`);
+        console.log(`[rerendered by trigger] ${name}`);
     }, [...trigger]);
 };

@@ -12,7 +12,12 @@ import { TypingLibsProvider } from '../context/TypingLibsContext';
 import { LayoutStateProvider } from '../context/LayoutContext';
 import Modal from '../components/Modal';
 
+// DEBUG:
+import { useLoadingSurvey } from '../hooks/useLoadingSurvey';
+
 const Layout = (): JSX.Element => {
+    useLoadingSurvey('layout-index.tsx');
+
     return (
         <>
             <LayoutStateProvider>
