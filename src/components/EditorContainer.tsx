@@ -127,9 +127,9 @@ class EditorContainer extends React.Component<iProps, iState> {
             monaco.languages.typescript.javascriptDefaults.getExtraLibs();
         const currentTSLibs =
             monaco.languages.typescript.typescriptDefaults.getExtraLibs();
-        console.log(currentTSLibs);
-        console.dir(this.props.files);
-        console.dir(prevProp.files);
+        // console.log(currentTSLibs);
+        // console.dir(this.props.files);
+        // console.dir(prevProp.files);
 
         const didFileDelete = prevProp.files.length > this.props.files.length;
 
@@ -336,7 +336,7 @@ class EditorContainer extends React.Component<iProps, iState> {
 
         if (filesOpening.length) {
             return (
-                <div className="editor-container">
+                <>
                     <TabsAndActionsContainer
                         selectedFile={selectedFilePath}
                         onChangeSelectedTab={this._onChangeSelectedTab}
@@ -350,11 +350,11 @@ class EditorContainer extends React.Component<iProps, iState> {
                         onDidChangeModel={this._onDidChangeModel}
                         {...editorConstructOptions}
                     />
-                </div>
+                </>
             );
         } else {
             return (
-                <div className="editor-container">
+                <>
                     <TabsAndActionsContainer
                         selectedFile={selectedFilePath}
                         onChangeSelectedTab={this._onChangeSelectedTab}
@@ -362,7 +362,7 @@ class EditorContainer extends React.Component<iProps, iState> {
                         filesOpening={filesOpening}
                     />
                     <EditorNoSelectedFile />
-                </div>
+                </>
             );
         }
     }

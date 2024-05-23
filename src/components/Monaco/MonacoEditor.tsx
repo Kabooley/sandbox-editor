@@ -166,6 +166,9 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
         const { files, selectedFile, onEditorContentChange, ...options } =
             this.props;
 
+        // DEBUG:
+        console.log('[MonacoEditor] on mount');
+
         // Generate Editor instance.
         const editor = monaco.editor.create(
             this._refEditorNode.current as HTMLDivElement,
@@ -196,6 +199,30 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
 
         // Load all the files  so the editor can provide proper intelliscense
         files.forEach((f) => this._initializeFile(f));
+
+        // Triggers bundle to initialize preview window
+        if (selectedFile !== undefined) {
+            // DEBUG:
+            console.log('[MonacoEditor] trigger bundle');
+
+            onEditorContentChange(
+                selectedFile?.getValue(),
+                selectedFile?.getPath()
+            );
+        } else {
+            const _selectedFile = files.find(
+                (f) => f.getPath() === 'src/App.tsx'
+            );
+            if (_selectedFile !== undefined) {
+                // DEBUG:
+                console.log('[MonacoEditor] trigger bundle');
+
+                onEditorContentChange(
+                    _selectedFile?.getValue(),
+                    _selectedFile?.getPath()
+                );
+            }
+        }
 
         this._refEditorNode.current &&
             this._refEditorNode.current.addEventListener(
@@ -235,7 +262,9 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
                 selectedFile !== undefined &&
                 selectedFile !== prevProps.selectedFile
             ) {
-                console.log(`[MonacoEditor][did update] selectedFile ${prevProps.selectedFile?.getPath()} --> ${selectedFile.getPath()}`);
+                console.log(
+                    `[MonacoEditor][did update] selectedFile ${prevProps.selectedFile?.getPath()} --> ${selectedFile.getPath()}`
+                );
 
                 // Save the editor state for the previous file so we can restore it when it's re-opened
                 if (prevProps.selectedFile !== undefined) {
@@ -263,7 +292,6 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
     }
 
     componentWillUnmount() {
-
         console.log('[MonacoEditor][will unmount]');
 
         this._refEditorNode.current &&

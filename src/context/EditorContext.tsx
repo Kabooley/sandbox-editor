@@ -5,7 +5,12 @@
 import React from 'react';
 import { useFiles, useFilesDispatch } from './FilesContext';
 import { useBundledCodeDispatch } from './BundleContext';
-import EditorContainer from '../components/EditorContainer';
+// import EditorContainer from '../components/EditorContainer';
+import LoadingEditor from '../components/LoadingEditor';
+
+const EditorContainer = React.lazy(
+    () => import('../components/EditorContainer')
+);
 
 // TODO: 結局adExtraLibsを提供しないといけない？もしくはEditorContainerは独自にaddExtraLibsをやるか...どちらか選ぶ感じ。
 // import { TypingLibsContext } from './TypingLibsContext';
@@ -22,13 +27,17 @@ const EditorContext = ({ width }: iProps) => {
     // DEBUG:
 
     return (
-        <EditorContainer
-            files={files.filter((f) => !f.isFolder())}
-            // addTypings={addTypings}
-            dispatchFiles={dispatchFiles}
-            dispatchBundledCode={dispatchBundledCode}
-            width={width}
-        />
+        <div className="editor-container">
+            <React.Suspense fallback={<LoadingEditor />}>
+                <EditorContainer
+                    files={files.filter((f) => !f.isFolder())}
+                    // addTypings={addTypings}
+                    dispatchFiles={dispatchFiles}
+                    dispatchBundledCode={dispatchBundledCode}
+                    width={width}
+                />
+            </React.Suspense>
+        </div>
     );
 };
 

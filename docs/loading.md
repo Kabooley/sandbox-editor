@@ -20,19 +20,30 @@
 
 - [Webpack 設定](#Webpack設定)
 
+
 - [計測](#計測)
 
   - [Performance 計測手順](#Performance計測手順)
+
+- [マウント時バンドルの実行](#マウント時バンドルの実行)
 
 - [参考](#参考)
 
 ## TODOs
 
 - TODO: webpack5 における Profiler 用の設定とは？
-- TODO: やっぱり初期レンダリング時にバンドルしていない（編集を開始しないとバンドルしないのかも）
+- TODO: [初期マウント時にバンドル処理](#初期マウント時にバンドル処理)
 - TODO: `webpack.prod.js`を production モード用に作り直す
 
 - TODO: NOTE: `useLoadingSurvey`というコンポーネント呼出の為のフックを各コンポーネントに追加しているのでこれの削除
+
+- TODO: [EditorContainer.tsxのローディング中のfallbackアニメーションがフリーズする件](#EditorContainer.tsxのローディング中のfallbackアニメーションがフリーズする件)
+
+- TODO: PixelLoading.cssをsassに移動すること
+
+- TODO: [performance] classコンポーネントをPureComponentに変更するか検討
+
+- TODO: [[別ブランチ]context+useReducerからReduxへ切り替え](#[別ブランチ]context+useReducerからReduxへ切り替え)
 
 ## パフォーマンスについて知っておくこと
 
@@ -650,3 +661,158 @@ https://developer.chrome.com/docs/devtools/performance/reference#disable-js-samp
 snack expoのclientでは、previewとeditor以外のローディング、editorのローディング、previewのローディングという流れみたい
 
 #### 実装
+
+エディタ部分を動的importする
+
+レイアウトを崩さない、かつmonaco-editorに関する部分を動的にimportする
+
+
+
+## マウント時バンドルの実行
+
+
+
+## EditorContainer.tsxのローディング中のfallbackアニメーションがフリーズする件
+
+ここでｱﾆﾒｰｼｮﾝしてくれないんじゃぁどうしようもないなぁ
+
+#### 参考
+
+- useTransitionを使う
+
+https://zenn.dev/kobayang/articles/8e06c77cec9359
+
+## 初期マウント時にバンドル処理
+
+現状:
+
+onChangeイベント時にバンドル処理が初めて始まる
+
+```sequence
+MonacoEditor.tsx -> EditorContainer.tsx: _onEditorContentChange
+_onEditorContentChange -> this._debouncedBundle -> this._onBundle
+-> this._bundleWorker.postMessage()
+
+' worker bundles and send back
+
+onMessage event -> this._onBundled -> this.props.dispatchBundledCode
+```
+
+なのでマウント時にはバンドル処理が始まらない
+
+これを修正する
+
+#### バンドル処理のトリガー
+
+どのタイミングでバンドル処理をリクエストするか？
+
+初期マウント時にどっかぶりだと処理が重くなる
+
+現状、初期マウント完了 -> lazyloadでEditorContainer.tsxというローディングの順番なので
+
+componentDidMountでthis.props.onEditorContentChange(selected file code)を呼び出す
+
+問題はこの処理は本来はeditorchangeではないためどのファイルを選択するかである
+
+
+
+## Redux利用検討
+
+
+#### React Redux vs Context
+
+https://www.reddit.com/r/reactjs/comments/z4y7sj/redux_vs_context_what_exactly_does_redux/
+
+> In addition, there are some distinct differences between how Context and (React-)Redux pass along updates. Context has some major perf limitations - in particular, any component that consumes a context will be forced to re-render, even if it only cares about part of the context value.
+
+> さらに、Contextと（React-）Reduxの更新の受け渡し方法には明確な違いがある。特に、コンテキストを消費するコンポーネントは、たとえそれがコンテキスト値の一部しか気にしていなくても、再レンダリングを余儀なくされる。
+
+https://blog.isquaredsoftware.com/2021/01/context-redux-differences/
+
+react contextはデータをreactコンポーネント・ツリーの任意の場所へ渡す一つの方法であってstate管理をする手段ではない
+
+useReducerはReduxと似ている部分があるものの、機能には大きな違いがある
+
+いつReduxを使うべき？
+
+- 巨大なアプリケーションで再レンダリング頻度が高いとき
+- stateを更新するロジックが複雑な時
+- 副作用、永続性、データのシリアル化を管理するための、より強力な機能が必要なとき
+
+contextについて
+
+contextからの新しい値が渡されるたびに、contextを消費するコンポーネントはすべて必ず再レンダリングされる
+
+react contextを使う目的は`"prop-drilling"`を避けることである
+
+Reduxについて
+
+- state管理に特化するライブラリである
+- Redux が提供するパターンとツールを使用すると、アプリケーションの状態がいつ、どこで、なぜ、どのように更新されるのか、また、それらの変更が発生したときにアプリケーション ロジックがどのように動作するのかを理解しやすくなります。
+
+ことReactとの連携においては、
+
+あるイベントが発生したときに、どのようにstateが更新・決定されるのかのロジックを分離できる点がメリットである
+
+redux devtools等を使うとどのようにstateが更新されたのか追跡が容易になる
+
+context + useReducerとRedux + React-Reduxのちがいについて
+
+> Context + useReducer は、Context を介して現在の状態値を渡すことに依存します。 React-Redux は、現在の Redux ストア インスタンスを Context 経由で渡します。
+
+> つまり、useReducer が新しい状態値を生成すると、そのコンテキストにサブスクライブされているすべてのコンポーネントは、データの一部のみを考慮している場合でも、強制的に再レン​​ダリングされます。これにより、状態値のサイズ、そのデータにサブスクライブされているコンポーネントの数、再レンダリングの頻度によっては、パフォーマンスの問題が発生する可能性があります。 React-Redux を使用すると、コンポーネントはストア状態の特定の部分をサブスクライブし、それらの値が変更された場合にのみ再レンダリングできます。
+
+> DevTools では、現在のコンテキスト値を表示できますが、過去の値や時間の経過に伴う変化は表示できません。 Redux DevTools を使用すると、ディスパッチされたすべてのアクション、各アクションの内容、各アクションが処理された後の状態、および時間の経過に伴う各状態間の差分を確認できます。
+
+> useReducer にはミドルウェアがありません。
+
+**"サブスクライブされているすべてのコンポーネント"の意味**:
+
+[公式の記述より](https://legacy.reactjs.org/docs/context.html#contextprovider)
+
+`consuming provider`: `<MyContext.Provider></MyContext.Provider>`で挟まれたコンポーネント
+
+つまり、以下のようなコードでたとえ実際にMyContextからの値を必要とするのが`CounterA`と`CounterB`だけであっても、HogeもFugaもすべてMyContextで囲われたコンポーネントはすべて再レンダリングされる
+
+HogeやFugaが`useMyContext`で実際に値を取得していなくてもそれらはMyContextの更新で強制的に再レンダリングされるということ。
+
+```TypeScript
+import MyContext from "./contexts/MyContext";
+
+const SomeComponent = () => {
+  return (
+    <MyContext.Provider>
+      <CounterA />
+      <Hoge />
+      <Fuga />
+      <CounterB />
+    </MyContext.Provider>
+  )
+}
+```
+
+ここまで聞くと、contextの使いどころが見えてくる
+
+つまりcontext（context + useReducer）は**更新頻度が低いstateの値**をコンポーネントネストの任意のコンポーネントに渡す場合に利用するのが適しているということである
+
+理由はcontextのproviderで挟まれたすべてのコンポーネント（サブスクライバ）はcontextの値を実際に利用しようがしまいがcontextの更新によって強制的に再レンダリングされるからである
+
+これら余計な再レンダリングを防ぐためにどくじにReact.memo()機能やuseMemo()を工夫して使うことで実現しようとすることもできるが、それはReduxの再発名（しかもひどく劣化した）でしかなくなってしまう。
+
+それぞれのツールの使いどころ：
+
+- React context: ネストされたコンポーネントにprop-drillingせずに値を渡したいときに使う。ただしサブスクライバはすべてcontextの更新で強制的に再レンダリングされる。
+
+- useReducer + context: 複雑なstate管理とネストされたコンポーネントにprop-drillingせずに値を渡したいときに使う。ただしサブスクライバはすべてcontextの更新で強制的に再レンダリングされる。
+
+- Redux:
+
+> - リデューサー関数を使用した中程度から非常に複雑な状態管理 時間の経過とともに状態がいつ、なぜ、どのように変化したかを追跡可能 
+> - 状態管理ロジックを UI レイヤーから完全に分離して作成したい 
+> - 異なる UI レイヤー間で状態管理ロジックを共有する Redux ミドルウェアの機能を使用して、アクションがディスパッチされるときに追加のロジックを追加する 
+> - Redux 状態の一部を永続化できること 開発者が再現できるバグレポートを有効にする 開発中のロジックと UI のデバッグを高速化
+
+
+
+## React Contextはサブスクライバをいつ再レンダリングさせるのか
+

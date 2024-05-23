@@ -1,0 +1,42 @@
+.pixel-loading--pixel {
+    --delay-time: 0.25s;
+    display: block;
+    float: left;
+    background: hsla(0, 0%, 100%, 0);
+    animation: pixel-loading 2s infinite;
+}
+
+#pixel-loading--id_1 {
+    animation-delay: 0.25s;
+}
+#pixel-loading--id_2 {
+    animation-delay: 0.5s;
+}
+#pixel-loading--id_3 {
+    animation-delay: 1.75s;
+}
+#pixel-loading--id_4 {
+    animation: none;
+}
+#pixel-loading--id_5 {
+    animation-delay: 0.75s;
+}
+#pixel-loading--id_6 {
+    animation-delay: 1.5s;
+}
+#pixel-loading--id_7 {
+    animation-delay: 1.25s;
+}
+#pixel-loading--id_8 {
+    animation-delay: 1s;
+}
+
+@keyframes pixel-loading {
+    0% {
+        background: hsla(0, 0%, 100%, 1);
+    }
+    100% {
+        background: hsla(0, 0%, 100%, 0);
+    }
+}
+
