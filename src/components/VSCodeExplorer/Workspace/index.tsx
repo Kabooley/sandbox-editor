@@ -4,10 +4,10 @@
 import React, { useState } from 'react';
 import Stack from '../Stack';
 import Action from '../Action';
-import closeIcon from '../../../assets/vscode/dark/close.svg';
 import newFileIcon from '../../../assets/vscode/dark/new-file.svg';
 import newFolderIcon from '../../../assets/vscode/dark/new-folder.svg';
-import collapseAllIcon from '../../../assets/vscode/dark/collapse-all.svg';
+// import closeIcon from '../../../assets/vscode/dark/close.svg';
+// import collapseAllIcon from '../../../assets/vscode/dark/collapse-all.svg';
 
 import Tree from './Tree';
 import TreeAsForm from './TreeAsForm';
@@ -23,14 +23,9 @@ import { Types } from '../../../context/FilesContext';
 
 import { useFiles, useFilesDispatch } from '../../../context/FilesContext';
 import { generateTreeNodeData } from './generateTree';
-
-import {
-    useLayoutDispatch,
-    Types as LayoutContextActionType,
-} from '../../../context/LayoutContext';
-import { ModalTypes } from '../../../context/LayoutContext';
 import { getAllDescendantsPath } from '../../../utils';
-// import type { iFilesActions } from '../../../context/FilesContext';
+import { useAppDispatch } from '../../../store/hooks';
+import { layoutActions, ModalTypes } from '../../../slices/layoutSlice';
 
 interface iProps {
     id: number;
@@ -57,9 +52,9 @@ const Workspace: React.FC<iProps> = ({
     }>({ visible: false, isFolder: false });
     const files = useFiles();
     const filesDispatch = useFilesDispatch();
-    const dispatchLayoutContextAction = useLayoutDispatch();
     const treeData = generateTreeNodeData(files, 'root');
     const title = 'virtual folder';
+    const dispatch = useAppDispatch();
 
     /*****************************
      * Node handlers
@@ -130,28 +125,18 @@ const Workspace: React.FC<iProps> = ({
                     requiredPaths: deletionTargetFiles.map((d) => d.getPath()),
                 },
             });
-
-            // モーダルの解除
-            dispatchLayoutContextAction({
-                type: LayoutContextActionType.RemoveModal,
-                payload: {
-                    modalType: isDeletionTargetFolder
-                        ? ModalTypes.DeleteAFolder
-                        : ModalTypes.DeleteAFile,
-                },
-            });
+            dispatch(layoutActions.RemoveModal());
         };
 
-        dispatchLayoutContextAction({
-            type: LayoutContextActionType.ShowModal,
-            payload: {
+        dispatch(
+            layoutActions.ShowModal({
                 modalType: isDeletionTargetFolder
                     ? ModalTypes.DeleteAFolder
                     : ModalTypes.DeleteAFile,
                 callback: callback,
                 fileName: _explorer.name,
-            },
-        });
+            })
+        );
     };
 
     /**

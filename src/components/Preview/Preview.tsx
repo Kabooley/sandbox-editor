@@ -5,7 +5,8 @@
  * ******************************************************/
 import React, { useRef, useEffect } from 'react';
 import { useBundledCode } from '../../context/BundleContext';
-import { useLayoutState } from '../../context/LayoutContext';
+import { useAppSelector } from '../../store/hooks';
+import { selectLayoutState } from '../../slices/layoutSlice';
 
 // const allowedOrigin = "http://localhost:8080";
 
@@ -43,11 +44,9 @@ const html: string = `
 const Preview = () => {
     const bundledCode = useBundledCode();
     const _refIframe = useRef<HTMLIFrameElement>(null);
-    const { pointerEventsOnPreviewIframe } = useLayoutState();
+    const { pointerEventsOnPreviewIframe } = useAppSelector(selectLayoutState);
 
     useEffect(() => {
-        // DEBUG:
-
         _refIframe.current && (_refIframe.current.srcdoc = html);
         setTimeout(() => {
             _refIframe.current &&

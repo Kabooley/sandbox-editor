@@ -12,11 +12,6 @@ import {
     Types as FilesContextType,
     useFilesDispatch,
 } from '../../context/FilesContext';
-import {
-    Types as LayoutContextType,
-    useLayoutDispatch,
-    useLayoutState,
-} from '../../context/LayoutContext';
 import { getFilenameFromPath, moveInArray, getFileIconName } from '../../utils';
 import type { File } from '../../data/files';
 import ScrollableElement from '../ScrollableElement';
@@ -24,6 +19,19 @@ import Action from '../VSCodeExplorer/Action';
 import { Icon } from '../Icon';
 import closeButtonIcon from '../../assets/vscode/dark/close.svg';
 import ellipsisIcon from '../../assets/vscode/dark/ellipsis.svg';
+
+import { useAppSelector, useAppDispatch } from '../../store/hooks';
+import {
+    selectLayoutState,
+    layoutSlice,
+    layoutActions,
+} from '../../slices/layoutSlice';
+
+// import {
+//     Types as LayoutContextType,
+//     useLayoutDispatch,
+//     useLayoutState,
+// } from '../../context/LayoutContext';
 
 // NOTE: 無理やり型を合わせている。
 // 本来`child: Node`でclassNameというpropertyを持たないが、iJSXNode.classNameをoptionalにすることによって
@@ -59,11 +67,11 @@ const TabsAndActionsContainer = ({
         y: 0,
     });
     const [displayMenu, setDisplayMenu] = useState<boolean>(false);
-    const { isPreviewDisplay } = useLayoutState();
-    const dispatch = useFilesDispatch();
-    const dispatchLayout = useLayoutDispatch();
+    const dispatchFilesAction = useFilesDispatch();
     const refTabArea = useRef<HTMLDivElement>(null);
     const refTabs = useRef<HTMLDivElement[]>([]);
+    const { isPreviewDisplay } = useAppSelector(selectLayoutState);
+    const dispatch = useAppDispatch();
 
     /**
      * Update scrollableWidth, scrollWidth, refTabs array length.
@@ -119,7 +127,7 @@ const TabsAndActionsContainer = ({
 
         console.log(`[TabsAndActions][onClose] ${path}`);
 
-        dispatch({
+        dispatchFilesAction({
             type: FilesContextType.Close,
             payload: {
                 path: path,
@@ -145,7 +153,7 @@ const TabsAndActionsContainer = ({
         // console.log(reorderedOpeningFiles);
         // console.log(payloads);
 
-        dispatch({
+        dispatchFilesAction({
             type: FilesContextType.ChangeMultiple,
             payload: payloads,
         });
@@ -200,29 +208,20 @@ const TabsAndActionsContainer = ({
 
     // Disable pointer events on window
     const disablePointerEventOnIframe = () => {
-        dispatchLayout({
-            type: LayoutContextType.DisablePointerEventsOnIframe,
-            payload: {},
-        });
+        dispatch(layoutActions.DisablePointerEventsOnIframe());
     };
 
     // Enable pointer events on window
     const enablePointerEventOnIframe = () => {
-        dispatchLayout({
-            type: LayoutContextType.EnablePointerEventsOnIframe,
-            payload: {},
-        });
+        dispatch(layoutActions.EnablePointerEventsOnIframe());
     };
 
     const handleTogglePreview = () => {
-        dispatchLayout({
-            type: LayoutContextType.TogglePreview,
-            payload: {},
-        });
+        dispatch(layoutActions.TogglePreview());
     };
 
     const handleCloseAll = () => {
-        dispatch({
+        dispatchFilesAction({
             type: FilesContextType.CloseAll,
             payload: {},
         });
@@ -360,115 +359,3 @@ const TabsAndActionsContainer = ({
 };
 
 export default TabsAndActionsContainer;
-
-// /**
-//  * https://react.dev/reference/react/memo#parameters
-//  *
-//  * Component wrapped by React.memo will return previous its output if arePropsEqual returns true.
-//  * If arePropsEqual return false, then componet will return updated output.
-//  *
-//  * NOTE: Pasing second arguments of React.memo() means
-//  * that you should check all props are equal to previous props.
-//  *
-//  * Check list
-//  * - Is openingFiles.length equal?
-//  * - Is selectedFile equal?
-//  * - Is parent width equal?
-//  * - Is each tabIndex of openingFiles equal?
-//  * */
-// const arePropsEqual = (
-//     prevProps: Readonly<iProps>,
-//     currentProps: Readonly<iProps>
-// ): boolean => {
-//     const isEqualNumberOfFiles =
-//         prevProps.filesOpening.length === currentProps.filesOpening.length;
-//     // ? false
-//     // : true;
-//     // 0: exact match, -1, 1: unmatch
-//     const prevSelected = prevProps.selectedFile !== undefined ? prevProps.selectedFile.getPath() : "";
-//     const currentSelected = currentProps.selectedFile !== undefined ? currentProps.selectedFile.getPath() : "";
-//     const isSameSelectedFile = prevSelected
-//         .toLocaleLowerCase()
-//         .localeCompare(currentSelected.toLocaleLowerCase())
-//         ? false
-//         : true;
-
-//     console.log(`[TabsAndActions][memo] prevSelected: ${prevSelected} currentSelected: ${currentSelected}`);
-
-//     // const isEqualWidth = prevProps.width === currentProps.width ? true : false;
-//     const isEqualWidth = prevProps.width === currentProps.width;
-
-//     let isTabOrderEqual = true;
-//     if (isEqualNumberOfFiles) {
-//         currentProps.filesOpening.sort(function (a: File, b: File) {
-//             if (a.getTabIndex()! < b.getTabIndex()!) {
-//                 return -1;
-//             } else if (a.getTabIndex()! > b.getTabIndex()!) {
-//                 return 1;
-//             }
-//             return 0;
-//         });
-//         prevProps.filesOpening.sort(function (a: File, b: File) {
-//             if (a.getTabIndex()! < b.getTabIndex()!) {
-//                 return -1;
-//             } else if (a.getTabIndex()! > b.getTabIndex()!) {
-//                 return 1;
-//             }
-//             return 0;
-//         });
-
-//         // console.log(
-//         //     `[TabsAndActions][memo] previuos filesOpening length: ${prevProps.filesOpening.length}`
-//         // );
-//         // console.log(
-//         //     `[TabsAndActions][memo] current filesOpening length: ${currentProps.filesOpening.length}`
-//         // );
-//         // console.log(
-//         //     `[TabsAndActions][memo] previous filesOpening: ${JSON.stringify(
-//         //         prevProps.filesOpening,
-//         //         null,
-//         //         2
-//         //     )}`
-//         // );
-//         // console.log(
-//         //     `[TabsAndActions][memo] current filesOpening: ${JSON.stringify(
-//         //         currentProps.filesOpening,
-//         //         null,
-//         //         2
-//         //     )}`
-//         // );
-
-//         // TODO: 要修正：prevProps.filesOpeningとcurrentProps.filesOpeningは
-//         // ユーザ操作によって毎度同じ長さではないので配列の範囲外にアクセスしようとするエラーが発生している。
-//         // 例えばTabsAndActions上のタブを閉じる操作をすると
-//         // currentProps.filesOpening[index].getPath()はundefinedでアクセスできないエラーが発生する
-//         isTabOrderEqual = prevProps.filesOpening.every((pf, index) => {
-//             return pf.getPath() === currentProps.filesOpening[index].getPath();
-//         });
-
-//         // isTabOrderEqual = prevProps.filesOpening.every(
-//         //     (pf, index) =>
-//         //         pf.getPath() === currentProps.filesOpening[index].getPath()
-//         // );
-//     }
-
-//     console.log(
-//         `Will TabsAndActions rerender?: ${
-//             isEqualNumberOfFiles &&
-//             isSameSelectedFile &&
-//             isEqualWidth &&
-//             isTabOrderEqual
-//                 ? 'NO'
-//                 : 'YES'
-//         }`
-//     );
-
-//     return (
-//         isEqualNumberOfFiles &&
-//         isSameSelectedFile &&
-//         isEqualWidth &&
-//         isTabOrderEqual
-//     );
-// };
-
-// export default React.memo(TabsAndActionsContainer, arePropsEqual);
