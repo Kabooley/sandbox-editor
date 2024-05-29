@@ -10,11 +10,9 @@ import React from 'react';
 import * as monaco from 'monaco-editor';
 import type { iOrderBundleResult } from '../worker/types';
 import type { File } from '../data/files';
-import type { iFilesActions } from '../context/FilesContext';
 import type { iBundledCodeActions } from '../context/BundleContext';
 import type { iOrderBundle } from '../worker/types';
 import { Types as bundledContextTypes } from '../context/BundleContext';
-import { Types as filesContextTypes } from '../context/FilesContext';
 import {
     OrderTypes,
     // iFetchResponse
@@ -26,13 +24,19 @@ import { generateTreeForBundler, getFilenameFromPath } from '../utils';
 import TabsAndActionsContainer from './TabsAndActions';
 import EditorNoSelectedFile from './NoSelectedEditor';
 
-interface iProps {
-    files: File[];
+import { connect } from 'react-redux';
+import { filesActions } from '../slices/filesSlice';
+import type { RootState } from '../store';
+
+interface iDefaultProps {
+    // files: File[];
     // addTypings: iTypingLibsContext;
-    dispatchFiles: React.Dispatch<iFilesActions>;
+    // dispatchFiles: React.Dispatch<iFilesActions>;
     dispatchBundledCode: React.Dispatch<iBundledCodeActions>;
     width: number;
 }
+
+type iProps = ReturnType<typeof mapState> & typeof mapDispatch & iDefaultProps;
 
 interface iState {
     currentFilePath: string;
@@ -123,10 +127,10 @@ class EditorContainer extends React.Component<iProps, iState> {
         // // [path: string]: {
         // //      content: string; version: number;
         // // }
-        const currentJSLibs =
-            monaco.languages.typescript.javascriptDefaults.getExtraLibs();
-        const currentTSLibs =
-            monaco.languages.typescript.typescriptDefaults.getExtraLibs();
+        // const currentJSLibs =
+        // monaco.languages.typescript.javascriptDefaults.getExtraLibs();
+        // const currentTSLibs =
+        // monaco.languages.typescript.typescriptDefaults.getExtraLibs();
         // console.log(currentTSLibs);
         // console.dir(this.props.files);
         // console.dir(prevProp.files);
@@ -181,13 +185,10 @@ class EditorContainer extends React.Component<iProps, iState> {
      *
      * */
     _onEditorContentChange(code: string, path: string) {
-        this.props.dispatchFiles({
-            type: filesContextTypes.Change,
-            payload: {
-                targetFilePath: path,
-                changeProp: {
-                    newValue: code,
-                },
+        this.props.changeFile({
+            targetFilePath: path,
+            changeProp: {
+                newValue: code,
             },
         });
         this._debouncedBundle();
@@ -246,10 +247,7 @@ class EditorContainer extends React.Component<iProps, iState> {
     }
 
     _onChangeSelectedTab(selected: string) {
-        this.props.dispatchFiles({
-            type: filesContextTypes.ChangeSelectedFile,
-            payload: { selectedFilePath: selected },
-        });
+        this.props.changeSelectedFile({ selectedFilePath: selected });
     }
 
     /***
@@ -368,4 +366,22 @@ class EditorContainer extends React.Component<iProps, iState> {
     }
 }
 
-export default EditorContainer;
+const mapState = (state: RootState) => {
+    return {
+        files: state.files.files,
+    };
+};
+
+const mapDispatch = {
+    addFile: filesActions.addFile,
+    changeFile: filesActions.changeFile,
+    changeMultipleFiles: filesActions.changeMultipleFiles,
+    changeSelectedFile: filesActions.changeSelectedFile,
+    closeFile: filesActions.closeFile,
+    closeAllFiles: filesActions.closeAllFiles,
+    deleteFile: filesActions.deleteFile,
+    deleteMultipleFiles: filesActions.deleteMultipleFiles,
+    openFile: filesActions.openFile,
+};
+
+export default connect(mapState, mapDispatch)(EditorContainer);

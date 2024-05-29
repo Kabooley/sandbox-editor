@@ -72,3 +72,9 @@ udemyのMaximilian Reactコースより
 
 https://blog.isquaredsoftware.com/2021/01/context-redux-differences/
 
+
+
+## 入替
+
+#### A non-serializable value was detected in the state, in the path: `files.files.0`. Value: 
+

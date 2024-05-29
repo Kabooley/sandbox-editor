@@ -1,18 +1,13 @@
 import React from 'react';
 import Stack from '../Stack';
 import Action from '../Action';
-import {
-    useFiles,
-    useFilesDispatch,
-    Types as FilesActionTypes,
-} from '../../../context/FilesContext';
 import { File } from '../../../data/files';
 import { getFilenameFromPath, getFileIconName } from '../../../utils';
 import { Icon } from '../../Icon';
 import closeAllIcon from '../../../assets/vscode/dark/close-all.svg';
 import closeIcon from '../../../assets/vscode/dark/close.svg';
-// import chevronRightIcon from '../../../assets/vscode/dark/chevron-right.svg';
-// import saveAllIcon from '../../../assets/vscode/dark/save-all.svg';
+import { useAppSelector, useAppDispatch } from '../../../store/hooks';
+import { selectFiles, filesActions } from '../../../slices/filesSlice';
 
 interface iProps {
     id: number;
@@ -36,8 +31,8 @@ const OpenEditor: React.FC<iProps> = ({
     height,
     width,
 }) => {
-    const files = useFiles();
-    const filesDispatch = useFilesDispatch();
+    const { files } = useAppSelector(selectFiles);
+    const dispatch = useAppDispatch();
     const filesOpening = files.filter((f) => f.isOpening());
     const title = 'open editor';
 
@@ -53,12 +48,11 @@ const OpenEditor: React.FC<iProps> = ({
         e.stopPropagation();
         // Ignore if the file is selected already
         if (file.isSelected()) return;
-        filesDispatch({
-            type: FilesActionTypes.ChangeSelectedFile,
-            payload: {
+        dispatch(
+            filesActions.changeSelectedFile({
                 selectedFilePath: file.getPath(),
-            },
-        });
+            })
+        );
     };
     /************************************************
      *  Action handlers
@@ -66,21 +60,11 @@ const OpenEditor: React.FC<iProps> = ({
      *
      ************************************************/
     const closeFile = (file: File) => {
-        filesDispatch({
-            type: FilesActionTypes.Close,
-            payload: {
-                path: file.getPath(),
-            },
-        });
+        dispatch(filesActions.closeFile({ path: file.getPath() }));
     };
 
     const handleCloseAllEditors = () => {
-        console.log('[OpenEditor] action close all');
-
-        filesDispatch({
-            type: FilesActionTypes.CloseAll,
-            payload: {},
-        });
+        dispatch(filesActions.closeAllFiles());
     };
 
     /************************************************

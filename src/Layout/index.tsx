@@ -6,7 +6,6 @@ import MainContainer from './MainContainer';
 import SplitPane from './SplitPane';
 import PaneSection from './PaneSection';
 import FooterSection from './FooterSection';
-import { FilesProvider } from '../context/FilesContext';
 import { BundledCodeProvider } from '../context/BundleContext';
 import { TypingLibsProvider } from '../context/TypingLibsContext';
 import Modal from '../components/Modal';
@@ -22,15 +21,13 @@ const Layout = (): JSX.Element => {
             <HeaderSection />
             <MainContainer>
                 <SplitPane>
-                    <FilesProvider>
-                        <BundledCodeProvider>
-                            <TypingLibsProvider>
-                                <PaneSection />
-                                <EditorSection />
-                                <PreviewSection />
-                            </TypingLibsProvider>
-                        </BundledCodeProvider>
-                    </FilesProvider>
+                    <BundledCodeProvider>
+                        <TypingLibsProvider>
+                            <PaneSection />
+                            <EditorSection />
+                            <PreviewSection />
+                        </TypingLibsProvider>
+                    </BundledCodeProvider>
                 </SplitPane>
             </MainContainer>
             <FooterSection />

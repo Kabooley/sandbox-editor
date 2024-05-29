@@ -3,10 +3,6 @@
  * *****************************************************************************/
 import React, { useState } from 'react';
 import FormColumn from './FormColumn';
-import {
-    useFilesDispatch,
-    Types as FilesActionTypes,
-} from '../../../context/FilesContext';
 import DragNDrop from '../DragNDrop';
 import {
     isFilenameValid,
@@ -17,6 +13,8 @@ import {
     getFileType,
 } from '../../../utils';
 import type { iExplorer } from '../../../data/types';
+import { useAppDispatch } from '../../../store/hooks';
+import { filesActions } from '../../../slices/filesSlice';
 
 import Action from '../Action';
 import chevronRightIcon from '../../../assets/vscode/dark/chevron-right.svg';
@@ -71,7 +69,7 @@ const Tree: React.FC<iProps> = ({
     const [dragging, setDragging] = useState<boolean>(false);
     // true if rename action has been clicked.
     const [renaming, setRenaming] = useState<boolean>(false);
-    const dispatchFilesAction = useFilesDispatch();
+    const dispatch = useAppDispatch();
 
     const handleNewItem = (isFolder: boolean) => {
         setExpand(true);
@@ -206,23 +204,19 @@ const Tree: React.FC<iProps> = ({
                 },
             });
 
-            dispatchFilesAction({
-                type: FilesActionTypes.ChangeMultiple,
-                payload: requests,
-            });
+            dispatch(filesActions.changeMultipleFiles(requests));
         } else {
             // create new path
             const _path = getPathExcludeFilename(explorer.path);
             const newPath = (_path ? _path : '') + newName;
-            dispatchFilesAction({
-                type: FilesActionTypes.Change,
-                payload: {
+            dispatch(
+                filesActions.changeFile({
                     targetFilePath: explorer.path,
                     changeProp: {
                         newPath: newPath,
                     },
-                },
-            });
+                })
+            );
         }
 
         setIsInputBegun(false);

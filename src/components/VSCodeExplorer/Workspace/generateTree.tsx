@@ -16,10 +16,14 @@ import { File } from '../../../data/files';
  *
  * */
 export const generateTreeNodeData = (
-    entries: File[] = [],
+    _entries: File[] = [],
     root: string = 'root'
 ): iExplorer => {
+    // stackoverflowでこうした方がいいとどこかで見かけた...
+    const entries = [..._entries];
     entries.sort(function (a: File, b: File) {
+        console.log(a);
+        console.log(b);
         let aPath = a.getPath().toLowerCase(); // ignore upper and lowercase
         let bPath = b.getPath().toLowerCase(); // ignore upper and lowercase
         if (aPath < bPath) return -1;

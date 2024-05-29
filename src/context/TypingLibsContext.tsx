@@ -27,11 +27,9 @@ import {
     sortPropertiesByKey,
     getValidSemver,
 } from '../utils';
-import {
-    useFiles,
-    useFilesDispatch,
-    Types as FilesActionTypes,
-} from './FilesContext';
+
+import { useAppSelector, useAppDispatch } from '../store/hooks';
+import { selectFiles, filesActions } from '../slices/filesSlice';
 import type { iRequestFetchLibs, iResponseFetchLibs } from '../worker/types';
 
 // DEBUG:
@@ -101,9 +99,8 @@ const TypingLibsProvider = ({ children }: iProps) => {
      * worker instance.
      * */
     const agent = useRef<Worker>();
-
-    const files = useFiles();
-    const dispatchFilesAction = useFilesDispatch();
+    const { files } = useAppSelector(selectFiles);
+    const dispatch = useAppDispatch();
     const _packageJson = files.find((f) => f.getPath() === 'package.json');
     const packageJson =
         _packageJson !== undefined
@@ -173,25 +170,18 @@ const TypingLibsProvider = ({ children }: iProps) => {
      * */
     useEffect(() => {
         console.log('[TypingLibsContext] Updated packageJson');
-        // console.log(packageJson);
 
         const timer = setTimeout(() => {
             const { deleted, created, modifiedVal } = getDiffOfPackageJson();
             if (deleted.length) {
                 deleted.forEach((d) => {
                     const key = Object.keys(d)[0];
-
-                    // console.log(`[TypingLibsContext] Delete ${key}@${d[key]}`);
-
                     removeLibrary(key, d[key]);
                 });
             }
             if (created.length) {
                 created.forEach((d) => {
                     const key = Object.keys(d)[0];
-
-                    // console.log(`[TypingLibsContext] Fetch ${key}@${d[key]}`);
-
                     requestFetchTypings(key, d[key]);
                 });
             }
@@ -199,11 +189,6 @@ const TypingLibsProvider = ({ children }: iProps) => {
                 modifiedVal.forEach((d) => {
                     const key = Object.keys(d)[0];
                     const { prev, current } = d[key];
-
-                    // console.log(
-                    //     `[TypingLibsContext] modified. ${key}@${prev} --> ${key}@${current}`
-                    // );
-
                     requestFetchTypings(key, current);
                 });
             }
@@ -213,18 +198,6 @@ const TypingLibsProvider = ({ children }: iProps) => {
 
         return () => clearTimeout(timer);
     }, [packageJson]);
-
-    // // DEBUG:
-    // useEffect(() => {
-    //     console.log('[TypingLibsContext] did update.');
-    //     console.log(dependencies);
-    //     console.log(requestingDependencies);
-    //     console.log(setOfDependency);
-
-    //     Object.keys(
-    //         monaco.languages.typescript.typescriptDefaults.getExtraLibs()
-    //     ).forEach((key) => console.log(key));
-    // });
 
     // DEBUG:
     useLoadingSurvey(
@@ -303,10 +276,6 @@ const TypingLibsProvider = ({ children }: iProps) => {
         }
         // 取得成功の場合:
         else {
-            // console.log(
-            //     `[TypingLibsContext][handleWorkerMessage] Succeeded to install ${moduleName}@${version}`
-            // );
-
             let updatedDependencies: iDependencyState[] = [];
             // 同名別バージョンがインストールされた場合
             // 上書きする
@@ -644,18 +613,14 @@ const TypingLibsProvider = ({ children }: iProps) => {
                 2
             );
 
-            // console.log('[TypingLibsContext][reflectToPackageJson] reflect:');
-            // console.log(packageJsonString);
-
-            dispatchFilesAction({
-                type: FilesActionTypes.Change,
-                payload: {
+            dispatch(
+                filesActions.changeFile({
                     targetFilePath: 'package.json',
                     changeProp: {
                         newValue: packageJsonString,
                     },
-                },
-            });
+                })
+            );
             setSnapshot(packageJsonString);
         } catch (e) {
             console.error(e);

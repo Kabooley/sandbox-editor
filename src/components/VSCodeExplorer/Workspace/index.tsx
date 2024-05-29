@@ -6,8 +6,6 @@ import Stack from '../Stack';
 import Action from '../Action';
 import newFileIcon from '../../../assets/vscode/dark/new-file.svg';
 import newFolderIcon from '../../../assets/vscode/dark/new-folder.svg';
-// import closeIcon from '../../../assets/vscode/dark/close.svg';
-// import collapseAllIcon from '../../../assets/vscode/dark/collapse-all.svg';
 
 import Tree from './Tree';
 import TreeAsForm from './TreeAsForm';
@@ -19,13 +17,12 @@ import {
 } from '../utils';
 import type { iExplorer } from '../../../data/types';
 import { File } from '../../../data/files';
-import { Types } from '../../../context/FilesContext';
-
-import { useFiles, useFilesDispatch } from '../../../context/FilesContext';
 import { generateTreeNodeData } from './generateTree';
 import { getAllDescendantsPath } from '../../../utils';
-import { useAppDispatch } from '../../../store/hooks';
+import { useAppSelector, useAppDispatch } from '../../../store/hooks';
 import { layoutActions, ModalTypes } from '../../../slices/layoutSlice';
+import { selectFiles, filesActions } from '../../../slices/filesSlice';
+
 
 interface iProps {
     id: number;
@@ -50,8 +47,7 @@ const Workspace: React.FC<iProps> = ({
         visible: boolean;
         isFolder: boolean;
     }>({ visible: false, isFolder: false });
-    const files = useFiles();
-    const filesDispatch = useFilesDispatch();
+    const { files } = useAppSelector(selectFiles);
     const treeData = generateTreeNodeData(files, 'root');
     const title = 'virtual folder';
     const dispatch = useAppDispatch();
@@ -67,13 +63,10 @@ const Workspace: React.FC<iProps> = ({
         requiredPath: string,
         isFolder: boolean
     ): void => {
-        filesDispatch({
-            type: Types.Add,
-            payload: {
-                requiredPath: requiredPath,
-                isFolder: isFolder,
-            },
-        });
+        dispatch(filesActions.addFile({
+            requiredPath: requiredPath,
+            isFolder: isFolder,
+        }));
     };
 
     /***
@@ -119,12 +112,9 @@ const Workspace: React.FC<iProps> = ({
 
         const callback = () => {
             // やってほしいこと
-            filesDispatch({
-                type: Types.DeleteMultiple,
-                payload: {
-                    requiredPaths: deletionTargetFiles.map((d) => d.getPath()),
-                },
-            });
+            dispatch(filesActions.deleteMultipleFiles({
+                        requiredPaths: deletionTargetFiles.map((d) => d.getPath()),
+                    }));
             dispatch(layoutActions.RemoveModal());
         };
 
@@ -202,8 +192,6 @@ const Workspace: React.FC<iProps> = ({
             if (!isFolderEmpty) {
                 // In case movingItem is folder and not empty.
 
-                // DEBUG:
-
                 // By pushing item, no longer `descendantPaths` is not descendant paths.
                 // But keep the name in this scope.
                 descendantPaths.push(movingFile.getPath());
@@ -212,54 +200,45 @@ const Workspace: React.FC<iProps> = ({
                     descendantPaths.find((d) => d === f.getPath())
                 );
 
-                filesDispatch({
-                    type: Types.ChangeMultiple,
-                    payload: [
-                        ...reorderingFiles.map((r) => {
-                            return {
-                                targetFilePath: r.getPath(),
-                                changeProp: {
-                                    newPath:
-                                        appendPath +
-                                        r
-                                            .getPath()
-                                            .split('/')
-                                            .slice(
-                                                movingFilePathArr.length - 1,
-                                                r.getPath().length
-                                            )
-                                            .join('/'),
-                                },
-                            };
-                        }),
-                    ],
-                });
+                dispatch(filesActions.changeMultipleFiles([
+                    ...reorderingFiles.map((r) => {
+                        return {
+                            targetFilePath: r.getPath(),
+                            changeProp: {
+                                newPath:
+                                    appendPath +
+                                    r
+                                        .getPath()
+                                        .split('/')
+                                        .slice(
+                                            movingFilePathArr.length - 1,
+                                            r.getPath().length
+                                        )
+                                        .join('/'),
+                            },
+                        };
+                    }),
+                ]));
             } else {
                 // In case movingItem is empty folder:
-                filesDispatch({
-                    type: Types.Change,
-                    payload: {
-                        targetFilePath: movingFile.getPath(),
-                        changeProp: {
-                            newPath:
-                                appendPath +
-                                movingFile.getPath().split('/').pop(),
-                        },
-                    },
-                });
-            }
-        } else {
-            // In case movingItem is not folder:
-            filesDispatch({
-                type: Types.Change,
-                payload: {
+                dispatch(filesActions.changeFile({
                     targetFilePath: movingFile.getPath(),
                     changeProp: {
                         newPath:
-                            appendPath + movingFile.getPath().split('/').pop(),
+                            appendPath +
+                            movingFile.getPath().split('/').pop(),
                     },
+                }));
+            }
+        } else {
+            // In case movingItem is not folder:
+            dispatch(filesActions.changeFile({
+                targetFilePath: movingFile.getPath(),
+                changeProp: {
+                    newPath:
+                        appendPath + movingFile.getPath().split('/').pop(),
                 },
-            });
+            }))
         }
     };
 
@@ -300,24 +279,14 @@ const Workspace: React.FC<iProps> = ({
     };
 
     const handleOpenFile = (explorer: iExplorer) => {
-        filesDispatch({
-            type: Types.Open,
-            payload: {
-                path: explorer.path,
-            },
-        });
+        dispatch(filesActions.openFile({ path: explorer.path }));
     };
 
     /**
      *
      * */
     const handleSelectFile = (explorer: iExplorer) => {
-        filesDispatch({
-            type: Types.ChangeSelectedFile,
-            payload: {
-                selectedFilePath: explorer.path,
-            },
-        });
+        dispatch(filesActions.changeSelectedFile({ selectedFilePath: explorer.path }));
     };
 
     /************************
@@ -380,9 +349,6 @@ const Workspace: React.FC<iProps> = ({
             isSelected: false,
         });
     }
-
-    // console.log('[Workspace] tree data:');
-    // console.dir(treeData);
 
     return (
         <Stack

@@ -8,10 +8,6 @@ import React, { useRef, useState, useEffect } from 'react';
 import DragNDrop from '../VSCodeExplorer/DragNDrop';
 import { CollapseIcon } from './CollapseIcon';
 import { MoreActionsMenu } from './MoreActionsMenu';
-import {
-    Types as FilesContextType,
-    useFilesDispatch,
-} from '../../context/FilesContext';
 import { getFilenameFromPath, moveInArray, getFileIconName } from '../../utils';
 import type { File } from '../../data/files';
 import ScrollableElement from '../ScrollableElement';
@@ -21,17 +17,8 @@ import closeButtonIcon from '../../assets/vscode/dark/close.svg';
 import ellipsisIcon from '../../assets/vscode/dark/ellipsis.svg';
 
 import { useAppSelector, useAppDispatch } from '../../store/hooks';
-import {
-    selectLayoutState,
-    layoutSlice,
-    layoutActions,
-} from '../../slices/layoutSlice';
-
-// import {
-//     Types as LayoutContextType,
-//     useLayoutDispatch,
-//     useLayoutState,
-// } from '../../context/LayoutContext';
+import { selectLayoutState, layoutActions } from '../../slices/layoutSlice';
+import { filesActions } from '../../slices/filesSlice';
 
 // NOTE: 無理やり型を合わせている。
 // 本来`child: Node`でclassNameというpropertyを持たないが、iJSXNode.classNameをoptionalにすることによって
@@ -67,11 +54,11 @@ const TabsAndActionsContainer = ({
         y: 0,
     });
     const [displayMenu, setDisplayMenu] = useState<boolean>(false);
-    const dispatchFilesAction = useFilesDispatch();
     const refTabArea = useRef<HTMLDivElement>(null);
     const refTabs = useRef<HTMLDivElement[]>([]);
     const { isPreviewDisplay } = useAppSelector(selectLayoutState);
     const dispatch = useAppDispatch();
+    // const dispatchFilesAction = useFilesDispatch();
 
     /**
      * Update scrollableWidth, scrollWidth, refTabs array length.
@@ -124,15 +111,7 @@ const TabsAndActionsContainer = ({
     const onClose = (e: React.MouseEvent<HTMLLIElement>, path: string) => {
         e.stopPropagation();
         e.preventDefault();
-
-        console.log(`[TabsAndActions][onClose] ${path}`);
-
-        dispatchFilesAction({
-            type: FilesContextType.Close,
-            payload: {
-                path: path,
-            },
-        });
+        dispatch(filesActions.closeFile({ path: path }));
     };
 
     const handleReorderTab = (from: number, to: number) => {
@@ -145,18 +124,7 @@ const TabsAndActionsContainer = ({
                 },
             };
         });
-
-        // // DEBUG:
-        // console.log(
-        //   `[TabsAndActions] Reorder tabs on TabsAndActions: from ${from} to ${to}`
-        // );
-        // console.log(reorderedOpeningFiles);
-        // console.log(payloads);
-
-        dispatchFilesAction({
-            type: FilesContextType.ChangeMultiple,
-            payload: payloads,
-        });
+        dispatch(filesActions.changeMultipleFiles(payloads));
     };
 
     /********************************************************
@@ -221,10 +189,7 @@ const TabsAndActionsContainer = ({
     };
 
     const handleCloseAll = () => {
-        dispatchFilesAction({
-            type: FilesContextType.CloseAll,
-            payload: {},
-        });
+        dispatch(filesActions.closeAllFiles());
     };
 
     /********************************************
