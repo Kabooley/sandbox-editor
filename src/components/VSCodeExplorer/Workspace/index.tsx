@@ -16,13 +16,12 @@ import {
     getParentNodeByChildId,
 } from '../utils';
 import type { iExplorer } from '../../../data/types';
-import { File } from '../../../data/files';
 import { generateTreeNodeData } from './generateTree';
 import { getAllDescendantsPath } from '../../../utils';
 import { useAppSelector, useAppDispatch } from '../../../store/hooks';
 import { layoutActions, ModalTypes } from '../../../slices/layoutSlice';
 import { selectFiles, filesActions } from '../../../slices/filesSlice';
-
+import { iFile } from '../../../data/types';
 
 interface iProps {
     id: number;
@@ -63,10 +62,12 @@ const Workspace: React.FC<iProps> = ({
         requiredPath: string,
         isFolder: boolean
     ): void => {
-        dispatch(filesActions.addFile({
-            requiredPath: requiredPath,
-            isFolder: isFolder,
-        }));
+        dispatch(
+            filesActions.addFile({
+                requiredPath: requiredPath,
+                isFolder: isFolder,
+            })
+        );
     };
 
     /***
@@ -84,10 +85,10 @@ const Workspace: React.FC<iProps> = ({
 
         const deletionTargetPathArr = _explorer.path.split('/');
 
-        const deletionTargetFiles: File[] = files.filter((f) => {
+        const deletionTargetFiles: iFile[] = files.filter((f) => {
             // In case deletion target is folder and f is also folder.
-            if (f.isFolder() && isDeletionTargetFolder) {
-                const comparandPathArr = f.getPath().split('/');
+            if (f.isFolder && isDeletionTargetFolder) {
+                const comparandPathArr = f.path.split('/');
                 if (deletionTargetPathArr.length > comparandPathArr.length)
                     return false;
 
@@ -102,19 +103,19 @@ const Workspace: React.FC<iProps> = ({
             }
             // In case deletion target is a file, not any folder.
             else if (!descendantPaths.length) {
-                return f.getPath() === _explorer.path;
+                return f.path === _explorer.path;
             }
             // In case deletion target is folder but f is not folder.
-            return descendantPaths.find((d) => d === f.getPath())
-                ? true
-                : false;
+            return descendantPaths.find((d) => d === f.path) ? true : false;
         });
 
         const callback = () => {
             // やってほしいこと
-            dispatch(filesActions.deleteMultipleFiles({
-                        requiredPaths: deletionTargetFiles.map((d) => d.getPath()),
-                    }));
+            dispatch(
+                filesActions.deleteMultipleFiles({
+                    requiredPaths: deletionTargetFiles.map((d) => d.path),
+                })
+            );
             dispatch(layoutActions.RemoveModal());
         };
 
@@ -161,8 +162,8 @@ const Workspace: React.FC<iProps> = ({
             treeData,
             droppedId
         );
-        const movingFile: File | undefined = files.find(
-            (f) => f.getPath() === movingItem!.path
+        const movingFile: iFile | undefined = files.find(
+            (f) => f.path === movingItem!.path
         );
 
         if (
@@ -194,51 +195,54 @@ const Workspace: React.FC<iProps> = ({
 
                 // By pushing item, no longer `descendantPaths` is not descendant paths.
                 // But keep the name in this scope.
-                descendantPaths.push(movingFile.getPath());
-                const movingFilePathArr = movingFile.getPath().split('/');
+                descendantPaths.push(movingFile.path);
+                const movingFilePathArr = movingFile.path.split('/');
                 const reorderingFiles = files.filter((f) =>
-                    descendantPaths.find((d) => d === f.getPath())
+                    descendantPaths.find((d) => d === f.path)
                 );
 
-                dispatch(filesActions.changeMultipleFiles([
-                    ...reorderingFiles.map((r) => {
-                        return {
-                            targetFilePath: r.getPath(),
-                            changeProp: {
-                                newPath:
-                                    appendPath +
-                                    r
-                                        .getPath()
-                                        .split('/')
-                                        .slice(
-                                            movingFilePathArr.length - 1,
-                                            r.getPath().length
-                                        )
-                                        .join('/'),
-                            },
-                        };
-                    }),
-                ]));
+                dispatch(
+                    filesActions.changeMultipleFiles([
+                        ...reorderingFiles.map((r) => {
+                            return {
+                                targetFilePath: r.path,
+                                changeProp: {
+                                    newPath:
+                                        appendPath +
+                                        r.path
+                                            .split('/')
+                                            .slice(
+                                                movingFilePathArr.length - 1,
+                                                r.path.length
+                                            )
+                                            .join('/'),
+                                },
+                            };
+                        }),
+                    ])
+                );
             } else {
                 // In case movingItem is empty folder:
-                dispatch(filesActions.changeFile({
-                    targetFilePath: movingFile.getPath(),
-                    changeProp: {
-                        newPath:
-                            appendPath +
-                            movingFile.getPath().split('/').pop(),
-                    },
-                }));
+                dispatch(
+                    filesActions.changeFile({
+                        targetFilePath: movingFile.path,
+                        changeProp: {
+                            newPath:
+                                appendPath + movingFile.path.split('/').pop(),
+                        },
+                    })
+                );
             }
         } else {
             // In case movingItem is not folder:
-            dispatch(filesActions.changeFile({
-                targetFilePath: movingFile.getPath(),
-                changeProp: {
-                    newPath:
-                        appendPath + movingFile.getPath().split('/').pop(),
-                },
-            }))
+            dispatch(
+                filesActions.changeFile({
+                    targetFilePath: movingFile.path,
+                    changeProp: {
+                        newPath: appendPath + movingFile.path.split('/').pop(),
+                    },
+                })
+            );
         }
     };
 
@@ -286,7 +290,9 @@ const Workspace: React.FC<iProps> = ({
      *
      * */
     const handleSelectFile = (explorer: iExplorer) => {
-        dispatch(filesActions.changeSelectedFile({ selectedFilePath: explorer.path }));
+        dispatch(
+            filesActions.changeSelectedFile({ selectedFilePath: explorer.path })
+        );
     };
 
     /************************

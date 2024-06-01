@@ -1,7 +1,7 @@
 import React from 'react';
 import Stack from '../Stack';
 import Action from '../Action';
-import { File } from '../../../data/files';
+import type { iFile } from '../../../data/types';
 import { getFilenameFromPath, getFileIconName } from '../../../utils';
 import { Icon } from '../../Icon';
 import closeAllIcon from '../../../assets/vscode/dark/close-all.svg';
@@ -33,7 +33,7 @@ const OpenEditor: React.FC<iProps> = ({
 }) => {
     const { files } = useAppSelector(selectFiles);
     const dispatch = useAppDispatch();
-    const filesOpening = files.filter((f) => f.isOpening());
+    const filesOpening = files.filter((f) => f.opening);
     const title = 'open editor';
 
     /************************************************
@@ -43,14 +43,14 @@ const OpenEditor: React.FC<iProps> = ({
      ************************************************/
     const handleClickFile = (
         e: React.MouseEvent<HTMLDivElement>,
-        file: File
+        file: iFile
     ) => {
         e.stopPropagation();
         // Ignore if the file is selected already
-        if (file.isSelected()) return;
+        if (file.selected) return;
         dispatch(
             filesActions.changeSelectedFile({
-                selectedFilePath: file.getPath(),
+                selectedFilePath: file.path,
             })
         );
     };
@@ -59,8 +59,8 @@ const OpenEditor: React.FC<iProps> = ({
      *
      *
      ************************************************/
-    const closeFile = (file: File) => {
-        dispatch(filesActions.closeFile({ path: file.getPath() }));
+    const closeFile = (file: iFile) => {
+        dispatch(filesActions.closeFile({ path: file.path }));
     };
 
     const handleCloseAllEditors = () => {
@@ -101,7 +101,7 @@ const OpenEditor: React.FC<iProps> = ({
     //     );
     // };
 
-    const renderActionCloseAFile = (file: File) => {
+    const renderActionCloseAFile = (file: iFile) => {
         const clickHandler = (e: React.MouseEvent<HTMLLIElement>) => {
             e.stopPropagation();
             e.preventDefault();
@@ -140,12 +140,12 @@ const OpenEditor: React.FC<iProps> = ({
                         </div>
                     </div>
                     <div className="codicon">
-                        <Icon name={getFileIconName(f.getPath())} size="16px" />
+                        <Icon name={getFileIconName(f.path)} size="16px" />
                     </div>
                     <h3 className="item-label">
-                        {getFilenameFromPath(f.getPath())}
+                        {getFilenameFromPath(f.path)}
                     </h3>
-                    <span>{f.getPath()}</span>
+                    <span>{f.path}</span>
                 </div>
             ))}
         </Stack>

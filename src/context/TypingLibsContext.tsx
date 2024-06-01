@@ -101,11 +101,9 @@ const TypingLibsProvider = ({ children }: iProps) => {
     const agent = useRef<Worker>();
     const { files } = useAppSelector(selectFiles);
     const dispatch = useAppDispatch();
-    const _packageJson = files.find((f) => f.getPath() === 'package.json');
+    const _packageJson = files.find((f) => f.path === 'package.json');
     const packageJson =
-        _packageJson !== undefined
-            ? _packageJson.getValue()
-            : packageJsonNecessary;
+        _packageJson !== undefined ? _packageJson.value : packageJsonNecessary;
     // Saves previous packageJson string
     const [snapshot, setSnapshot] = useState<string>(packageJsonNecessary);
     // Dependency requested to be fetched will be added.

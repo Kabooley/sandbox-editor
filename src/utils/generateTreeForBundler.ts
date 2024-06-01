@@ -1,13 +1,13 @@
-import type { File } from '../data/files';
+import type { iFile } from '../data/types';
 
 /***
  * This utility is for bundler
  *
  * */
-export const generateTreeForBundler = (files: File[]) => {
+export const generateTreeForBundler = (files: iFile[]) => {
     const tree: { [key: string]: string } = {};
     files.forEach((f) => {
-        tree[f.getPath()] = f.getValue();
+        tree[f.path] = f.value;
     });
     return tree;
 };

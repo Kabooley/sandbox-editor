@@ -9,7 +9,7 @@ import DragNDrop from '../VSCodeExplorer/DragNDrop';
 import { CollapseIcon } from './CollapseIcon';
 import { MoreActionsMenu } from './MoreActionsMenu';
 import { getFilenameFromPath, moveInArray, getFileIconName } from '../../utils';
-import type { File } from '../../data/files';
+import type { iFile } from '../../data/types';
 import ScrollableElement from '../ScrollableElement';
 import Action from '../VSCodeExplorer/Action';
 import { Icon } from '../Icon';
@@ -30,12 +30,12 @@ interface iJSXNode extends Node {
 interface iProps {
     // Selected file path
     // path: string;
-    selectedFile: File | undefined;
+    selectedFile: iFile | undefined;
     onChangeSelectedTab: (path: string) => void;
     // Get width of parent which may resize dynamically.
     width: number;
     // Array<File> concist of elements which isSelected field is true
-    filesOpening: File[];
+    filesOpening: iFile[];
 }
 
 // According to `sass/components/_tabsAndActions.scss`.
@@ -58,7 +58,6 @@ const TabsAndActionsContainer = ({
     const refTabs = useRef<HTMLDivElement[]>([]);
     const { isPreviewDisplay } = useAppSelector(selectLayoutState);
     const dispatch = useAppDispatch();
-    // const dispatchFilesAction = useFilesDispatch();
 
     /**
      * Update scrollableWidth, scrollWidth, refTabs array length.
@@ -115,10 +114,10 @@ const TabsAndActionsContainer = ({
     };
 
     const handleReorderTab = (from: number, to: number) => {
-        const reorderedOpeningFiles = moveInArray<File>(filesOpening, from, to);
+        const reorderedOpeningFiles = moveInArray<iFile>(filesOpening, from, to);
         const payloads = reorderedOpeningFiles.map((f, index) => {
             return {
-                targetFilePath: f.getPath(),
+                targetFilePath: f.path,
                 changeProp: {
                     tabIndex: index,
                 },
@@ -257,7 +256,7 @@ const TabsAndActionsContainer = ({
                         >
                             <div
                                 className={
-                                    f.getPath() === selectedFile?.getPath()
+                                    f.path === selectedFile?.path
                                         ? 'tab active'
                                         : 'tab'
                                 }
@@ -267,7 +266,7 @@ const TabsAndActionsContainer = ({
                                 onClick={() =>
                                     changeTab(
                                         refTabs.current[index],
-                                        f.getPath()
+                                        f.path
                                     )
                                 }
                                 key={index}
@@ -275,15 +274,15 @@ const TabsAndActionsContainer = ({
                                 <div className="monaco-icon-label">
                                     <div className="codicon">
                                         <Icon
-                                            name={getFileIconName(f.getPath())}
+                                            name={getFileIconName(f.path)}
                                             size="16px"
                                         />
                                     </div>
                                     <div className="monaco-icon-label__container">
                                         <span className="label-name">
-                                            {getFilenameFromPath(f.getPath())}
+                                            {getFilenameFromPath(f.path)}
                                         </span>
-                                        {/* <span className="label-description">{f.getPath()}</span> */}
+                                        {/* <span className="label-description">{f.path}</span> */}
                                     </div>
                                 </div>
                                 <div className="actions hover-to-appear">
@@ -291,7 +290,7 @@ const TabsAndActionsContainer = ({
                                         <ul className="actions-container">
                                             <Action
                                                 handler={(e) =>
-                                                    onClose(e, f.getPath())
+                                                    onClose(e, f.path)
                                                 }
                                                 icon={closeButtonIcon}
                                                 altMessage="Close a tag"

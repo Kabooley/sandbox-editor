@@ -11,6 +11,9 @@ export const files: iFile[] = [
     {
         path: 'public/index.html',
         language: 'html',
+        selected: false,
+        opening: false,
+        tabIndex: null,
         value: `
 <!DOCTYPE html>
 <html>
@@ -33,6 +36,9 @@ export const files: iFile[] = [
     {
         path: 'src/App.tsx',
         language: 'typescript',
+        selected: false,
+        opening: false,
+        tabIndex: null,
         value: `
 import React from 'react';
 import "./styles.css";
@@ -51,6 +57,9 @@ export default function App(): React.JSX.Element {
     {
         path: 'src/index.tsx',
         language: 'typescript',
+        selected: false,
+        opening: false,
+        tabIndex: null,
         value: `
 import React from "react";
 import ReactDOM from "react-dom/client";
@@ -71,6 +80,9 @@ if(rootElement) {
     {
         path: 'src/styles.css',
         language: 'css',
+        selected: false,
+        opening: false,
+        tabIndex: null,
         value: `.App {
         font-family: sans-serif;
         text-align: center;
@@ -81,6 +93,9 @@ if(rootElement) {
     {
         path: 'package.json',
         language: 'json',
+        selected: false,
+        opening: false,
+        tabIndex: null,
         value: `{
       "name": "react-typescript",
       "version": "1.0.0",
@@ -120,6 +135,9 @@ if(rootElement) {
     {
         path: 'tsconfig.json',
         language: 'json',
+        selected: false,
+        opening: false,
+        tabIndex: null,
         value: `{
       "include": [
           "./src/**/*"
@@ -140,100 +158,10 @@ if(rootElement) {
     {
         path: 'soMuchLongDirectoryName/superUltraHyperTooLongBaddaaasssssFile.txt',
         language: 'txt',
+        selected: false,
+        opening: false,
+        tabIndex: null,
         value: `so much text might be here...`,
         isFolder: false,
     },
 ];
-
-/*********************************************
- * File
- *
- * @constructor
- * @param {string} _path - files path.
- * @param {string} _value - file value.
- * @param {string} _language - Code language using in file.
- * @param {string} _isFolder - Type of this file. file or folder.
- * @param {string} _selected - Opening on Editor.
- * @param {string} _opening - This file is One of the opening tab if true. NOT means on Editor.
- *
- *
- * @param {number | null} _tabIndex - Order number of tab
- *
- * TODO: Doesn't need to bind methods?
- * ******************************************/
-
-export class File {
-    constructor(
-        private _path: string,
-        private _value: string,
-        private _language: string,
-        private _isFolder: boolean,
-        private _selected: boolean = false,
-        private _opening: boolean = false,
-        private _tabIndex: number | null = null
-    ) {}
-
-    _isPathValid(path: string): boolean {
-        // TODO: make sure path is valid
-        return true;
-    }
-
-    setPath(path: string) {
-        // TODO: make sure path is not include non exist folder
-        // if(isFilenameValid(path)){
-        if (this._isPathValid(path)) {
-            this._path = path;
-            const language = getFileLanguage(path);
-            this._language = language !== undefined ? language : '';
-        }
-    }
-
-    setValue(value: string) {
-        this._value = value;
-    }
-
-    getPath(): string {
-        return this._path;
-    }
-
-    getValue(): string {
-        return this._value;
-    }
-
-    isFolder(): boolean {
-        return this._isFolder;
-    }
-
-    // temporary
-    getLanguage(): string {
-        return this._language;
-    }
-
-    setSelected(): void {
-        this._selected = true;
-    }
-
-    unSelected(): void {
-        this._selected = false;
-    }
-
-    isSelected(): boolean {
-        return this._selected;
-    }
-
-    isOpening(): boolean {
-        return this._opening;
-    }
-
-    setOpening(flag: boolean): void {
-        this._opening = flag;
-    }
-
-    getTabIndex(): number | null {
-        return this._tabIndex;
-    }
-
-    setTabIndex(i: number | null): void {
-        this._tabIndex = i;
-    }
-}

@@ -9,7 +9,7 @@
 import React from 'react';
 import * as monaco from 'monaco-editor';
 import type { iOrderBundleResult } from '../worker/types';
-import type { File } from '../data/files';
+import type { iFile } from '../data/types';
 import type { iBundledCodeActions } from '../context/BundleContext';
 import type { iOrderBundle } from '../worker/types';
 import { Types as bundledContextTypes } from '../context/BundleContext';
@@ -91,7 +91,7 @@ class EditorContainer extends React.Component<iProps, iState> {
         const { files } = this.props;
 
         files.forEach((f) => {
-            this.addExtraLibs(f.getValue(), f.getPath());
+            this.addExtraLibs(f.value, f.path);
         });
 
         if (window.Worker) {
@@ -141,22 +141,19 @@ class EditorContainer extends React.Component<iProps, iState> {
         if (prevProp.files !== this.props.files) {
             for (const file of this.props.files) {
                 if (
-                    prevProp.files.find(
-                        (f) => f.getPath() === file.getPath()
-                    ) === undefined
+                    prevProp.files.find((f) => f.path === file.path) ===
+                    undefined
                 ) {
                     // New File has added, or file's path changed.
                     // いずれの場合も結局`this.addExtraLibs`へ渡すだけ
                     // rename前のpathに該当するextralibsファイルは削除できない
                     // どれか判別できないけど、extralibsに残っていても問題ないから
-                    this.addExtraLibs(file.getValue(), file.getPath());
+                    this.addExtraLibs(file.value, file.path);
                 }
             }
             if (didFileDelete) {
-                const prevFilesPath = prevProp.files.map((pf) => pf.getPath());
-                const currentFilesPath = this.props.files.map((pf) =>
-                    pf.getPath()
-                );
+                const prevFilesPath = prevProp.files.map((pf) => pf.path);
+                const currentFilesPath = this.props.files.map((pf) => pf.path);
                 // deletedFile: prevFilesPathには存在してcurrentFilesPathには存在しない要素駆らなる配列
                 const deletedFiles = prevFilesPath.filter(
                     (pf) => currentFilesPath.indexOf(pf) === -1
@@ -265,14 +262,14 @@ class EditorContainer extends React.Component<iProps, iState> {
      *
      * https://stackoverflow.com/a/1129270/22007575
      * */
-    getFilesOpening(files: File[]) {
+    getFilesOpening(files: iFile[]) {
         return files
-            .filter((f) => f.isOpening())
-            .sort((a: File, b: File): number => {
-                if (a.getTabIndex()! < b.getTabIndex()!) {
+            .filter((f) => f.opening)
+            .sort((a: iFile, b: iFile): number => {
+                if (a.tabIndex! < b.tabIndex!) {
                     return -1;
                 }
-                if (a.getTabIndex()! > b.getTabIndex()!) {
+                if (a.tabIndex! > b.tabIndex!) {
                     return 1;
                 }
                 return 0;
@@ -329,7 +326,7 @@ class EditorContainer extends React.Component<iProps, iState> {
     }
 
     render() {
-        const selectedFilePath = this.props.files.find((f) => f.isSelected());
+        const selectedFilePath = this.props.files.find((f) => f.selected);
         const filesOpening = this.getFilesOpening(this.props.files);
 
         if (filesOpening.length) {
