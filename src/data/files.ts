@@ -1,13 +1,15 @@
 import type { iFile } from './types';
-import { getFileLanguage } from '../utils';
 
 export const files: iFile[] = [
-    // {
-    //     path: 'public',
-    //     language: '',
-    //     value: '',
-    //     isFolder: true,
-    // },
+    {
+        path: 'public',
+        language: '',
+        value: '',
+        isFolder: true,
+        selected: false,
+        opening: false,
+        tabIndex: null,
+    },
     {
         path: 'public/index.html',
         language: 'html',
@@ -27,12 +29,15 @@ export const files: iFile[] = [
 </html>`,
         isFolder: false,
     },
-    // {
-    //     path: 'src',
-    //     language: '',
-    //     value: '',
-    //     isFolder: true,
-    // },
+    {
+        path: 'src',
+        language: '',
+        value: '',
+        isFolder: true,
+        selected: false,
+        opening: false,
+        tabIndex: null,
+    },
     {
         path: 'src/App.tsx',
         language: 'typescript',
@@ -153,6 +158,15 @@ if(rootElement) {
       }
   }`,
         isFolder: false,
+    },
+    {
+        path: 'soMuchLongDirectoryName',
+        language: '',
+        value: '',
+        isFolder: true,
+        selected: false,
+        opening: false,
+        tabIndex: null,
     },
     // to fix disappearing tree column functions when column width is shorter than file name.
     {

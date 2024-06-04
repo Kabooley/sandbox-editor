@@ -17,7 +17,7 @@ import {
 } from '../utils';
 import type { iExplorer } from '../../../data/types';
 import { generateTreeNodeData } from './generateTree';
-import { getAllDescendantsPath } from '../../../utils';
+import { getAllDescendantsPath, getFilenameFromPath } from '../../../utils';
 import { useAppSelector, useAppDispatch } from '../../../store/hooks';
 import { layoutActions, ModalTypes } from '../../../slices/layoutSlice';
 import { selectFiles, filesActions } from '../../../slices/filesSlice';
@@ -76,6 +76,10 @@ const Workspace: React.FC<iProps> = ({
      * FilesContext.tsxのアクション`ShowModal`をディスパッチする。
      * ユーザに削除の確認をとって同意されれば`callback`が実行され、
      * `_explorer`に該当するFileは削除される。
+     * 
+     * - Check deletion file is folder.
+     * - If folder, then its all descendants also be deleted.
+     * - 
      * */
     const handleDeleteNode = (_explorer: iExplorer) => {
         const isDeletionTargetFolder = _explorer.isFolder;
@@ -109,25 +113,42 @@ const Workspace: React.FC<iProps> = ({
             return descendantPaths.find((d) => d === f.path) ? true : false;
         });
 
-        const callback = () => {
-            // やってほしいこと
+        if(deletionTargetFiles.length > 1) {
             dispatch(
-                filesActions.deleteMultipleFiles({
-                    requiredPaths: deletionTargetFiles.map((d) => d.path),
+                layoutActions.ShowModal({
+                    type: ModalTypes.DeleteAFolder,
+                    payload: {
+                        deletionFilesPath: deletionTargetFiles,
+                        filename: getFilenameFromPath(targetFilePath)
+                    }
                 })
             );
-            dispatch(layoutActions.RemoveModal());
-        };
 
-        dispatch(
-            layoutActions.ShowModal({
-                modalType: isDeletionTargetFolder
-                    ? ModalTypes.DeleteAFolder
-                    : ModalTypes.DeleteAFile,
-                callback: callback,
-                fileName: _explorer.name,
-            })
-        );
+
+        }
+        else if(deletionTargetFiles.length === 1) {
+            const targetFilePath = deletionTargetFiles[0].path;
+            dispatch(
+                layoutActions.ShowModal({
+                    type: ModalTypes.DeleteAFile,
+                    payload: {
+                        deletionFilePath: targetFilePath,
+                        filename: getFilenameFromPath(targetFilePath)
+                    }
+                })
+            );
+        }
+
+
+        // dispatch(
+        //     layoutActions.ShowModal({
+        //         modalType: isDeletionTargetFolder
+        //             ? ModalTypes.DeleteAFolder
+        //             : ModalTypes.DeleteAFile,
+        //         callback: callback,
+        //         fileName: _explorer.name,
+        //     })
+        // );
     };
 
     /**

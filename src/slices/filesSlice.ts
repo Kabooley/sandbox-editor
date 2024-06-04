@@ -113,6 +113,9 @@ const filesSlice = createSlice({
         ) => {
             const { requiredPath, isFolder } = action.payload;
 
+            // DEBUG:
+            console.log(`[filesSlilce][addFile] ${requiredPath}`);
+
             // Make sure requiredPath is already exist.
             if (
                 state.files.map((f) => f.path).find((p) => p === requiredPath)
@@ -170,6 +173,10 @@ const filesSlice = createSlice({
             action: PayloadAction<iFilesActionPayload[Types.Delete]>
         ) => {
             const { requiredPath } = action.payload;
+            
+            // DEBUG:
+            console.log(`[filesSlilce][deleteFile] ${requiredPath}`);
+
             state.files = state.files.filter((f) => f.path !== requiredPath);
         },
         // Delete more than one file.
@@ -178,6 +185,10 @@ const filesSlice = createSlice({
             action: PayloadAction<iFilesActionPayload[Types.DeleteMultiple]>
         ) => {
             const { requiredPaths } = action.payload;
+
+            
+            // DEBUG:
+            console.log(`[filesSlilce][addFile] ${requiredPaths}`);
 
             state.files = state.files.filter((f) => {
                 return requiredPaths.find((r) => r === f.path) === undefined
@@ -192,6 +203,11 @@ const filesSlice = createSlice({
             action: PayloadAction<iFilesActionPayload[Types.Change]>
         ) => {
             const { targetFilePath, changeProp } = action.payload;
+
+            
+            // DEBUG:
+            console.log(`[filesSlilce][changeFile] ${targetFilePath}, ${changeProp}`);
+            console.dir(changeProp);
 
             state.files = state.files.map((f) => {
                 if (f.path === targetFilePath) {

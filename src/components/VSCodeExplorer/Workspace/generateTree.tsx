@@ -1,10 +1,10 @@
 import type { iExplorer } from '../../../data/types';
-import { File } from '../../../data/files';
+import { iFile } from '../../../data/types';
 
 /**
  * Generate Explorer data based on File data.
  *
- * @param {Array<File>} entries - Explorer data will be generated based on this data.
+ * @param {Array<iFile>} entries - Explorer data will be generated based on this data.
  * @param {string} root - Name of Top entry of Explorer tree data.
  *
  * Process are concist of three part.
@@ -16,14 +16,14 @@ import { File } from '../../../data/files';
  *
  * */
 export const generateTreeNodeData = (
-    _entries: File[] = [],
+    _entries: iFile[] = [],
     root: string = 'root'
 ): iExplorer => {
     // stackoverflowでこうした方がいいとどこかで見かけた...
     const entries = [..._entries];
-    entries.sort(function (a: File, b: File) {
-        let aPath = a.getPath().toLowerCase(); // ignore upper and lowercase
-        let bPath = b.getPath().toLowerCase(); // ignore upper and lowercase
+    entries.sort(function (a: iFile, b: iFile) {
+        let aPath = a.path.toLowerCase(); // ignore upper and lowercase
+        let bPath = b.path.toLowerCase(); // ignore upper and lowercase
         if (aPath < bPath) return -1;
         if (aPath > bPath) return 1;
         return 0;
@@ -46,10 +46,10 @@ export const generateTreeNodeData = (
      *
      * TODO: itemsが空でないフォルダはこの段階で生成されるのでこの段階でselectedやopeningは付与したい
      * */
-    entries.forEach((entry: File) => {
-        if (entry.isFolder()) return;
+    entries.forEach((entry: iFile) => {
+        if (entry.isFolder) return;
 
-        const pathArr = entry.getPath().split('/');
+        const pathArr = entry.path.split('/');
         const pathLen = pathArr.length;
         let current: iExplorer = rootNode;
 
@@ -60,7 +60,7 @@ export const generateTreeNodeData = (
             // If the child node doesn't exist, create it
             let child = current.items.find((item) => item.name === name);
 
-            // if(child === undefined && index < ( pathLen - 1) && entry.isFolder()){
+            // if(child === undefined && index < ( pathLen - 1) && entry.isFolder){
             if (child === undefined && index < pathLen - 1) {
                 currentKey = currentKey += 1;
                 child = {
@@ -83,10 +83,10 @@ export const generateTreeNodeData = (
      *
      * Assuming that Generating folders have been completed before this process.
      * */
-    entries.forEach((entry: File) => {
-        if (entry.isFolder()) return;
+    entries.forEach((entry: iFile) => {
+        if (entry.isFolder) return;
 
-        const pathArr = entry.getPath().split('/');
+        const pathArr = entry.path.split('/');
         const pathLen = pathArr.length;
         let current: iExplorer = rootNode;
 
@@ -100,8 +100,8 @@ export const generateTreeNodeData = (
                 isFolder: false,
                 items: [],
                 path: pathArr[0],
-                isOpening: entry.isOpening(),
-                isSelected: entry.isSelected(),
+                isOpening: entry.opening,
+                isSelected: entry.selected,
             };
             current.items.push(node);
             return;
@@ -119,8 +119,8 @@ export const generateTreeNodeData = (
                     isFolder: false,
                     items: [],
                     path: pathArr.slice(0, index + 1).join('/'),
-                    isOpening: entry.isOpening(),
-                    isSelected: entry.isSelected(),
+                    isOpening: entry.opening,
+                    isSelected: entry.selected,
                 };
                 current.items.push(child);
             } else if (child === undefined) {
@@ -136,10 +136,10 @@ export const generateTreeNodeData = (
      *
      * Assuming that generating folders and files have been completed already.
      * */
-    entries.forEach((entry: File) => {
-        if (!entry.isFolder()) return;
+    entries.forEach((entry: iFile) => {
+        if (!entry.isFolder) return;
 
-        const pathArr = entry.getPath().split('/');
+        const pathArr = entry.path.split('/');
         const pathLen = pathArr.length;
         let current: iExplorer = rootNode;
 

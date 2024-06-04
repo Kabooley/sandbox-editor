@@ -3,7 +3,6 @@ import DialogAction from './DialogAction';
 import closeButton from '../../assets/vscode/dark/close.svg';
 import type { iModalAction } from '../../slices/layoutSlice';
 
-// import { iModalAction } from "../../context/LayoutContext";
 
 interface iProps {
     closeHandler: () => void;
@@ -12,19 +11,17 @@ interface iProps {
     dialogDescription: string;
 }
 
-const Dialog: React.FC<iProps> = ({
+const Dialog = ({
     closeHandler,
     actions,
     dialogMessage,
     dialogDescription,
-}) => {
+}: iProps) => {
     const onClose = (e: React.MouseEvent<HTMLDivElement>) => {
         e.stopPropagation();
         e.preventDefault();
         closeHandler();
     };
-
-    console.log('[Dialog] rendering...');
 
     return (
         <div className="modal-content">

@@ -11,29 +11,67 @@ import { RootState } from '../store';
 
 // --- Types ---
 
+type ActionMap<M extends { [index: string]: any }> = {
+    [Key in keyof M]: M[Key] extends undefined
+        ? {
+              type: Key;
+          }
+        : {
+              type: Key;
+              payload: M[Key];
+          };
+};
+
 type ViewContexts = 'explorer' | 'dependencies' | 'none';
 
-interface iModalAction {
-    label: string;
-    callback: () => void;
-    style?: ModalButtonStyles;
-}
-
-interface iModalDataTemplate {
-    message: string;
-    description: string;
-    actions: iModalAction[];
-}
-
 enum ModalTypes {
-    DeleteAFile = 'delete-a-file',
-    DeleteAFolder = 'delete-a-folder',
+    DeleteAFile = 'DELETE_A_FILE',
+    DeleteAFolder = 'DELETE_A_FOLDER',
 }
 
+/***
+ * Determines dialog buttons style.
+ * */
 enum ModalButtonStyles {
     Danger = 'danger',
     Normal = 'normal',
     Transparent = 'transparent',
+}
+
+type iModalRequestedAction = {
+    [ModalTypes.DeleteAFile]: {
+        // deletion target
+        deletionFilePath: string;
+        // used for description
+        filename: string;
+    };
+    [ModalTypes.DeleteAFolder]: {
+        // deletion target
+        deletionFilesPath: string[];
+        // used for description
+        filename: string;
+    };
+};
+
+type iModalActions =
+    ActionMap<iModalRequestedAction>[keyof ActionMap<iModalRequestedAction>];
+
+/****
+ * Determines dialogs action button
+ * */
+interface iModalAction {
+    label: string;
+    requiredAction: iModalActions;
+    style?: ModalButtonStyles;
+}
+
+/***
+ * Determines all contents in Dialog.
+ * */
+interface iModalDataTemplate {
+    message: string;
+    description: string;
+    actions: iModalAction[];
 }
 
 interface iState {
@@ -83,12 +121,12 @@ const initialState: iState = {
 const getWindowWidth = () => window.innerWidth;
 
 const modalDataTemplate: Record<ModalTypes, Readonly<iModalDataTemplate>> = {
-    'delete-a-file': {
+    DELETE_A_FILE: {
         message: 'Are you sure you want to delete this file?',
         description: "The file '{{FILENAME}}' will be removed permanently.",
         actions: [],
     },
-    'delete-a-folder': {
+    DELETE_A_FOLDER: {
         message: 'Are you sure you want to delete this file?',
         description:
             "The folder '{{FOLDERNAME}}' and descendants will be removed permanently.",
@@ -96,29 +134,49 @@ const modalDataTemplate: Record<ModalTypes, Readonly<iModalDataTemplate>> = {
     },
 };
 
-const getModalDataSet = (
-    modalType: ModalTypes,
-    callback: () => void,
-    fileName?: string
-): iModalDataTemplate => {
-    switch (modalType) {
+// DEBUG: output example
+// const deleteFileDialogTemplate: iModalDataTemplate = {
+//     message: modalDataTemplate.DELETE_A_FILE.message,
+//     description: mustache(
+//         modalDataTemplate.DELETE_A_FILE.description,
+//         { FILENAME: "getModalDataSet/parameter/filename" }
+//     ),
+//     actions: [
+//         ...modalDataTemplate.DELETE_A_FILE.actions,
+//         {
+//             label: "Delete",
+//             requiredAction: {
+//                 type: ModalTypes.DeleteAFile,
+//                 payload: {
+//                     deletionFilePath: "getModalDataSet/parameter/filename",
+//                     filename: "aaa"
+//                 }
+//             },
+//             style: ModalButtonStyles.Danger
+//         }
+//     ]
+// };
+const getModalDataSet = ({
+    type,
+    payload,
+}: iModalActions): iModalDataTemplate => {
+    switch (type) {
         case ModalTypes.DeleteAFile: {
-            const template = modalDataTemplate[modalType];
-            const actions = [
+            const template = modalDataTemplate[type];
+            const actions: iModalAction[] = [
                 ...template.actions,
                 {
                     label: 'Delete',
-                    callback: callback,
+                    requiredAction: {
+                        type: type,
+                        payload: payload,
+                    },
                     style: ModalButtonStyles.Danger,
                 },
             ];
-
-            let description = template.description;
-            if (fileName !== undefined) {
-                description = mustache(template.description, {
-                    FILENAME: fileName,
-                });
-            }
+            const description = mustache(template.description, {
+                FILENAME: payload.filename,
+            });
 
             return {
                 message: template.message,
@@ -127,22 +185,21 @@ const getModalDataSet = (
             };
         }
         case ModalTypes.DeleteAFolder: {
-            const template = modalDataTemplate[modalType];
-            const actions = [
+            const template = modalDataTemplate[type];
+            const actions: iModalAction[] = [
                 ...template.actions,
                 {
                     label: 'Delete',
-                    callback: callback,
+                    requiredAction: {
+                        type: type,
+                        payload: payload,
+                    },
                     style: ModalButtonStyles.Danger,
                 },
             ];
-
-            let description = template.description;
-            if (fileName !== undefined) {
-                description = mustache(template.description, {
-                    FOLDERNAME: fileName,
-                });
-            }
+            const description = mustache(template.description, {
+                FOLDERNAME: payload.filename,
+            });
 
             return {
                 message: template.message,
@@ -340,21 +397,9 @@ export const layoutSlice = createSlice({
                 editorWidth: _editorWidth,
             };
         },
-        ShowModal: (
-            state,
-            action: PayloadAction<{
-                modalType: ModalTypes;
-                callback: () => void;
-                fileName: string;
-            }>
-        ) => {
-            const { modalType, callback, fileName } = action.payload;
-
-            return {
-                ...state,
-                showModal: true,
-                modalDataSet: getModalDataSet(modalType, callback, fileName),
-            };
+        ShowModal: (state, action: PayloadAction<iModalActions>) => {
+            state.showModal = true;
+            state.modalDataSet = getModalDataSet(action.payload);
         },
         RemoveModal: (state) => {
             state.showModal = false;
@@ -370,12 +415,11 @@ export {
     ModalTypes,
     ModalButtonStyles,
     // types
-    iModalAction
+    iModalAction,
 };
 export const layoutActions = layoutSlice.actions;
 export const selectLayoutState = (state: RootState) => state.layout;
 export default layoutSlice.reducer;
-
 
 /*
 import { useAppSelector, useAppDispatch } from '../store/hooks';
@@ -385,4 +429,4 @@ import { selectLayoutState, layoutSlice, layoutActions } from '../slices/layoutS
     const dispatch = useAppDispatch();
 
 
-*/ 
+*/

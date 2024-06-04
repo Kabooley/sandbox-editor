@@ -8,6 +8,93 @@ https://github.com/reduxjs/redux-toolkit/releases?page=3
 
 既にcontext + useReducerのproviderが４つある、かつ余計な再レンダリングを減らすためにReduxを導入する。
 
+## TODOs
+
+- TODO: files.tsx::filesにはフォルダを含めないとならないかも
+
+## Summary
+
+- [Redux](#Redux)
+- [Redux導入](#Redux導入)
+
+## Redux
+
+調べたこと。
+
+## [Redux] Do not put non-serializable values in state or actions
+
+https://redux.js.org/style-guide/#do-not-put-non-serializable-values-in-state-or-actions
+
+> **Avoid putting non-serializable values such as Promises, Symbols, Maps/Sets, functions, or class instances into the Redux store state or dispatched actions.**
+
+Reduxのスタイルガイドのページで`ESSENTIAL`（必ず守らなくてはならない項目）としてマークされている。
+
+ということで、ついにfilesがclass インスタンスではなくプレーンjsオブジェクトに変更になるときが来た。
+
+
+- [Deprecate File class](#Deprecate-File-class)
+
+## [Redux] Dispatch action from another reducer
+
+https://stackoverflow.com/a/41260990/22007575
+
+#### layoutSlice.tsx::state.modalDataSetの修正
+
+callbackをやめる。
+
+
+```TypeScript
+// これをやめる
+const callback = () => {
+    // このdispatchはDialogActionButtonが送信する
+    dispatch(
+        filesActions.deleteMultipleFiles({
+            requiredPaths: deletionTargetFiles.map((d) => d.path),
+        })
+    );
+    // モーダル終了リクエストもDialogActionButtonが送信する
+    dispatch(layoutActions.RemoveModal());
+};
+```
+```TypeScript
+// Invokes
+dispatch(
+    layoutActions.ShowModal({
+        type: ModalTypes.DeleteAFile,
+        payload: {
+            deletionFilePath: targetFilePath,
+            filename: getFilenameFromPath(targetFilePath)
+        }
+    })
+);
+// reducer
+showModal(state, action);
+        getModalDataSet(action.payload);
+            layoutSlice.state.modalDataSet = {
+                message: template.message,
+                description: mustache(template.description, action.payload.payload.filename),
+                actions: [{
+                    label: 'delete',
+                    requiredAction: action.payload,
+                    style: 'danger'
+                }]
+            }
+// Dialog/index
+// 上記のlayoutSlice.state.modalDataSetを取得できる
+```
+
+
+#### [Redux] middleware
+
+https://redux.js.org/tutorials/essentials/part-5-async-logic#thunks-and-async-logic
+
+- アクションがディスパッチれたら追加のロジックを実行する（reducer）を渡す前に
+- 追加のロジックは`dispatch`や`getState`にアクセスできる
+
+
+
+## Redux導入
+
 ## Installation
 
 ```bash
@@ -62,11 +149,6 @@ https://redux.js.org/usage/usage-with-typescript#define-root-state-and-dispatch-
 - 公式releaseまたはdocsを読む
 - node_modulesのそのライブラリのpackage.jsonを確認する
 
-## 学習ノート
-
-udemyのMaximilian Reactコースより
-
-## Section 19
 
 ## 参考
 
@@ -123,18 +205,6 @@ Take a look at the logic that dispatched this action:
 (To allow non-serializable values see: https://redux-toolkit.js.org/usage/usage-guide#working-with-non-serializable-data)
 ```
 
-## [Redux] Do not put non-serializable values in state or actions
-
-https://redux.js.org/style-guide/#do-not-put-non-serializable-values-in-state-or-actions
-
-> **Avoid putting non-serializable values such as Promises, Symbols, Maps/Sets, functions, or class instances into the Redux store state or dispatched actions.**
-
-Reduxのスタイルガイドのページで`ESSENTIAL`（必ず守らなくてはならない項目）としてマークされている。
-
-ということで、ついにfilesがclass インスタンスではなくプレーンjsオブジェクトに変更になるときが来た。
-
-
-- [Deprecate File class](#Deprecate-File-class)
 
 ## Deprecate File class
 
@@ -228,14 +298,6 @@ export class File {
 
 ```
 
-#### データのローディングと「保存」について
-
-stateに渡すデータはfiles.tsのデータの「複製」であるべきだ。
-
-```TypeScript
-// filesSlice.ts
-
-```
 
 
 #### 仮想ファイルシステム（という壮大な話）
@@ -288,23 +350,43 @@ const ts = monaco.languages.typescript.typescriptDefaults.addExtraLib(
 );
 ```
 
-
-#### file logic 走り書き
-
-stateにすべてのファイルを保存していいのか？メモリ圧迫してしまわないか？
-
-そこまで考えたらﾎﾟｰﾄﾌｫﾘｵではないなぁ
-
-```TypeScript
-interface iFile {
-    path: string;
-
-}
-```
-
-#### 参考 BrowserFS
-
-https://github.com/jvilk/BrowserFS
+#### テスト　走り書き
 
 
+- TODO: MonacoEditorでonDidChangeModelContentで正常にfileが更新されているか
+        filesとextraLibsも。
+- TODO: explorer/Workspace/各columnでのフォルダ削除機能
+- TODO: explorer/Workspace/各columnでのdnd機能
+- TODO: explorer/Workspace/paneheaderでのフォルダ追加機能
+- TODO: TabsAndActionsでのタブをdndする機能
 
+- explorer/openEditorでのファイル閉じる機能
+        OK。ただしeditor上に表示されてるモデルは閉じたはずのファイルのモデルが残っている。
+
+- TabsAndActionsでのタブを閉じる機能
+        OK。ただしeditor上に表示されてるモデルは閉じたはずのファイルのモデルが残っている。
+
+- explorer/Workspace/各columnでのファイル削除機能
+        OK。ただしfiles.tsx::filesのデータロジックに変更が必要なことが判明。
+
+- explorer/openEditorでのファイルすべて閉じる機能
+        OK。
+- explorer/Workspaceでのアイテムdnd機能
+        OK。ただし、ルートディレクトリへアイテムをドロップできない。
+
+- explorer/Workspace/各columnでのリネーム機能
+        OK。
+
+- explorer/Workspace/各columnでのフォルダ新規追加機能
+        OK。
+
+- explorer/Workspace/各columnでのファイル新規追加機能
+        OK。
+
+
+他
+
+- TODO: files.tsx::filesにはフォルダを含めないとならない
+    generateTreeなど多くの場所に影響がある（変更が必要になる
+
+- TODO: explorer/Workspaceでのdndに関して、ルートディレクトリへのdrop出来ない問題

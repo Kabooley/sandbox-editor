@@ -8,7 +8,8 @@ import PaneSection from './PaneSection';
 import FooterSection from './FooterSection';
 import { BundledCodeProvider } from '../context/BundleContext';
 import { TypingLibsProvider } from '../context/TypingLibsContext';
-import Modal from '../components/Modal';
+import Modal from '../components/Modal2';
+// import Modal from '../components/Modal';
 
 // DEBUG:
 import { useLoadingSurvey } from '../hooks/useLoadingSurvey';

@@ -9,23 +9,18 @@ import {
     layoutActions,
 } from '../../slices/layoutSlice';
 
-interface iProps {}
-
-const Modal: React.FC<iProps> = () => {
+const Modal = () => {
     const { showModal, modalDataSet } = useAppSelector(selectLayoutState);
     const dispatch = useAppDispatch();
     const { message, description, actions } = modalDataSet;
 
     // 問答無用でキャンセル扱いになります
     const handleCloseModal = () => {
-        console.log('[Modal] handleCloseModal');
         dispatch(layoutActions.RemoveModal());
     };
 
     // const parent = parentNode ? parentNode : document.body;
     const parent = document.body;
-
-    console.log(`[Modal] rendering. ${showModal ? 'show' : 'hide'}`);
 
     if (showModal) {
         return (
