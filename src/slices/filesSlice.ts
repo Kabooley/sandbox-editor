@@ -173,7 +173,7 @@ const filesSlice = createSlice({
             action: PayloadAction<iFilesActionPayload[Types.Delete]>
         ) => {
             const { requiredPath } = action.payload;
-            
+
             // DEBUG:
             console.log(`[filesSlilce][deleteFile] ${requiredPath}`);
 
@@ -186,7 +186,6 @@ const filesSlice = createSlice({
         ) => {
             const { requiredPaths } = action.payload;
 
-            
             // DEBUG:
             console.log(`[filesSlilce][addFile] ${requiredPaths}`);
 
@@ -204,9 +203,10 @@ const filesSlice = createSlice({
         ) => {
             const { targetFilePath, changeProp } = action.payload;
 
-            
             // DEBUG:
-            console.log(`[filesSlilce][changeFile] ${targetFilePath}, ${changeProp}`);
+            console.dir(
+                `[filesSlilce][changeFile] ${targetFilePath}, ${changeProp}`
+            );
             console.dir(changeProp);
 
             state.files = state.files.map((f) => {
@@ -236,6 +236,12 @@ const filesSlice = createSlice({
                     (r) => f.path === r.targetFilePath
                 );
                 if (request !== undefined) {
+                    // DEBUG:
+                    console.log(
+                        `[filesSlice] change ${request.targetFilePath}`
+                    );
+                    console.log(request.changeProp);
+
                     if (request.changeProp.newPath !== undefined) {
                         f.path = request.changeProp.newPath;
                     }
@@ -335,13 +341,18 @@ const filesSlice = createSlice({
                 return;
             }
 
-            // Was target file `isSelected` true?
+            // Choose next selected file if closing file is selected.
             let nextSelected: iFile | undefined;
             if (target.selected) {
                 nextSelected = state.files.find(
                     (f) => f.opening && !f.selected
                 );
             }
+
+            // DEBUG:
+            console.log(
+                `[filesSlice] close file: ${path} and select ${nextSelected?.path}`
+            );
 
             state.files = state.files.map((f) => {
                 // Close target file.
@@ -352,8 +363,11 @@ const filesSlice = createSlice({
                     return f;
                 }
                 // Select another file if target file was selected file.
-                else if (nextSelected && f.path === nextSelected.path) {
-                    f.selected;
+                else if (
+                    nextSelected !== undefined &&
+                    f.path === nextSelected.path
+                ) {
+                    f.selected = true;
                     return f;
                 } else return f;
             });

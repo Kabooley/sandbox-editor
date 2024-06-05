@@ -51,6 +51,11 @@ const Workspace: React.FC<iProps> = ({
     const title = 'virtual folder';
     const dispatch = useAppDispatch();
 
+    React.useEffect(() => {
+        console.log('[Workspace] did update.');
+        console.dir(treeData);
+    });
+
     /*****************************
      * Node handlers
      *
@@ -73,13 +78,8 @@ const Workspace: React.FC<iProps> = ({
     /***
      * @param {iExplorer} _explorer - Explorer data about to delete.
      *
-     * FilesContext.tsxのアクション`ShowModal`をディスパッチする。
-     * ユーザに削除の確認をとって同意されれば`callback`が実行され、
-     * `_explorer`に該当するFileは削除される。
-     * 
-     * - Check deletion file is folder.
-     * - If folder, then its all descendants also be deleted.
-     * - 
+     * Dispatches showModal action to layoutSlice's reducer.
+     * Then send deletion target files's path(s).
      * */
     const handleDeleteNode = (_explorer: iExplorer) => {
         const isDeletionTargetFolder = _explorer.isFolder;
@@ -113,42 +113,30 @@ const Workspace: React.FC<iProps> = ({
             return descendantPaths.find((d) => d === f.path) ? true : false;
         });
 
-        if(deletionTargetFiles.length > 1) {
+        if (deletionTargetFiles.length > 1) {
+            const deletionTargetFilesPath = deletionTargetFiles.map(
+                (df) => df.path
+            );
             dispatch(
                 layoutActions.ShowModal({
                     type: ModalTypes.DeleteAFolder,
                     payload: {
-                        deletionFilesPath: deletionTargetFiles,
-                        filename: getFilenameFromPath(targetFilePath)
-                    }
+                        deletionFilesPath: deletionTargetFilesPath,
+                        filename: getFilenameFromPath(_explorer.path),
+                    },
                 })
             );
-
-
-        }
-        else if(deletionTargetFiles.length === 1) {
-            const targetFilePath = deletionTargetFiles[0].path;
+        } else if (deletionTargetFiles.length === 1) {
             dispatch(
                 layoutActions.ShowModal({
                     type: ModalTypes.DeleteAFile,
                     payload: {
-                        deletionFilePath: targetFilePath,
-                        filename: getFilenameFromPath(targetFilePath)
-                    }
+                        deletionFilePath: _explorer.path,
+                        filename: getFilenameFromPath(_explorer.path),
+                    },
                 })
             );
         }
-
-
-        // dispatch(
-        //     layoutActions.ShowModal({
-        //         modalType: isDeletionTargetFolder
-        //             ? ModalTypes.DeleteAFolder
-        //             : ModalTypes.DeleteAFile,
-        //         callback: callback,
-        //         fileName: _explorer.name,
-        //     })
-        // );
     };
 
     /**

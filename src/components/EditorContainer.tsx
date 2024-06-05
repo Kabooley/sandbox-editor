@@ -128,9 +128,9 @@ class EditorContainer extends React.Component<iProps, iState> {
         // //      content: string; version: number;
         // // }
         // const currentJSLibs =
-        // monaco.languages.typescript.javascriptDefaults.getExtraLibs();
+        //     monaco.languages.typescript.javascriptDefaults.getExtraLibs();
         // const currentTSLibs =
-        // monaco.languages.typescript.typescriptDefaults.getExtraLibs();
+        //     monaco.languages.typescript.typescriptDefaults.getExtraLibs();
         // console.log(currentTSLibs);
         // console.dir(this.props.files);
         // console.dir(prevProp.files);

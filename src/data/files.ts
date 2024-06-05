@@ -1,5 +1,9 @@
 import type { iFile } from './types';
 
+/**
+ * NOTE: ファイルだけでなくフォルダも1アイテムとして追加しなくてはならない。
+ * 
+ * */ 
 export const files: iFile[] = [
     {
         path: 'public',

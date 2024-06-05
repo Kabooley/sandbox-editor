@@ -10,7 +10,8 @@ https://github.com/reduxjs/redux-toolkit/releases?page=3
 
 ## TODOs
 
-- TODO: files.tsx::filesにはフォルダを含めないとならないかも
+- TODO: [filesにはフォルダを含めるべきか](#filesにはフォルダを含めるべきか)
+- TODO: explorer/Workspaceでのdndに関して、ルートディレクトリへのdrop出来ない問題
 
 ## Summary
 
@@ -350,15 +351,7 @@ const ts = monaco.languages.typescript.typescriptDefaults.addExtraLib(
 );
 ```
 
-#### テスト　走り書き
-
-
-- TODO: MonacoEditorでonDidChangeModelContentで正常にfileが更新されているか
-        filesとextraLibsも。
-- TODO: explorer/Workspace/各columnでのフォルダ削除機能
-- TODO: explorer/Workspace/各columnでのdnd機能
-- TODO: explorer/Workspace/paneheaderでのフォルダ追加機能
-- TODO: TabsAndActionsでのタブをdndする機能
+#### テスト
 
 - explorer/openEditorでのファイル閉じる機能
         OK。ただしeditor上に表示されてるモデルは閉じたはずのファイルのモデルが残っている。
@@ -367,7 +360,7 @@ const ts = monaco.languages.typescript.typescriptDefaults.addExtraLib(
         OK。ただしeditor上に表示されてるモデルは閉じたはずのファイルのモデルが残っている。
 
 - explorer/Workspace/各columnでのファイル削除機能
-        OK。ただしfiles.tsx::filesのデータロジックに変更が必要なことが判明。
+        OK。
 
 - explorer/openEditorでのファイルすべて閉じる機能
         OK。
@@ -383,10 +376,14 @@ const ts = monaco.languages.typescript.typescriptDefaults.addExtraLib(
 - explorer/Workspace/各columnでのファイル新規追加機能
         OK。
 
+- TabsAndActionsでのタブをdndする機能
+        OK。tabIndexも更新されている
 
-他
+- explorer/Workspace/paneheaderでのフォルダ追加機能
+        OK。
 
-- TODO: files.tsx::filesにはフォルダを含めないとならない
-    generateTreeなど多くの場所に影響がある（変更が必要になる
+- MonacoEditorでonDidChangeModelContentで正常にfileが更新されているか
+        OK。filesもextraLibsも更新されている
 
 - TODO: explorer/Workspaceでのdndに関して、ルートディレクトリへのdrop出来ない問題
+

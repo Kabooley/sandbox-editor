@@ -227,12 +227,16 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
     }
 
     /***
-     * filesの変更をmonaco-editorに反映させる。
+     * Apply any changes of files to editor.
      *
      * */
     componentDidUpdate(prevProps: iProps, prevState: iState) {
         const { files, selectedFile, onEditorContentChange, ...options } =
             this.props;
+
+        console.log(`[MonacoEditor] did update.`);
+        console.log(`[MonacoEditor] selected file`);
+        console.dir(selectedFile);
 
         if (this._refEditor) {
             this._refEditor.updateOptions(options);
@@ -240,7 +244,6 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
             const model = this._refEditor.getModel();
             const value = selectedFile?.value;
 
-            // TODO: 要確認。アンマウント時にcomponentDidMountは呼ばれない?
             if (selectedFile === undefined) {
                 console.log(`[MonacoEditor][did update] no selectedFile`);
 
@@ -255,7 +258,7 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
             // Change model and save view state if path is changed
             else if (
                 selectedFile !== undefined &&
-                selectedFile !== prevProps.selectedFile
+                selectedFile.path !== prevProps.selectedFile?.path
             ) {
                 console.log(
                     `[MonacoEditor][did update] selectedFile ${prevProps.selectedFile?.path} --> ${selectedFile.path}`
