@@ -1,11 +1,13 @@
 import { configureStore, ThunkAction, Action } from '@reduxjs/toolkit';
 import layoutSlice from '../slices/layoutSlice';
 import filesSlice from '../slices/filesSlice';
+import typingLibsSlice from '../slices/typingLibsSlice';
 
 export const store = configureStore({
     reducer: {
         layout: layoutSlice,
         files: filesSlice,
+        typingLibs: typingLibsSlice,
     },
 });
 
