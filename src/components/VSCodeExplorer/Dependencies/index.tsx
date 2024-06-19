@@ -3,11 +3,13 @@ import Stack from '../Stack';
 import Action from '../Action';
 import Form from './Form';
 import trashIcon from '../../../assets/vscode/dark/trash.svg';
+import { useAppSelector, useAppDispatch } from '../../../store/hooks';
 import {
-    useDependencies,
-    useCommand,
-} from '../../../context/TypingLibsContext';
-import type { iDependencyState } from '../../../context/TypingLibsContext';
+    selectTypingLibs,
+    fetchModule,
+    removeModules,
+} from '../../../slices/typingLibsSlice';
+import type { iDependency } from '../../../slices/typingLibsSlice';
 
 interface iProps {
     id: number;
@@ -25,18 +27,20 @@ const Dependencies: React.FC<iProps> = ({
     width,
 }) => {
     const title = 'dependencies';
-    const dependencies = useDependencies();
-    const typeLibsCommand = useCommand();
+    const { dependencies } = useAppSelector(selectTypingLibs);
+    const dispatch = useAppDispatch();
 
     /***
-     * - Validate value
+     * Send input value as moduleName@version for fetch request.
+     *
      * - Check value is including version
      * https://github.com/codesandbox/codesandbox-client/blob/6494ed0d14573a92a6776cbb514fe5a7a8e8d3df/packages/app/src/app/pages/Sandbox/SearchDependencies/index.tsx
+     *
+     * TODO: この段階におけるmodulenameやversionのvalidationは必要かも？
      * */
-    const send = (value: string) => {
+    const requestFetchModule = (value: string) => {
         if (!value.length) return;
 
-        // TODO: validator
         let version = 'latest';
         const isScoped = value.startsWith('@');
         const splittedName = value.split('@');
@@ -45,16 +49,27 @@ const Dependencies: React.FC<iProps> = ({
         }
         const dependencyName = splittedName.join(`@`);
 
-        typeLibsCommand('request', splittedName[0], version);
+        // typeLibsCommand('request', splittedName[0], version);
+        dispatch(
+            fetchModule({
+                moduleName: splittedName[0],
+                version: version,
+                devDependency: false,
+            })
+        );
     };
 
-    const renderActionDeleteDependency = (dependency: iDependencyState) => {
+    const renderActionDeleteDependency = (dependency: iDependency) => {
         const clickHandler = (e: React.MouseEvent<HTMLLIElement>) => {
             e.stopPropagation();
-            typeLibsCommand(
-                'remove',
-                dependency.moduleName,
-                dependency.version
+            dispatch(
+                removeModules([
+                    {
+                        moduleName: dependency.moduleName,
+                        version: dependency.version,
+                        devDependency: dependency.devDependency,
+                    },
+                ])
             );
         };
         return (
@@ -78,7 +93,7 @@ const Dependencies: React.FC<iProps> = ({
             width={width}
             actions={[]}
         >
-            <Form send={send} />
+            <Form send={requestFetchModule} />
             {dependencies.map((dd, index) => (
                 <div className="stack-body-list__item dependencies" key={index}>
                     <div

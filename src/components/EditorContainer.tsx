@@ -29,9 +29,6 @@ import { filesActions } from '../slices/filesSlice';
 import type { RootState } from '../store';
 
 interface iDefaultProps {
-    // files: File[];
-    // addTypings: iTypingLibsContext;
-    // dispatchFiles: React.Dispatch<iFilesActions>;
     dispatchBundledCode: React.Dispatch<iBundledCodeActions>;
     width: number;
 }

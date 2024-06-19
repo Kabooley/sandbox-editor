@@ -7,9 +7,9 @@ import SplitPane from './SplitPane';
 import PaneSection from './PaneSection';
 import FooterSection from './FooterSection';
 import { BundledCodeProvider } from '../context/BundleContext';
-import { TypingLibsProvider } from '../context/TypingLibsContext';
 import Modal from '../components/Modal2';
 // import Modal from '../components/Modal';
+// import { TypingLibsProvider } from '../context/TypingLibsContext';
 
 // DEBUG:
 import { useLoadingSurvey } from '../hooks/useLoadingSurvey';
@@ -23,11 +23,9 @@ const Layout = (): JSX.Element => {
             <MainContainer>
                 <SplitPane>
                     <BundledCodeProvider>
-                        <TypingLibsProvider>
-                            <PaneSection />
-                            <EditorSection />
-                            <PreviewSection />
-                        </TypingLibsProvider>
+                        <PaneSection />
+                        <EditorSection />
+                        <PreviewSection />
                     </BundledCodeProvider>
                 </SplitPane>
             </MainContainer>
