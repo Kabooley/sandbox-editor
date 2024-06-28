@@ -5,6 +5,7 @@
 import React from 'react';
 import { useBundledCodeDispatch } from './BundleContext';
 import LoadingEditor from '../components/LoadingEditor';
+import { useAppSelector, useAppDispatch } from '../store/hooks';
 
 interface iProps {
     width: number;
@@ -24,6 +25,7 @@ const EditorContainer = React.lazy(
  * */
 const EditorContext = ({ width }: iProps) => {
     const dispatchBundledCode = useBundledCodeDispatch();
+    const dispatch = useAppDispatch();
 
     return (
         <div className="editor-container">
@@ -31,6 +33,7 @@ const EditorContext = ({ width }: iProps) => {
                 <EditorContainer
                     dispatchBundledCode={dispatchBundledCode}
                     width={width}
+                    dispatch={dispatch}
                 />
             </React.Suspense>
         </div>

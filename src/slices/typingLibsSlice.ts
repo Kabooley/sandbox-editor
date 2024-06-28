@@ -26,7 +26,7 @@ import type { iFetchLibsApi } from '../worker/fetchLibs.worker';
 
 // --- Types ---
 
-enum LoadingStatus {
+export enum LoadingStatus {
     LOADING = 'loading',
     LOADED = 'loaded',
     IDLE = 'idle',
@@ -46,8 +46,7 @@ interface iRequestingDependency extends iDependency {
 
 interface iState {
     dependencies: iDependency[];
-    snapshot: string;
-    requestingDependencies: iRequestingDependency[];
+    // requestingDependencies: iRequestingDependency[];
 }
 
 interface ModuleAndVersion {
@@ -58,21 +57,9 @@ interface ModuleAndVersion {
 
 // --- definitions --
 
-const packageJsonNecessary = `
-       {
-         "name": "empty package json template",
-         "version": "0.0.0",
-         "private": false,
-         "dependencies": {},
-         "scripts": {},
-         "devDependencies": {}
-       }
-       `;
-
 const initialState: iState = {
     dependencies: [],
-    snapshot: packageJsonNecessary,
-    requestingDependencies: [],
+    // requestingDependencies: [],
 };
 
 /***
@@ -203,12 +190,14 @@ export const fetchModule = createAsyncThunk(
                                 moduleName: string;
                                 version: string;
                                 vfs: Map<string, string>;
-                            }) => ({
-                                moduleName: response.moduleName,
-                                version: response.version,
-                                vfs: Array.from(response.vfs.entries()),
-                                devDependency,
-                            })
+                            }) => {
+                                return {
+                                    moduleName: response.moduleName,
+                                    version: response.version,
+                                    vfs: Array.from(response.vfs.entries()),
+                                    devDependency,
+                                };
+                            }
                         );
                 }
             });
@@ -227,18 +216,16 @@ export const fetchModule = createAsyncThunk(
  *
  * */
 export const fetchAnotherVersionModule = createAsyncThunk(
-    'typingLibs/fetchModule',
-    async ({
-        moduleName,
-        version,
-        prevVersion,
-        devDependency,
-    }: {
+    'typingLibs/fetchAnotherVersionModule',
+    async (requestedModule: {
         moduleName: string;
         version: string;
         prevVersion: string;
         devDependency: boolean;
     }) => {
+        if (requestedModule === undefined) return;
+        const { moduleName, version, prevVersion, devDependency } =
+            requestedModule;
         const isCached = await api.isAlreadyExist(moduleName, version);
         // const isPrevCached = await api.isAlreadyExist(moduleName, prevVersion);
 
@@ -258,8 +245,10 @@ export const fetchAnotherVersionModule = createAsyncThunk(
                         devDependency,
                     })
                 );
+            // NOTE: 別バージョン取得にしっぱして既存モジュールに戻す処理を実装するならここでcatch()して
         }
         // 新規取得
+        // 取得失敗した場合は元のバージョンに戻す
         else {
             return api
                 .fetchLibs(moduleName, version)
@@ -275,6 +264,7 @@ export const fetchAnotherVersionModule = createAsyncThunk(
                         devDependency,
                     })
                 );
+            // NOTE: 別バージョン取得にしっぱして既存モジュールに戻す処理を実装するならここでcatch()して
         }
     }
 );
@@ -292,7 +282,11 @@ export const fetchAnotherVersionModule = createAsyncThunk(
 export const removeModules = createAsyncThunk(
     'typingLibs/removeModules',
     async (deletionModules: ModuleAndVersion[], thunkAPI) => {
+        // array of deletion dependencies path
         let deletedDependencies: string[] = [];
+        if (!deletionModules.length) {
+            return deletedDependencies;
+        }
         return (
             Promise.all([
                 // 削除リクエストのモジュールの依存関係をmonaco extraLibsから削除
@@ -323,8 +317,10 @@ export const removeModules = createAsyncThunk(
                 // 削除したモジュールの依存関係のパスを返す
                 .then((vfss) => {
                     vfss.forEach((v) => {
-                        for (const [path, code] of v.vfs.entries()) {
-                            addExtraLibs(code, path);
+                        if (v.vfs !== undefined) {
+                            for (const [path, code] of v.vfs.entries()) {
+                                addExtraLibs(code, path);
+                            }
                         }
                     });
                     return deletedDependencies;
@@ -386,11 +382,68 @@ const typingLibsSlice = createSlice({
                 if (module !== undefined) {
                     module.state = LoadingStatus.FAILED;
                 }
+
+                console.error(action.error.code);
+                console.error(action.error.name);
+                console.error(action.error.message);
+                console.error(action.error.stack);
+            });
+
+        /****
+         * pending: replace dependency to new version and set state loading.
+         * fulfilled: set state loaded and update extra libs
+         * rejected: Remove requested module from dependencis even previous version exists.
+         * */
+        builder
+            .addCase(fetchAnotherVersionModule.pending, (state, action) => {
+                if (action.meta.arg === undefined) return;
+                const { moduleName, version, devDependency } = action.meta.arg;
+                const exist = state.dependencies.find(
+                    (d) => d.moduleName === moduleName
+                );
+                if (exist !== undefined) {
+                    exist.state = LoadingStatus.LOADING;
+                } else {
+                    state.dependencies.push({
+                        moduleName,
+                        version,
+                        state: LoadingStatus.LOADING,
+                        devDependency,
+                    });
+                }
+            })
+            .addCase(fetchAnotherVersionModule.fulfilled, (state, action) => {
+                if (action.payload === undefined) return;
+                const { moduleName, version, vfs, devDependency } =
+                    action.payload;
+                const module = state.dependencies.find(
+                    (d) => d.moduleName === moduleName
+                );
+                if (module !== undefined) {
+                    module.version = version;
+                    module.state = LoadingStatus.LOADED;
+                    module.devDependency = devDependency;
+                }
+                vfs.forEach(([path, code]) => {
+                    addExtraLibs(code, path);
+                });
+            })
+            .addCase(fetchAnotherVersionModule.rejected, (state, action) => {
+                const module = state.dependencies.find(
+                    (d) => d.moduleName === action.meta.arg.moduleName
+                );
+                if (module !== undefined) {
+                    module.state = LoadingStatus.FAILED;
+                }
+                console.error(action.error.code);
+                console.error(action.error.name);
+                console.error(action.error.message);
+                console.error(action.error.stack);
             });
         builder
-            // .addCase(removeModules.pending, () => {
-            //     console.log('[typingLibsSlice] deleting modules...');
-            // })
+            .addCase(removeModules.pending, () => {
+                console.log('[typingLibsSlice] deleting modules...');
+            })
             .addCase(removeModules.fulfilled, (state, action) => {
                 const deletionFiles = action.meta.arg.map((d) => d.moduleName);
                 // Delete deletion modules from state.dependencies.
@@ -401,7 +454,10 @@ const typingLibsSlice = createSlice({
             })
             .addCase(removeModules.rejected, (state, action) => {
                 // errorが起こりえない気がする
-                console.error(action.error);
+                console.error(action.error.code);
+                console.error(action.error.name);
+                console.error(action.error.message);
+                console.error(action.error.stack);
             });
     },
 });

@@ -4,7 +4,7 @@
  * - MonacoEditorの現在のモデルのonDidChangeModelContentから値を取得してbundleワーカへ渡す
  * - onDidChangeModelContentのたびに値をFilesContextへdispatch()する
  *
- *
+ * TODO:
  * ***************************************/
 import React from 'react';
 import * as monaco from 'monaco-editor';
@@ -27,10 +27,17 @@ import EditorNoSelectedFile from './NoSelectedEditor';
 import { connect } from 'react-redux';
 import { filesActions } from '../slices/filesSlice';
 import type { RootState } from '../store';
+import { ThunkDispatch, UnknownAction } from '@reduxjs/toolkit';
+import {
+    updatePackageJson,
+    reflectDependenciesToPackageJson,
+} from '../slices/packageJsonSlice';
+import type { SerializedError } from '@reduxjs/toolkit';
 
 interface iDefaultProps {
     dispatchBundledCode: React.Dispatch<iBundledCodeActions>;
     width: number;
+    dispatch: ThunkDispatch<RootState, undefined, UnknownAction>;
 }
 
 type iProps = ReturnType<typeof mapState> & typeof mapDispatch & iDefaultProps;
@@ -52,6 +59,7 @@ const editorConstructOptions: monaco.editor.IStandaloneEditorConstructionOptions
     };
 
 const delay = 500;
+const $FiveSec = 5000;
 
 // Store details about typings we have loaded.
 const extraLibs = new Map<
@@ -66,6 +74,7 @@ class EditorContainer extends React.Component<iProps, iState> {
         (code: string, path?: string) => void
     >;
     _debouncedBundle: lodash.DebouncedFunc<() => void>;
+    _debouncedUpdatingPackageJson: lodash.DebouncedFunc<(code: string) => void>;
 
     _fetchLibsWorker: Worker | undefined;
 
@@ -82,6 +91,11 @@ class EditorContainer extends React.Component<iProps, iState> {
         this.addExtraLibs = this.addExtraLibs.bind(this);
         this._removeFileFromExtraLibs =
             this._removeFileFromExtraLibs.bind(this);
+        // NOTE: new added.
+        this._debouncedUpdatingPackageJson = debounce(
+            this._updatePackageJson,
+            $FiveSec
+        );
     }
 
     componentDidMount() {
@@ -102,6 +116,12 @@ class EditorContainer extends React.Component<iProps, iState> {
                 false
             );
         }
+
+        // NOTE: new added
+        const packageJson = files.find((f) => f.path === 'package.json');
+        if (packageJson !== undefined) {
+            this._updatePackageJson(packageJson.value);
+        }
     }
 
     /***
@@ -119,7 +139,7 @@ class EditorContainer extends React.Component<iProps, iState> {
      * */
     componentDidUpdate(prevProp: iProps, prevState: iState) {
         // // DEBUG: ----
-        console.log('[EditorContainer] did update');
+        // console.log('[EditorContainer] did update');
         // // monaco.languages.typescript.IExtraLibs:
         // // [path: string]: {
         // //      content: string; version: number;
@@ -173,10 +193,16 @@ class EditorContainer extends React.Component<iProps, iState> {
 
     /**
      * Dispatches code to FilesContext to update file's value.
+     * Set timer to dispatch bundle action.
+     * Set timer to dispatch updatePackageJson action.
      *
      * @param {string} code - current model code onDidChangeModelContent.
      * @param {string} path - File path of current model.
      *
+     *
+     * このdebounces使用方法はそもそも正しいのか？副作用はrender語かイベントハンドラの中でならアリのはずなのでOK
+     * TODO: debouncedした関数はcancelを呼び出さなくていいのか？あとで検証
+     * TODO: lodash.debounce vs lodash-esどうする？
      * */
     _onEditorContentChange(code: string, path: string) {
         this.props.changeFile({
@@ -187,14 +213,16 @@ class EditorContainer extends React.Component<iProps, iState> {
         });
         this._debouncedBundle();
         this._debouncedAddTypings(code, path);
+        if (this.props.files.find((f) => f.selected)?.path === 'package.json') {
+            this._debouncedUpdatingPackageJson.cancel();
+            this._debouncedUpdatingPackageJson(code);
+        }
     }
 
     /***
      * Send all files to bundle.worker to bundle them.
      * */
     _onBundle() {
-        // console.log('[EditorContainer][on bundle]');
-
         this._bundleWorker &&
             this._bundleWorker.postMessage({
                 order: OrderTypes.Bundle,
@@ -248,8 +276,6 @@ class EditorContainer extends React.Component<iProps, iState> {
      *
      * */
     _addTypings(code: string, path: string) {
-        console.log(`[EditorContainer][_addTypings] ${path}`);
-
         this.addExtraLibs(code, path);
     }
 
@@ -278,8 +304,6 @@ class EditorContainer extends React.Component<iProps, iState> {
      * Reset code if passed path has already been registered.
      * */
     addExtraLibs(code: string, path: string) {
-        console.log(`[EditorContainer] Add extra Library: ${path}`);
-
         const cachedLib = extraLibs.get(path);
         if (cachedLib) {
             cachedLib.js.dispose();
@@ -312,14 +336,26 @@ class EditorContainer extends React.Component<iProps, iState> {
      *
      * */
     _removeFileFromExtraLibs(path: string) {
-        console.log(`[EditorContainer][removeFileFromExtraLibs] ${path}`);
-
         const cachedLib = extraLibs.get(path);
         if (cachedLib) {
             cachedLib.js.dispose();
             cachedLib.ts.dispose();
             extraLibs.delete(path);
         }
+    }
+
+    _updatePackageJson(code: string) {
+        this.props
+            .dispatch(updatePackageJson(code))
+            .unwrap()
+            // 問題なかった場合だけpackage.jsonを更新させる
+            .then(() => this.props.dispatch(reflectDependenciesToPackageJson()))
+            .catch((rejectedValue: SerializedError) => {
+                this.props.dispatch(reflectDependenciesToPackageJson());
+                console.error('[TestPackageJsonManagement] there was an error');
+                console.error(rejectedValue.name + ' ' + rejectedValue.message);
+                console.error(rejectedValue.stack);
+            });
     }
 
     render() {

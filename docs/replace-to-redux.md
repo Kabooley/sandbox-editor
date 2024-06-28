@@ -387,3 +387,25 @@ const ts = monaco.languages.typescript.typescriptDefaults.addExtraLib(
 
 - TODO: explorer/Workspaceでのdndに関して、ルートディレクトリへのdrop出来ない問題
 
+
+
+#### はしりがき0622
+
+packageJsonSlice.tsxの統合テスト
+
+- 済: package.jsonを編集して新規の依存関係を追加する
+- 済: package.jsonを編集して既存の依存関係の別バージョンを取得する
+- TEST: package.jsonを編集して既存の依存関係の別バージョンを取得、エラーを発生したときの挙動
+- TEST: 依存関係を取得中である状態が正常である（packageJsonSlice.state.updating...うんたらのやつ）
+- 済: ExplorerのDependencyで新規のアイテムを追加する
+- 済: ExplorerのDependencyで既存のアイテムを削除する
+        エラー確認
+- 済: ExplorerのDependencyで既存の依存関係の別バージョンを取得する
+
+- 済: Dependenciesのリストからstate.failedのアイテムを除外する
+
+他
+
+TODO: typingLibsSlice.tsxのaddCaseの処理にundefinedをよける条件分岐は必要か
+
+NOTE: 既存モジュール別バージョンを取得しようとして、取得中にエラーが発生するなどして取得失敗した場合は、既存バージョンに戻す処理は行わず既存バージョンの依存関係は自動的に削除される
