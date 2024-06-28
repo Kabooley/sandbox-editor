@@ -1,25 +1,18 @@
 import React from 'react';
-import {
-    useLayoutState,
-    useLayoutDispatch,
-    Types as LayoutActions,
-} from '../../context/LayoutContext';
 import menu from '../../assets/menu.svg';
+import { useAppSelector, useAppDispatch } from '../../store/hooks';
+import { selectLayoutState, layoutActions } from '../../slices/layoutSlice';
 
 // const $IconSize = '24px';
 
 const Header = (): JSX.Element => {
-    const { isSidebarDisplay } = useLayoutState();
-    const dispatchLayoutAction = useLayoutDispatch();
+    const { paneWidth, isSidebarDisplay } = useAppSelector(selectLayoutState);
+    const dispatch = useAppDispatch();
 
     const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
         e.preventDefault();
         e.stopPropagation();
-
-        dispatchLayoutAction({
-            type: LayoutActions.ToggleSidebar,
-            payload: {},
-        });
+        dispatch(layoutActions.ToggleSidebar());
     };
 
     return (

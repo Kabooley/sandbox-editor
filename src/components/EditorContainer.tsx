@@ -4,17 +4,15 @@
  * - MonacoEditorの現在のモデルのonDidChangeModelContentから値を取得してbundleワーカへ渡す
  * - onDidChangeModelContentのたびに値をFilesContextへdispatch()する
  *
- *
+ * TODO:
  * ***************************************/
 import React from 'react';
 import * as monaco from 'monaco-editor';
 import type { iOrderBundleResult } from '../worker/types';
-import type { File } from '../data/files';
-import type { iFilesActions } from '../context/FilesContext';
+import type { iFile } from '../data/types';
 import type { iBundledCodeActions } from '../context/BundleContext';
 import type { iOrderBundle } from '../worker/types';
 import { Types as bundledContextTypes } from '../context/BundleContext';
-import { Types as filesContextTypes } from '../context/FilesContext';
 import {
     OrderTypes,
     // iFetchResponse
@@ -26,13 +24,23 @@ import { generateTreeForBundler, getFilenameFromPath } from '../utils';
 import TabsAndActionsContainer from './TabsAndActions';
 import EditorNoSelectedFile from './NoSelectedEditor';
 
-interface iProps {
-    files: File[];
-    // addTypings: iTypingLibsContext;
-    dispatchFiles: React.Dispatch<iFilesActions>;
+import { connect } from 'react-redux';
+import { filesActions } from '../slices/filesSlice';
+import type { RootState } from '../store';
+import { ThunkDispatch, UnknownAction } from '@reduxjs/toolkit';
+import {
+    updatePackageJson,
+    reflectDependenciesToPackageJson,
+} from '../slices/packageJsonSlice';
+import type { SerializedError } from '@reduxjs/toolkit';
+
+interface iDefaultProps {
     dispatchBundledCode: React.Dispatch<iBundledCodeActions>;
     width: number;
+    dispatch: ThunkDispatch<RootState, undefined, UnknownAction>;
 }
+
+type iProps = ReturnType<typeof mapState> & typeof mapDispatch & iDefaultProps;
 
 interface iState {
     currentFilePath: string;
@@ -51,6 +59,7 @@ const editorConstructOptions: monaco.editor.IStandaloneEditorConstructionOptions
     };
 
 const delay = 500;
+const $FiveSec = 5000;
 
 // Store details about typings we have loaded.
 const extraLibs = new Map<
@@ -65,6 +74,7 @@ class EditorContainer extends React.Component<iProps, iState> {
         (code: string, path?: string) => void
     >;
     _debouncedBundle: lodash.DebouncedFunc<() => void>;
+    _debouncedUpdatingPackageJson: lodash.DebouncedFunc<(code: string) => void>;
 
     _fetchLibsWorker: Worker | undefined;
 
@@ -81,13 +91,18 @@ class EditorContainer extends React.Component<iProps, iState> {
         this.addExtraLibs = this.addExtraLibs.bind(this);
         this._removeFileFromExtraLibs =
             this._removeFileFromExtraLibs.bind(this);
+        // NOTE: new added.
+        this._debouncedUpdatingPackageJson = debounce(
+            this._updatePackageJson,
+            $FiveSec
+        );
     }
 
     componentDidMount() {
         const { files } = this.props;
 
         files.forEach((f) => {
-            this.addExtraLibs(f.getValue(), f.getPath());
+            this.addExtraLibs(f.value, f.path);
         });
 
         if (window.Worker) {
@@ -100,6 +115,12 @@ class EditorContainer extends React.Component<iProps, iState> {
                 this._onBundled,
                 false
             );
+        }
+
+        // NOTE: new added
+        const packageJson = files.find((f) => f.path === 'package.json');
+        if (packageJson !== undefined) {
+            this._updatePackageJson(packageJson.value);
         }
     }
 
@@ -118,15 +139,15 @@ class EditorContainer extends React.Component<iProps, iState> {
      * */
     componentDidUpdate(prevProp: iProps, prevState: iState) {
         // // DEBUG: ----
-        console.log('[EditorContainer] did update');
+        // console.log('[EditorContainer] did update');
         // // monaco.languages.typescript.IExtraLibs:
         // // [path: string]: {
         // //      content: string; version: number;
         // // }
-        const currentJSLibs =
-            monaco.languages.typescript.javascriptDefaults.getExtraLibs();
-        const currentTSLibs =
-            monaco.languages.typescript.typescriptDefaults.getExtraLibs();
+        // const currentJSLibs =
+        //     monaco.languages.typescript.javascriptDefaults.getExtraLibs();
+        // const currentTSLibs =
+        //     monaco.languages.typescript.typescriptDefaults.getExtraLibs();
         // console.log(currentTSLibs);
         // console.dir(this.props.files);
         // console.dir(prevProp.files);
@@ -137,22 +158,19 @@ class EditorContainer extends React.Component<iProps, iState> {
         if (prevProp.files !== this.props.files) {
             for (const file of this.props.files) {
                 if (
-                    prevProp.files.find(
-                        (f) => f.getPath() === file.getPath()
-                    ) === undefined
+                    prevProp.files.find((f) => f.path === file.path) ===
+                    undefined
                 ) {
                     // New File has added, or file's path changed.
                     // いずれの場合も結局`this.addExtraLibs`へ渡すだけ
                     // rename前のpathに該当するextralibsファイルは削除できない
                     // どれか判別できないけど、extralibsに残っていても問題ないから
-                    this.addExtraLibs(file.getValue(), file.getPath());
+                    this.addExtraLibs(file.value, file.path);
                 }
             }
             if (didFileDelete) {
-                const prevFilesPath = prevProp.files.map((pf) => pf.getPath());
-                const currentFilesPath = this.props.files.map((pf) =>
-                    pf.getPath()
-                );
+                const prevFilesPath = prevProp.files.map((pf) => pf.path);
+                const currentFilesPath = this.props.files.map((pf) => pf.path);
                 // deletedFile: prevFilesPathには存在してcurrentFilesPathには存在しない要素駆らなる配列
                 const deletedFiles = prevFilesPath.filter(
                     (pf) => currentFilesPath.indexOf(pf) === -1
@@ -175,31 +193,36 @@ class EditorContainer extends React.Component<iProps, iState> {
 
     /**
      * Dispatches code to FilesContext to update file's value.
+     * Set timer to dispatch bundle action.
+     * Set timer to dispatch updatePackageJson action.
      *
      * @param {string} code - current model code onDidChangeModelContent.
      * @param {string} path - File path of current model.
      *
+     *
+     * このdebounces使用方法はそもそも正しいのか？副作用はrender語かイベントハンドラの中でならアリのはずなのでOK
+     * TODO: debouncedした関数はcancelを呼び出さなくていいのか？あとで検証
+     * TODO: lodash.debounce vs lodash-esどうする？
      * */
     _onEditorContentChange(code: string, path: string) {
-        this.props.dispatchFiles({
-            type: filesContextTypes.Change,
-            payload: {
-                targetFilePath: path,
-                changeProp: {
-                    newValue: code,
-                },
+        this.props.changeFile({
+            targetFilePath: path,
+            changeProp: {
+                newValue: code,
             },
         });
         this._debouncedBundle();
         this._debouncedAddTypings(code, path);
+        if (this.props.files.find((f) => f.selected)?.path === 'package.json') {
+            this._debouncedUpdatingPackageJson.cancel();
+            this._debouncedUpdatingPackageJson(code);
+        }
     }
 
     /***
      * Send all files to bundle.worker to bundle them.
      * */
     _onBundle() {
-        // console.log('[EditorContainer][on bundle]');
-
         this._bundleWorker &&
             this._bundleWorker.postMessage({
                 order: OrderTypes.Bundle,
@@ -246,18 +269,13 @@ class EditorContainer extends React.Component<iProps, iState> {
     }
 
     _onChangeSelectedTab(selected: string) {
-        this.props.dispatchFiles({
-            type: filesContextTypes.ChangeSelectedFile,
-            payload: { selectedFilePath: selected },
-        });
+        this.props.changeSelectedFile({ selectedFilePath: selected });
     }
 
     /***
      *
      * */
     _addTypings(code: string, path: string) {
-        console.log(`[EditorContainer][_addTypings] ${path}`);
-
         this.addExtraLibs(code, path);
     }
 
@@ -267,14 +285,14 @@ class EditorContainer extends React.Component<iProps, iState> {
      *
      * https://stackoverflow.com/a/1129270/22007575
      * */
-    getFilesOpening(files: File[]) {
+    getFilesOpening(files: iFile[]) {
         return files
-            .filter((f) => f.isOpening())
-            .sort((a: File, b: File): number => {
-                if (a.getTabIndex()! < b.getTabIndex()!) {
+            .filter((f) => f.opening)
+            .sort((a: iFile, b: iFile): number => {
+                if (a.tabIndex! < b.tabIndex!) {
                     return -1;
                 }
-                if (a.getTabIndex()! > b.getTabIndex()!) {
+                if (a.tabIndex! > b.tabIndex!) {
                     return 1;
                 }
                 return 0;
@@ -286,8 +304,6 @@ class EditorContainer extends React.Component<iProps, iState> {
      * Reset code if passed path has already been registered.
      * */
     addExtraLibs(code: string, path: string) {
-        console.log(`[EditorContainer] Add extra Library: ${path}`);
-
         const cachedLib = extraLibs.get(path);
         if (cachedLib) {
             cachedLib.js.dispose();
@@ -320,8 +336,6 @@ class EditorContainer extends React.Component<iProps, iState> {
      *
      * */
     _removeFileFromExtraLibs(path: string) {
-        console.log(`[EditorContainer][removeFileFromExtraLibs] ${path}`);
-
         const cachedLib = extraLibs.get(path);
         if (cachedLib) {
             cachedLib.js.dispose();
@@ -330,8 +344,22 @@ class EditorContainer extends React.Component<iProps, iState> {
         }
     }
 
+    _updatePackageJson(code: string) {
+        this.props
+            .dispatch(updatePackageJson(code))
+            .unwrap()
+            // 問題なかった場合だけpackage.jsonを更新させる
+            .then(() => this.props.dispatch(reflectDependenciesToPackageJson()))
+            .catch((rejectedValue: SerializedError) => {
+                this.props.dispatch(reflectDependenciesToPackageJson());
+                console.error('[TestPackageJsonManagement] there was an error');
+                console.error(rejectedValue.name + ' ' + rejectedValue.message);
+                console.error(rejectedValue.stack);
+            });
+    }
+
     render() {
-        const selectedFilePath = this.props.files.find((f) => f.isSelected());
+        const selectedFilePath = this.props.files.find((f) => f.selected);
         const filesOpening = this.getFilesOpening(this.props.files);
 
         if (filesOpening.length) {
@@ -368,4 +396,22 @@ class EditorContainer extends React.Component<iProps, iState> {
     }
 }
 
-export default EditorContainer;
+const mapState = (state: RootState) => {
+    return {
+        files: state.files.files,
+    };
+};
+
+const mapDispatch = {
+    addFile: filesActions.addFile,
+    changeFile: filesActions.changeFile,
+    changeMultipleFiles: filesActions.changeMultipleFiles,
+    changeSelectedFile: filesActions.changeSelectedFile,
+    closeFile: filesActions.closeFile,
+    closeAllFiles: filesActions.closeAllFiles,
+    deleteFile: filesActions.deleteFile,
+    deleteMultipleFiles: filesActions.deleteMultipleFiles,
+    openFile: filesActions.openFile,
+};
+
+export default connect(mapState, mapDispatch)(EditorContainer);

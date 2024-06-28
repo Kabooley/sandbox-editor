@@ -1,7 +1,7 @@
 import React from 'react';
 import useKey from 'react-use/lib/useKey';
-import { Types as ActionTypesOfLayoutContext } from '../context/LayoutContext';
-import { useLayoutDispatch } from '../context/LayoutContext';
+import { useAppDispatch } from '../store/hooks';
+import { layoutActions } from '../slices/layoutSlice';
 
 // DEBUG:
 import { useLoadingSurvey } from '../hooks/useLoadingSurvey';
@@ -17,30 +17,20 @@ const KEYCODES_FOR_CHROME = {
     b: 66,
 };
 
-const MainContainer: React.FC<iProps> = ({ children }) => {
-    const dispatchLayoutAction = useLayoutDispatch();
+const MainContainer = ({ children }: iProps) => {
+    const dispatch = useAppDispatch();
     useKey(
         (e) => e.ctrlKey && e.keyCode === KEYCODES_FOR_CHROME.d && e.shiftKey,
         (e) => {
             e.preventDefault();
-            // console.log("[MainContainer] ACTION: TOGGLE_PREVIEW");
-
-            dispatchLayoutAction({
-                type: ActionTypesOfLayoutContext.TogglePreview,
-                payload: {},
-            });
+            dispatch(layoutActions.TogglePreview());
         }
     );
     useKey(
         (e) => e.ctrlKey && e.keyCode === KEYCODES_FOR_CHROME.b,
         (e) => {
             e.preventDefault();
-            // console.log("[MainContainer] ACTION: TOGGLE_SIDEBAR");
-
-            dispatchLayoutAction({
-                type: ActionTypesOfLayoutContext.ToggleSidebar,
-                payload: {},
-            });
+            dispatch(layoutActions.ToggleSidebar());
         }
     );
 

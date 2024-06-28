@@ -1,19 +1,18 @@
 import React from 'react';
 import { ToggleSwitch } from '../../common';
-import { useLayoutDispatch, useLayoutState } from '../../context/LayoutContext';
-import { Types as LayoutContextActionType } from '../../context/LayoutContext';
+import { useAppSelector, useAppDispatch } from '../../store/hooks';
+import { selectLayoutState, layoutActions } from '../../slices/layoutSlice';
+// import { useLayoutDispatch, useLayoutState } from '../../context/LayoutContext';
+// import { Types as LayoutContextActionType } from '../../context/LayoutContext';
 
 // https://github.com/expo/snack/blob/main/website/src/client/components/EditorFooter.tsx
 // https://github.com/expo/snack/blob/main/website/src/client/components/shared/ToggleSwitch.tsx#L14
 const StatusBar = () => {
-    const { isPreviewDisplay } = useLayoutState();
-    const dispatch = useLayoutDispatch();
+    const { isPreviewDisplay } = useAppSelector(selectLayoutState);
+    const dispatch = useAppDispatch();
 
     const onTogglePreview = (event: React.ChangeEvent<HTMLInputElement>) => {
-        dispatch({
-            type: LayoutContextActionType.TogglePreview,
-            payload: {},
-        });
+        dispatch(layoutActions.TogglePreview());
     };
 
     return (

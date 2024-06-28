@@ -8,22 +8,17 @@ import React, { useRef, useState, useEffect } from 'react';
 import DragNDrop from '../VSCodeExplorer/DragNDrop';
 import { CollapseIcon } from './CollapseIcon';
 import { MoreActionsMenu } from './MoreActionsMenu';
-import {
-    Types as FilesContextType,
-    useFilesDispatch,
-} from '../../context/FilesContext';
-import {
-    Types as LayoutContextType,
-    useLayoutDispatch,
-    useLayoutState,
-} from '../../context/LayoutContext';
 import { getFilenameFromPath, moveInArray, getFileIconName } from '../../utils';
-import type { File } from '../../data/files';
+import type { iFile } from '../../data/types';
 import ScrollableElement from '../ScrollableElement';
 import Action from '../VSCodeExplorer/Action';
 import { Icon } from '../Icon';
 import closeButtonIcon from '../../assets/vscode/dark/close.svg';
 import ellipsisIcon from '../../assets/vscode/dark/ellipsis.svg';
+
+import { useAppSelector, useAppDispatch } from '../../store/hooks';
+import { selectLayoutState, layoutActions } from '../../slices/layoutSlice';
+import { filesActions } from '../../slices/filesSlice';
 
 // NOTE: 無理やり型を合わせている。
 // 本来`child: Node`でclassNameというpropertyを持たないが、iJSXNode.classNameをoptionalにすることによって
@@ -35,12 +30,12 @@ interface iJSXNode extends Node {
 interface iProps {
     // Selected file path
     // path: string;
-    selectedFile: File | undefined;
+    selectedFile: iFile | undefined;
     onChangeSelectedTab: (path: string) => void;
     // Get width of parent which may resize dynamically.
     width: number;
     // Array<File> concist of elements which isSelected field is true
-    filesOpening: File[];
+    filesOpening: iFile[];
 }
 
 // According to `sass/components/_tabsAndActions.scss`.
@@ -59,11 +54,10 @@ const TabsAndActionsContainer = ({
         y: 0,
     });
     const [displayMenu, setDisplayMenu] = useState<boolean>(false);
-    const { isPreviewDisplay } = useLayoutState();
-    const dispatch = useFilesDispatch();
-    const dispatchLayout = useLayoutDispatch();
     const refTabArea = useRef<HTMLDivElement>(null);
     const refTabs = useRef<HTMLDivElement[]>([]);
+    const { isPreviewDisplay } = useAppSelector(selectLayoutState);
+    const dispatch = useAppDispatch();
 
     /**
      * Update scrollableWidth, scrollWidth, refTabs array length.
@@ -116,39 +110,20 @@ const TabsAndActionsContainer = ({
     const onClose = (e: React.MouseEvent<HTMLLIElement>, path: string) => {
         e.stopPropagation();
         e.preventDefault();
-
-        console.log(`[TabsAndActions][onClose] ${path}`);
-
-        dispatch({
-            type: FilesContextType.Close,
-            payload: {
-                path: path,
-            },
-        });
+        dispatch(filesActions.closeFile({ path: path }));
     };
 
     const handleReorderTab = (from: number, to: number) => {
-        const reorderedOpeningFiles = moveInArray<File>(filesOpening, from, to);
+        const reorderedOpeningFiles = moveInArray<iFile>(filesOpening, from, to);
         const payloads = reorderedOpeningFiles.map((f, index) => {
             return {
-                targetFilePath: f.getPath(),
+                targetFilePath: f.path,
                 changeProp: {
                     tabIndex: index,
                 },
             };
         });
-
-        // // DEBUG:
-        // console.log(
-        //   `[TabsAndActions] Reorder tabs on TabsAndActions: from ${from} to ${to}`
-        // );
-        // console.log(reorderedOpeningFiles);
-        // console.log(payloads);
-
-        dispatch({
-            type: FilesContextType.ChangeMultiple,
-            payload: payloads,
-        });
+        dispatch(filesActions.changeMultipleFiles(payloads));
     };
 
     /********************************************************
@@ -200,32 +175,20 @@ const TabsAndActionsContainer = ({
 
     // Disable pointer events on window
     const disablePointerEventOnIframe = () => {
-        dispatchLayout({
-            type: LayoutContextType.DisablePointerEventsOnIframe,
-            payload: {},
-        });
+        dispatch(layoutActions.DisablePointerEventsOnIframe());
     };
 
     // Enable pointer events on window
     const enablePointerEventOnIframe = () => {
-        dispatchLayout({
-            type: LayoutContextType.EnablePointerEventsOnIframe,
-            payload: {},
-        });
+        dispatch(layoutActions.EnablePointerEventsOnIframe());
     };
 
     const handleTogglePreview = () => {
-        dispatchLayout({
-            type: LayoutContextType.TogglePreview,
-            payload: {},
-        });
+        dispatch(layoutActions.TogglePreview());
     };
 
     const handleCloseAll = () => {
-        dispatch({
-            type: FilesContextType.CloseAll,
-            payload: {},
-        });
+        dispatch(filesActions.closeAllFiles());
     };
 
     /********************************************
@@ -293,7 +256,7 @@ const TabsAndActionsContainer = ({
                         >
                             <div
                                 className={
-                                    f.getPath() === selectedFile?.getPath()
+                                    f.path === selectedFile?.path
                                         ? 'tab active'
                                         : 'tab'
                                 }
@@ -303,7 +266,7 @@ const TabsAndActionsContainer = ({
                                 onClick={() =>
                                     changeTab(
                                         refTabs.current[index],
-                                        f.getPath()
+                                        f.path
                                     )
                                 }
                                 key={index}
@@ -311,15 +274,15 @@ const TabsAndActionsContainer = ({
                                 <div className="monaco-icon-label">
                                     <div className="codicon">
                                         <Icon
-                                            name={getFileIconName(f.getPath())}
+                                            name={getFileIconName(f.path)}
                                             size="16px"
                                         />
                                     </div>
                                     <div className="monaco-icon-label__container">
                                         <span className="label-name">
-                                            {getFilenameFromPath(f.getPath())}
+                                            {getFilenameFromPath(f.path)}
                                         </span>
-                                        {/* <span className="label-description">{f.getPath()}</span> */}
+                                        {/* <span className="label-description">{f.path}</span> */}
                                     </div>
                                 </div>
                                 <div className="actions hover-to-appear">
@@ -327,7 +290,7 @@ const TabsAndActionsContainer = ({
                                         <ul className="actions-container">
                                             <Action
                                                 handler={(e) =>
-                                                    onClose(e, f.getPath())
+                                                    onClose(e, f.path)
                                                 }
                                                 icon={closeButtonIcon}
                                                 altMessage="Close a tag"
@@ -360,115 +323,3 @@ const TabsAndActionsContainer = ({
 };
 
 export default TabsAndActionsContainer;
-
-// /**
-//  * https://react.dev/reference/react/memo#parameters
-//  *
-//  * Component wrapped by React.memo will return previous its output if arePropsEqual returns true.
-//  * If arePropsEqual return false, then componet will return updated output.
-//  *
-//  * NOTE: Pasing second arguments of React.memo() means
-//  * that you should check all props are equal to previous props.
-//  *
-//  * Check list
-//  * - Is openingFiles.length equal?
-//  * - Is selectedFile equal?
-//  * - Is parent width equal?
-//  * - Is each tabIndex of openingFiles equal?
-//  * */
-// const arePropsEqual = (
-//     prevProps: Readonly<iProps>,
-//     currentProps: Readonly<iProps>
-// ): boolean => {
-//     const isEqualNumberOfFiles =
-//         prevProps.filesOpening.length === currentProps.filesOpening.length;
-//     // ? false
-//     // : true;
-//     // 0: exact match, -1, 1: unmatch
-//     const prevSelected = prevProps.selectedFile !== undefined ? prevProps.selectedFile.getPath() : "";
-//     const currentSelected = currentProps.selectedFile !== undefined ? currentProps.selectedFile.getPath() : "";
-//     const isSameSelectedFile = prevSelected
-//         .toLocaleLowerCase()
-//         .localeCompare(currentSelected.toLocaleLowerCase())
-//         ? false
-//         : true;
-
-//     console.log(`[TabsAndActions][memo] prevSelected: ${prevSelected} currentSelected: ${currentSelected}`);
-
-//     // const isEqualWidth = prevProps.width === currentProps.width ? true : false;
-//     const isEqualWidth = prevProps.width === currentProps.width;
-
-//     let isTabOrderEqual = true;
-//     if (isEqualNumberOfFiles) {
-//         currentProps.filesOpening.sort(function (a: File, b: File) {
-//             if (a.getTabIndex()! < b.getTabIndex()!) {
-//                 return -1;
-//             } else if (a.getTabIndex()! > b.getTabIndex()!) {
-//                 return 1;
-//             }
-//             return 0;
-//         });
-//         prevProps.filesOpening.sort(function (a: File, b: File) {
-//             if (a.getTabIndex()! < b.getTabIndex()!) {
-//                 return -1;
-//             } else if (a.getTabIndex()! > b.getTabIndex()!) {
-//                 return 1;
-//             }
-//             return 0;
-//         });
-
-//         // console.log(
-//         //     `[TabsAndActions][memo] previuos filesOpening length: ${prevProps.filesOpening.length}`
-//         // );
-//         // console.log(
-//         //     `[TabsAndActions][memo] current filesOpening length: ${currentProps.filesOpening.length}`
-//         // );
-//         // console.log(
-//         //     `[TabsAndActions][memo] previous filesOpening: ${JSON.stringify(
-//         //         prevProps.filesOpening,
-//         //         null,
-//         //         2
-//         //     )}`
-//         // );
-//         // console.log(
-//         //     `[TabsAndActions][memo] current filesOpening: ${JSON.stringify(
-//         //         currentProps.filesOpening,
-//         //         null,
-//         //         2
-//         //     )}`
-//         // );
-
-//         // TODO: 要修正：prevProps.filesOpeningとcurrentProps.filesOpeningは
-//         // ユーザ操作によって毎度同じ長さではないので配列の範囲外にアクセスしようとするエラーが発生している。
-//         // 例えばTabsAndActions上のタブを閉じる操作をすると
-//         // currentProps.filesOpening[index].getPath()はundefinedでアクセスできないエラーが発生する
-//         isTabOrderEqual = prevProps.filesOpening.every((pf, index) => {
-//             return pf.getPath() === currentProps.filesOpening[index].getPath();
-//         });
-
-//         // isTabOrderEqual = prevProps.filesOpening.every(
-//         //     (pf, index) =>
-//         //         pf.getPath() === currentProps.filesOpening[index].getPath()
-//         // );
-//     }
-
-//     console.log(
-//         `Will TabsAndActions rerender?: ${
-//             isEqualNumberOfFiles &&
-//             isSameSelectedFile &&
-//             isEqualWidth &&
-//             isTabOrderEqual
-//                 ? 'NO'
-//                 : 'YES'
-//         }`
-//     );
-
-//     return (
-//         isEqualNumberOfFiles &&
-//         isSameSelectedFile &&
-//         isEqualWidth &&
-//         isTabOrderEqual
-//     );
-// };
-
-// export default React.memo(TabsAndActionsContainer, arePropsEqual);

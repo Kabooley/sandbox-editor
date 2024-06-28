@@ -3,6 +3,10 @@ export interface iFile {
     language: string;
     value: string;
     isFolder: boolean;
+    //
+    selected: boolean;
+    opening: boolean;
+    tabIndex: number | null;
 }
 
 export interface iExplorer {

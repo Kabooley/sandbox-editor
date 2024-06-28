@@ -6,11 +6,10 @@ import MainContainer from './MainContainer';
 import SplitPane from './SplitPane';
 import PaneSection from './PaneSection';
 import FooterSection from './FooterSection';
-import { FilesProvider } from '../context/FilesContext';
 import { BundledCodeProvider } from '../context/BundleContext';
-import { TypingLibsProvider } from '../context/TypingLibsContext';
-import { LayoutStateProvider } from '../context/LayoutContext';
-import Modal from '../components/Modal';
+import Modal from '../components/Modal2';
+// import Modal from '../components/Modal';
+// import { TypingLibsProvider } from '../context/TypingLibsContext';
 
 // DEBUG:
 import { useLoadingSurvey } from '../hooks/useLoadingSurvey';
@@ -20,24 +19,18 @@ const Layout = (): JSX.Element => {
 
     return (
         <>
-            <LayoutStateProvider>
-                <HeaderSection />
-                <MainContainer>
-                    <SplitPane>
-                        <FilesProvider>
-                            <BundledCodeProvider>
-                                <TypingLibsProvider>
-                                    <PaneSection />
-                                    <EditorSection />
-                                    <PreviewSection />
-                                </TypingLibsProvider>
-                            </BundledCodeProvider>
-                        </FilesProvider>
-                    </SplitPane>
-                </MainContainer>
-                <FooterSection />
-                <Modal />
-            </LayoutStateProvider>
+            <HeaderSection />
+            <MainContainer>
+                <SplitPane>
+                    <BundledCodeProvider>
+                        <PaneSection />
+                        <EditorSection />
+                        <PreviewSection />
+                    </BundledCodeProvider>
+                </SplitPane>
+            </MainContainer>
+            <FooterSection />
+            <Modal />
         </>
     );
 };

@@ -1,18 +1,13 @@
 import React from 'react';
 import Stack from '../Stack';
 import Action from '../Action';
-import {
-    useFiles,
-    useFilesDispatch,
-    Types as FilesActionTypes,
-} from '../../../context/FilesContext';
-import { File } from '../../../data/files';
+import type { iFile } from '../../../data/types';
 import { getFilenameFromPath, getFileIconName } from '../../../utils';
 import { Icon } from '../../Icon';
 import closeAllIcon from '../../../assets/vscode/dark/close-all.svg';
 import closeIcon from '../../../assets/vscode/dark/close.svg';
-// import chevronRightIcon from '../../../assets/vscode/dark/chevron-right.svg';
-// import saveAllIcon from '../../../assets/vscode/dark/save-all.svg';
+import { useAppSelector, useAppDispatch } from '../../../store/hooks';
+import { selectFiles, filesActions } from '../../../slices/filesSlice';
 
 interface iProps {
     id: number;
@@ -36,9 +31,9 @@ const OpenEditor: React.FC<iProps> = ({
     height,
     width,
 }) => {
-    const files = useFiles();
-    const filesDispatch = useFilesDispatch();
-    const filesOpening = files.filter((f) => f.isOpening());
+    const { files } = useAppSelector(selectFiles);
+    const dispatch = useAppDispatch();
+    const filesOpening = files.filter((f) => f.opening);
     const title = 'open editor';
 
     /************************************************
@@ -48,39 +43,28 @@ const OpenEditor: React.FC<iProps> = ({
      ************************************************/
     const handleClickFile = (
         e: React.MouseEvent<HTMLDivElement>,
-        file: File
+        file: iFile
     ) => {
         e.stopPropagation();
         // Ignore if the file is selected already
-        if (file.isSelected()) return;
-        filesDispatch({
-            type: FilesActionTypes.ChangeSelectedFile,
-            payload: {
-                selectedFilePath: file.getPath(),
-            },
-        });
+        if (file.selected) return;
+        dispatch(
+            filesActions.changeSelectedFile({
+                selectedFilePath: file.path,
+            })
+        );
     };
     /************************************************
      *  Action handlers
      *
      *
      ************************************************/
-    const closeFile = (file: File) => {
-        filesDispatch({
-            type: FilesActionTypes.Close,
-            payload: {
-                path: file.getPath(),
-            },
-        });
+    const closeFile = (file: iFile) => {
+        dispatch(filesActions.closeFile({ path: file.path }));
     };
 
     const handleCloseAllEditors = () => {
-        console.log('[OpenEditor] action close all');
-
-        filesDispatch({
-            type: FilesActionTypes.CloseAll,
-            payload: {},
-        });
+        dispatch(filesActions.closeAllFiles());
     };
 
     /************************************************
@@ -117,7 +101,7 @@ const OpenEditor: React.FC<iProps> = ({
     //     );
     // };
 
-    const renderActionCloseAFile = (file: File) => {
+    const renderActionCloseAFile = (file: iFile) => {
         const clickHandler = (e: React.MouseEvent<HTMLLIElement>) => {
             e.stopPropagation();
             e.preventDefault();
@@ -156,12 +140,12 @@ const OpenEditor: React.FC<iProps> = ({
                         </div>
                     </div>
                     <div className="codicon">
-                        <Icon name={getFileIconName(f.getPath())} size="16px" />
+                        <Icon name={getFileIconName(f.path)} size="16px" />
                     </div>
                     <h3 className="item-label">
-                        {getFilenameFromPath(f.getPath())}
+                        {getFilenameFromPath(f.path)}
                     </h3>
-                    <span>{f.getPath()}</span>
+                    <span>{f.path}</span>
                 </div>
             ))}
         </Stack>

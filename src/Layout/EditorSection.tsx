@@ -3,8 +3,8 @@ import { Resizable } from 'react-resizable';
 import type { ResizeCallbackData } from 'react-resizable';
 import { useWindowSize } from '../hooks';
 import EditorContext from '../context/EditorContext';
-import { useLayoutDispatch, useLayoutState } from '../context/LayoutContext';
-import { Types as LayoutContextActionType } from '../context/LayoutContext';
+import { useAppSelector, useAppDispatch } from '../store/hooks';
+import { selectLayoutState, layoutActions } from '../slices/layoutSlice';
 import { $heightOfHeader, $heightOfFooter, $initialLayout } from '../constants';
 
 // DEBUG:
@@ -14,8 +14,8 @@ const EditorSection = (): JSX.Element => {
     const [height, setHeight] = useState(
         window.innerHeight - $heightOfHeader - $heightOfFooter
     );
-    const { editorWidth, isPreviewDisplay } = useLayoutState();
-    const dispatch = useLayoutDispatch();
+    const { editorWidth, isPreviewDisplay } = useAppSelector(selectLayoutState);
+    const dispatch = useAppDispatch();
     const { innerHeight } = useWindowSize();
     const { minimumWidth, maximumWidth } = $initialLayout.editorLayout;
 
@@ -40,12 +40,7 @@ const EditorSection = (): JSX.Element => {
     ) => any = (event, { node, size, handle }) => {
         // NOTE: previewが非表示のときはリサイズ無効にする
         if (!isPreviewDisplay) return;
-        dispatch({
-            type: LayoutContextActionType.UpdateEditorWidth,
-            payload: {
-                width: size.width,
-            },
-        });
+        dispatch(layoutActions.UpdateEditorWidth(size.width));
     };
 
     const _minimumWidth = isPreviewDisplay ? minimumWidth : editorWidth;
