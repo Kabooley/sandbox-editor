@@ -1,4 +1,6 @@
-# Loading
+# ローディングにかかわる機能
+
+`feat/loading`ブランチ
 
 ## Summary
 
@@ -29,6 +31,8 @@
 
 - [参考](#参考)
 
+- [走り書き](#走り書き)
+
 ## TODOs
 
 - TODO: webpack5 における Profiler 用の設定とは？
@@ -42,8 +46,6 @@
 - TODO: PixelLoading.cssをsassに移動すること
 
 - TODO: [performance] classコンポーネントをPureComponentに変更するか検討
-
-- TODO: [[別ブランチ]context+useReducerからReduxへ切り替え](#[別ブランチ]context+useReducerからReduxへ切り替え)
 
 ## パフォーマンスについて知っておくこと
 
@@ -816,3 +818,9 @@ const SomeComponent = () => {
 
 ## React Contextはサブスクライバをいつ再レンダリングさせるのか
 
+
+## 走り書き
+
+editor, explorer, previewなどMainContainer内部のコンポーネントを動的ローディングするようにする
+
+- 3つローディングが完了したら一気に表示するようにする。それまではローディング画面。
