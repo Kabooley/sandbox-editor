@@ -1,0 +1,138 @@
+// Skeleton関連
+// TODO: セレクタの整理を！！
+
+.list {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+.list-item {
+    justify-content: space-between;
+    align-content: center;
+    padding-left: 8px;
+    margin-top: 8px;
+    min-height: 16px;
+}
+
+.skeleton--text-box {
+    height: 16px;
+    width: 90%;
+    opacity: 0.7;
+    animation: pulse 4s linear infinite;
+    background: linear-gradient(
+        90deg,
+        #303030 0%,
+        #303030 20%,
+        #5a5a5a 50%,
+        #303030 80%,
+        #303030 100%
+    );
+    background-size: 200% 200%;
+}
+
+.skeleton--icon-square {
+    height: 16px;
+    width: 16px;
+    animation: pulse 4s linear infinite;
+    background: linear-gradient(
+        90deg,
+        #303030 0%,
+        #303030 20%,
+        #5a5a5a 50%,
+        #303030 80%,
+        #303030 100%
+    );
+    background-size: 200% 200%;
+}
+
+.skeleton--icon-round {
+    height: 16px;
+    width: 16px;
+    border-radius: 50%;
+    animation: pulse 4s linear infinite;
+    background: linear-gradient(
+        90deg,
+        #303030 0%,
+        #303030 20%,
+        #5a5a5a 50%,
+        #303030 80%,
+        #303030 100%
+    );
+    background-size: 200% 200%;
+}
+
+/* ExplorerSkeleton */
+
+.skeleton--explorer-container {
+    width: 40%;
+    height: 100%;
+    background: #040404;
+    border: 1px solid #5a5a5a;
+}
+
+/* EditorSkeleton */
+
+.skeleton--editor-container {
+    flex: 1;
+    border: 1px solid #5a5a5a;
+    background-color: #040404;
+}
+
+.skeleton--editor-container > .list {
+    margin-top: 32px;
+}
+
+.skeleton--editor-container
+    > .list
+    > .list-item:nth-child(3)
+    > .skeleton--text-box {
+    width: 40%;
+}
+
+.skeleton--editor-container
+    > .list
+    > .list-item:nth-child(4)
+    > .skeleton--text-box {
+    width: 60%;
+}
+
+.skeleton--editor-container
+    > .list
+    > .list-item:nth-child(n + 5):nth-child(-n + 6)
+    > .skeleton--text-box {
+    width: 80%;
+}
+
+.skeleton--editor-container
+    > .list
+    > .list-item:nth-child(n + 7)
+    > .skeleton--text-box {
+    width: 30%;
+}
+
+/* commons */
+
+.horizontal {
+    display: flex;
+    flex-direction: row;
+}
+
+.vertical {
+    display: flex;
+    flex-direction: row;
+}
+
+.space-both-side {
+    width: 90%;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.indent-left-16 {
+    margin-left: 16px;
+}
+
+.indent-left-32 {
+    margin-left: 32px;
+}
