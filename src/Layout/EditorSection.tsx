@@ -7,9 +7,6 @@ import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { selectLayoutState, layoutActions } from '../slices/layoutSlice';
 import { $heightOfHeader, $heightOfFooter, $initialLayout } from '../constants';
 
-// DEBUG:
-import { useLoadingSurvey } from '../hooks/useLoadingSurvey';
-
 const EditorSection = (): JSX.Element => {
     const [height, setHeight] = useState(
         window.innerHeight - $heightOfHeader - $heightOfFooter
@@ -22,17 +19,6 @@ const EditorSection = (): JSX.Element => {
     useEffect(() => {
         setHeight(innerHeight - $heightOfHeader - $heightOfFooter);
     }, [innerHeight]);
-
-    // DEBUG:
-    useLoadingSurvey(
-        'editor-section',
-        false,
-        height,
-        editorWidth,
-        innerHeight,
-        minimumWidth,
-        maximumWidth
-    );
 
     const onEditorSecResize: (
         e: React.SyntheticEvent,

@@ -3,9 +3,6 @@ import useKey from 'react-use/lib/useKey';
 import { useAppDispatch } from '../store/hooks';
 import { layoutActions } from '../slices/layoutSlice';
 
-// DEBUG:
-import { useLoadingSurvey } from '../hooks/useLoadingSurvey';
-
 interface iProps {
     children: any;
 }
@@ -33,9 +30,6 @@ const MainContainer = ({ children }: iProps) => {
             dispatch(layoutActions.ToggleSidebar());
         }
     );
-
-    // DEBUG:
-    useLoadingSurvey('main-container');
 
     return <div className="main-container">{children}</div>;
 };

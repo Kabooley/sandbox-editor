@@ -8,15 +8,8 @@ import PaneSection from './PaneSection';
 import FooterSection from './FooterSection';
 import { BundledCodeProvider } from '../context/BundleContext';
 import Modal from '../components/Modal2';
-// import Modal from '../components/Modal';
-// import { TypingLibsProvider } from '../context/TypingLibsContext';
-
-// DEBUG:
-import { useLoadingSurvey } from '../hooks/useLoadingSurvey';
 
 const Layout = (): JSX.Element => {
-    useLoadingSurvey('layout-index.tsx');
-
     return (
         <>
             <HeaderSection />

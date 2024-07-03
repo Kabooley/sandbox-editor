@@ -53,7 +53,7 @@ const Pane = (): JSX.Element => {
             >
                 <div className="pane-container">
                     <SidebarTitle width={paneWidth} title={'explorer'} />
-                    {/* <React.Suspense
+                    <React.Suspense
                         fallback={
                             <SkeletonExplorer
                                 width={paneWidth}
@@ -65,11 +65,7 @@ const Pane = (): JSX.Element => {
                             width={paneWidth}
                             height={paneHeight - $heightOfPaneTitle}
                         />
-                    </React.Suspense> */}
-                    <SkeletonExplorer
-                        width={paneWidth}
-                        height={paneHeight - $heightOfPaneTitle}
-                    />
+                    </React.Suspense>
                 </div>
             </Resizable>
         );

@@ -4,8 +4,9 @@
  * */
 import React from 'react';
 import { useBundledCodeDispatch } from './BundleContext';
-import LoadingEditor from '../components/LoadingEditor';
+import EditorSkeleton from '../components/Skeletons/SkeletonEditor';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
+// import LoadingEditor from '../components/LoadingEditor';
 
 interface iProps {
     width: number;
@@ -29,7 +30,7 @@ const EditorContext = ({ width }: iProps) => {
 
     return (
         <div className="editor-container">
-            <React.Suspense fallback={<LoadingEditor />}>
+            <React.Suspense fallback={<EditorSkeleton />}>
                 <EditorContainer
                     dispatchBundledCode={dispatchBundledCode}
                     width={width}
