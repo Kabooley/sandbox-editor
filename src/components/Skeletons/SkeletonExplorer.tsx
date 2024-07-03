@@ -7,17 +7,20 @@ interface iProps {
     height: number;
 }
 
+
+const collapsingHeightOfSection = 24;
+
 /***
  * VSCodeExplorerを模したスケルトンを生成する
  *
  * */
 const SkeletonExplorer = ({ width, height }: iProps) => {
-    const _stackOneHeight = height * 0.3;
-    const _stackTwoHeight = height * 0.3;
+    const _stackOneHeight = collapsingHeightOfSection;
+    const _stackTwoHeight = height * 0.5;
     const _stackThreeHeight = height - _stackOneHeight - _stackTwoHeight;
     const _stackOneTop = 0;
     const _stackTwoTop = _stackOneTop + _stackOneHeight;
-    const _stackThreeTop = _stackTwoTop + _stackOneHeight;
+    const _stackThreeTop = _stackTwoTop + _stackTwoHeight;
 
     return (
         <div

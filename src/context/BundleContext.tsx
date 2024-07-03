@@ -5,9 +5,6 @@
  * */
 import React, { createContext, useContext, useReducer, Dispatch } from 'react';
 
-// DEBUG:
-import { useLoadingSurvey } from '../hooks/useLoadingSurvey';
-
 interface iBundledState {
     bundledCode: string;
     error: Error | null;
@@ -75,9 +72,6 @@ export const BundledCodeProvider = ({
         bundledCodeReducer,
         initialBundledCode
     );
-
-    // DEBUG:
-    useLoadingSurvey('bundle-context', false, bundledCode);
 
     return (
         <BundledCodeContext.Provider value={bundledCode}>
