@@ -8,15 +8,8 @@
  * ***************************************/
 import React from 'react';
 import * as monaco from 'monaco-editor';
-import type { iOrderBundleResult } from '../worker/types';
 import type { iFile } from '../data/types';
-import type { iBundledCodeActions } from '../context/BundleContext';
-import type { iOrderBundle } from '../worker/types';
-import { Types as bundledContextTypes } from '../context/BundleContext';
-import {
-    OrderTypes,
-    // iFetchResponse
-} from '../worker/types';
+
 import MonacoEditor from './Monaco/MonacoEditor';
 import debounce from 'lodash.debounce';
 import type * as lodash from 'lodash';
@@ -26,6 +19,7 @@ import EditorNoSelectedFile from './NoSelectedEditor';
 
 import { connect } from 'react-redux';
 import { filesActions } from '../slices/filesSlice';
+import { bundler } from '../slices/bundlerSlice';
 import type { RootState } from '../store';
 import { ThunkDispatch, UnknownAction } from '@reduxjs/toolkit';
 import {
@@ -35,7 +29,6 @@ import {
 import type { SerializedError } from '@reduxjs/toolkit';
 
 interface iDefaultProps {
-    dispatchBundledCode: React.Dispatch<iBundledCodeActions>;
     width: number;
     dispatch: ThunkDispatch<RootState, undefined, UnknownAction>;
 }
@@ -68,22 +61,17 @@ const extraLibs = new Map<
 >();
 
 class EditorContainer extends React.Component<iProps, iState> {
-    // state = { currentFilePath: '' };
-    _bundleWorker: Worker | undefined;
     _debouncedAddTypings: lodash.DebouncedFunc<
         (code: string, path?: string) => void
     >;
     _debouncedBundle: lodash.DebouncedFunc<() => void>;
     _debouncedUpdatingPackageJson: lodash.DebouncedFunc<(code: string) => void>;
 
-    _fetchLibsWorker: Worker | undefined;
-
     constructor(props: iProps) {
         super(props);
         this._onEditorContentChange = this._onEditorContentChange.bind(this);
         this._onBundle = this._onBundle.bind(this);
         this._onChangeSelectedTab = this._onChangeSelectedTab.bind(this);
-        this._onBundled = this._onBundled.bind(this);
         this._addTypings = this._addTypings.bind(this);
         this._onDidChangeModel = this._onDidChangeModel.bind(this);
         this._debouncedAddTypings = debounce(this._addTypings, delay);
@@ -91,7 +79,6 @@ class EditorContainer extends React.Component<iProps, iState> {
         this.addExtraLibs = this.addExtraLibs.bind(this);
         this._removeFileFromExtraLibs =
             this._removeFileFromExtraLibs.bind(this);
-        // NOTE: new added.
         this._debouncedUpdatingPackageJson = debounce(
             this._updatePackageJson,
             $FiveSec
@@ -104,20 +91,6 @@ class EditorContainer extends React.Component<iProps, iState> {
         files.forEach((f) => {
             this.addExtraLibs(f.value, f.path);
         });
-
-        if (window.Worker) {
-            this._bundleWorker = new Worker(
-                new URL('/src/worker/bundle.worker.ts', import.meta.url),
-                { type: 'module' }
-            );
-            this._bundleWorker.addEventListener(
-                'message',
-                this._onBundled,
-                false
-            );
-        }
-
-        // NOTE: new added
         const packageJson = files.find((f) => f.path === 'package.json');
         if (packageJson !== undefined) {
             this._updatePackageJson(packageJson.value);
@@ -180,16 +153,7 @@ class EditorContainer extends React.Component<iProps, iState> {
         }
     }
 
-    componentWillUnmount() {
-        // TODO: workerフィールドにはundefinedを渡した方がいいかも
-        this._bundleWorker &&
-            this._bundleWorker.removeEventListener(
-                'message',
-                this._onBundled,
-                false
-            );
-        this._bundleWorker && this._bundleWorker.terminate();
-    }
+    componentWillUnmount() {};
 
     /**
      * Dispatches code to FilesContext to update file's value.
@@ -205,6 +169,9 @@ class EditorContainer extends React.Component<iProps, iState> {
      * TODO: lodash.debounce vs lodash-esどうする？
      * */
     _onEditorContentChange(code: string, path: string) {
+        // DEBUG:
+        console.log('[EditorContainer] on editor content change');
+
         this.props.changeFile({
             targetFilePath: path,
             changeProp: {
@@ -223,28 +190,15 @@ class EditorContainer extends React.Component<iProps, iState> {
      * Send all files to bundle.worker to bundle them.
      * */
     _onBundle() {
-        this._bundleWorker &&
-            this._bundleWorker.postMessage({
-                order: OrderTypes.Bundle,
+        // DEBUG:
+        console.log('[EditorContainer] on bundle');
+
+        this.props.dispatch(
+            bundler({
                 entryPoint: getFilenameFromPath('src/index.tsx'),
                 tree: generateTreeForBundler(this.props.files),
-            } as iOrderBundle);
-    }
-
-    /**
-     * Recieve bundled code message and send them to BundledContext.
-     * */
-    _onBundled(e: MessageEvent<iOrderBundleResult>) {
-        const { bundledCode, error } = e.data;
-
-        bundledCode &&
-            this.props.dispatchBundledCode({
-                type: bundledContextTypes.Update,
-                payload: {
-                    bundledCode: bundledCode,
-                    error: error,
-                },
-            });
+            })
+        );
     }
 
     /***
@@ -402,6 +356,30 @@ const mapState = (state: RootState) => {
     };
 };
 
+// // TODO: convert thunk action creator to () => dispatch(thunkactioncreator())
+// // 
+// // とにかくtypescriptが面倒くさいから下の記事が役に立つかも？
+// // https://react-redux.js.org/api/connect#object-shorthand-form
+// const mapDispatchToPops = (dispatch: ThunkDispatch<RootState, undefined, UnknownAction>) => ({
+//     addFile: () => dispatch(filesActions.addFile),
+//     changeFile: () => dispatch(filesActions.changeFile),
+//     changeMultipleFiles: () => dispatch(filesActions.changeMultipleFiles),
+//     changeSelectedFile: () => dispatch(filesActions.changeSelectedFile),
+//     closeFile: () => dispatch(filesActions.closeFile),
+//     closeAllFiles: () => dispatch(filesActions.closeAllFiles),
+//     deleteFile: () => dispatch(filesActions.deleteFile),
+//     deleteMultipleFiles: () => dispatch(filesActions.deleteMultipleFiles),
+//     openFile: () => dispatch(filesActions.openFile),
+// });
+
+
+// export default connect<ReturnType<typeof mapState>, ReturnType<typeof mapDispatchToPops>, iDefaultProps>(mapState, mapDispatchToPops)(EditorContainer);
+
+
+// 公式によれば、下記のように渡したら自動的に各アクションはdispatchとバインドされる
+// ので呼び出し側はdispatch(this.props.addFile)ヲする必要がない
+// 
+// https://react-redux.js.org/api/connect#object-shorthand-form
 const mapDispatch = {
     addFile: filesActions.addFile,
     changeFile: filesActions.changeFile,
@@ -413,5 +391,6 @@ const mapDispatch = {
     deleteMultipleFiles: filesActions.deleteMultipleFiles,
     openFile: filesActions.openFile,
 };
+
 
 export default connect(mapState, mapDispatch)(EditorContainer);

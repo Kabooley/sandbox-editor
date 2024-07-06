@@ -3,13 +3,15 @@ import layoutSlice from '../slices/layoutSlice';
 import filesSlice from '../slices/filesSlice';
 import typingLibsSlice from '../slices/typingLibsSlice';
 import packageJsonSlice from '../slices/packageJsonSlice';
+import bundlerSlice from '../slices/bundlerSlice';
 
 export const store = configureStore({
     reducer: {
         layout: layoutSlice,
         files: filesSlice,
         typingLibs: typingLibsSlice,
-        packageJson: packageJsonSlice
+        packageJson: packageJsonSlice,
+        bundler: bundlerSlice,
     },
 });
 

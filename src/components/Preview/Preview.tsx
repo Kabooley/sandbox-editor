@@ -4,9 +4,9 @@
  *
  * ******************************************************/
 import React, { useRef, useEffect } from 'react';
-import { useBundledCode } from '../../context/BundleContext';
 import { useAppSelector } from '../../store/hooks';
 import { selectLayoutState } from '../../slices/layoutSlice';
+import { selectBundledCode } from '../../slices/bundlerSlice';
 
 // const allowedOrigin = "http://localhost:8080";
 
@@ -42,7 +42,7 @@ const html: string = `
   `;
 
 const Preview = () => {
-    const bundledCode = useBundledCode();
+    const bundledCode = useAppSelector(selectBundledCode);
     const _refIframe = useRef<HTMLIFrameElement>(null);
     const { pointerEventsOnPreviewIframe } = useAppSelector(selectLayoutState);
 
