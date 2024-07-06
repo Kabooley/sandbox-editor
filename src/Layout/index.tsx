@@ -6,7 +6,6 @@ import MainContainer from './MainContainer';
 import SplitPane from './SplitPane';
 import PaneSection from './PaneSection';
 import FooterSection from './FooterSection';
-import { BundledCodeProvider } from '../context/BundleContext';
 import Modal from '../components/Modal2';
 
 const Layout = (): JSX.Element => {
@@ -15,11 +14,9 @@ const Layout = (): JSX.Element => {
             <HeaderSection />
             <MainContainer>
                 <SplitPane>
-                    <BundledCodeProvider>
-                        <PaneSection />
-                        <EditorSection />
-                        <PreviewSection />
-                    </BundledCodeProvider>
+                    <PaneSection />
+                    <EditorSection />
+                    <PreviewSection />
                 </SplitPane>
             </MainContainer>
             <FooterSection />
