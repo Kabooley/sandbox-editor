@@ -11,7 +11,8 @@ interface iProps {
 }
 
 const EditorContainer = React.lazy(
-    () => import('../components/EditorContainer')
+    // () => import('../components/EditorContainer')
+    () => import('../components/EditorContainer2')
 );
 
 /***
@@ -28,7 +29,8 @@ const EditorContext = ({ width }: iProps) => {
     return (
         <div className="editor-container">
             <React.Suspense fallback={<EditorSkeleton />}>
-                <EditorContainer width={width} dispatch={dispatch} />
+                <EditorContainer width={width} />
+                {/* <EditorContainer width={width} dispatch={dispatch} /> */}
             </React.Suspense>
         </div>
     );
