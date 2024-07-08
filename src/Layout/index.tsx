@@ -6,7 +6,7 @@ import MainContainer from './MainContainer';
 import SplitPane from './SplitPane';
 import PaneSection from './PaneSection';
 import FooterSection from './FooterSection';
-import Modal from '../components/Modal2';
+import Modal from '../components/Modal';
 
 const Layout = (): JSX.Element => {
     return (
