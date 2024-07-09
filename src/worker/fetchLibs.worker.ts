@@ -1,15 +1,38 @@
 /************************************************************************************************
  * Fetches requested npm package module from jsdelvr
  *
- * - resolver呼出時の引数version番号は解決プロセス中に正確なバージョン番号`correctVersion`に更新されて返されます。
+ * NOTES:
+ * - NOTE: Comlinkを使うことを前提としている。
  *
- *
- * NOTE:
- * - importしたいモジュールが`window`グローバルスコープを必要としないかどうか予めチェックすること
- * - `import { preProcessFile } from 'typescript'`をすると`ts`って何？
- *    というエラーが発生するので結局すべてtypescriptをimportしている
+ * TODOS:
+ * - エラーハンドリングについて調査。無視するエラーと対応するエラーを区別して対応するエラーはどうするのか決めること
  ************************************************************************************************/
 
+/*************************************************************
+ 旧onmessage()では何をしていたのか：
+ - getItem(e.data.payload.moduleName, e.data.payload.version)
+     IndexedDB storeModuleNameVersion からリクエストのモジュールがキャッシュされているか確認
+     IF 同名同バージョンがキャッシュされていた
+         キャッシュされているものを返す
+     ELSE キャッシュされていなかったら新規取得
+ - 新規取得
+     IF 同名別バージョンがキャッシュされていた
+         キャッシュされている同名別バージョンをいったん変数に保存する
+     キャッシュ済の同名依存関係を削除する(deleteItem(moduleName, storeModuleNameVersion))。これは実際にキャッシュされているか否か関係なく実施される
+     新規取得する（fetchTypeAgent(moduleName, version)）
+         新規取得の過程でstoreModuleNameVersionに取得した依存関係が保存される
+     IF 無事新規取得
+         IndexedDBのstoreSetOfDependencyへ依存関係の依存関係を保存する
+         レスポンスを返す
+     ELSE 取得失敗
+         同名既存依存関係はすでに先の処理で削除されているので、変数によけておいた同依存関係を
+         再度storeModuleNameVersionへ保存する
+         レスポンスを返す（エラー付き）
+ 
+ *************************************************************/
+
+import ts from 'typescript';
+import * as Comlink from 'comlink';
 import { valid } from 'semver';
 import {
     getFileTreeForModuleByVersion,
@@ -24,47 +47,9 @@ import {
     get as getItem,
     del as deleteItem,
 } from 'idb-keyval';
-import {
-    iTreeMeta,
-    iConfig,
-    iRequestFetchLibs,
-    iResponseFetchLibs,
-} from './types';
-import ts from 'typescript';
+import { iTreeMeta, iConfig } from './types';
 
 // --- types ---
-
-// types for ts.preProcessFile() method.
-enum ModuleKind {
-    None = 0,
-    CommonJS = 1,
-    AMD = 2,
-    UMD = 3,
-    System = 4,
-    ES2015 = 5,
-    ES2020 = 6,
-    ES2022 = 7,
-    ESNext = 99,
-    Node16 = 100,
-    NodeNext = 199,
-}
-type ResolutionMode = ModuleKind.ESNext | ModuleKind.CommonJS | undefined;
-interface TextRange {
-    pos: number;
-    end: number;
-}
-interface FileReference extends TextRange {
-    fileName: string;
-    resolutionMode?: ResolutionMode;
-}
-interface PreProcessedFileInfo {
-    referencedFiles: FileReference[];
-    typeReferenceDirectives: FileReference[];
-    libReferenceDirectives: FileReference[];
-    importedFiles: FileReference[];
-    ambientExternalModules?: string[];
-    isLibFile: boolean;
-}
 
 type iTree =
     | iTreeMeta
@@ -115,7 +100,7 @@ const storeSetOfDependency = createStore(
  * Fetch to get npm module package file lists.
  * fetch(`https://data.jsdelivr.com/v1/package/npm/${moduleName}@${version}/flat`).
  *
- * @param {iConfig} config -
+ * @param {iConfig} config
  * @param {string} moduleName - Name of npm module package.
  * @param {string} version - Version of npm module package.
  * @returns {Promise<{moduleName: string; version: string; default: string; files: Array<{name: string;}>;} | {error: Error; message: string;}>} - Object that contains file list of package or fetching error.
@@ -188,6 +173,9 @@ const getFileTreeForModule = async (
 // --- helpers ---
 
 /***
+ * @returns {number} - Passed modulename and version pair is exact matched to compareWth param.
+ *                     If not, they are not matched with compareWith param.
+ *
  *  0:  exact match
  *  -1: `moduleName`@`version` < `compareWith`
  *  1:  `moduleName`@`version` > `compareWith`
@@ -323,41 +311,96 @@ const retrieveImportedModulesByParse = (
     });
 };
 
-// --- Main ---
+// --- API ---
+
+export interface iFetchLibsApi {
+    // Check if passed modulename module is already downloaded and cached by searching storeModuleNameVersion.
+    isAlreadyExist: (moduleName: string, version: string) => Promise<boolean>;
+    // Download requested module and pass them.
+    fetchLibs: (
+        moduleName: string,
+        version: string
+    ) => Promise<{
+        moduleName: string;
+        version: string;
+        vfs: Map<string, string>;
+    }>;
+    //
+    getCachedModule: (
+        moduleName: string,
+        version: string
+    ) => Promise<{
+        moduleName: string;
+        version: string;
+        vfs: iStoreSetOfDependencyValue;
+        notCached: boolean;
+    }>;
+    // Delete requested module from cache.
+    removeLibs: (moduleName: string, version: string) => Promise<Array<string>>;
+    // Terminate worker itself.
+    // terminateWorker: () => void;
+    getModuleDependenciesPath: (
+        moduleName: string,
+        version: string
+    ) => Promise<Array<string>>;
+}
+
+interface iResponseFetchedModule {
+    moduleName: string;
+    version: string;
+    vfs: Map<string, string>;
+}
 
 /***
- * Agent resolves module's type definition files.
+ * Agent who resolves module's type definition files.
  *
  * @param {iConfig} config - Config for this agent.
  * @param {string} moduleName - Module name to be resolved.
  * @param {string} version - Module's version to be resolved.
- * @returns {Promise<{vfs: Map<string, string>; moduleName: string; version: string;}>} - Resolved type definition files for the module and its code. Version number may have been updated since the time of the call.
+ * @returns {Promise<iResponseFetchedModule>} - Resolved type definition files for the module. Version may be fixed since the time of the call.
  *
+ *
+ * NOTE: 同名別バージョンのモジュールをリクエストされてもこの関数ではチェックしない。
+ *       必要がある場合、fetchLibs()を呼び出す前に確認すること。
  * */
-const fetchTypeAgent = (
-    config: iConfig,
+const fetchLibs = (
     moduleName: string,
     version: string
-) => {
+): Promise<iResponseFetchedModule> => {
+    // DEBUG:
+    console.log(`[fetchLibs.worker] start fetching ${moduleName}@${version}`);
+
     // const moduleMap = new Map<string, ModuleMeta>();
     const fsMap = new Map<string, string>();
+    //
+    const config = {
+        typescript: ts,
+        logger: console,
+    };
     // moduleNameのモジュールの正確なバージョンを記憶する
     let correctVersion = '';
 
     let downloading = 0;
     let downloaded = 0;
 
-    // DEBUG:
-    const fetchingModuleTitle = `${moduleName}@${version}`;
-
+    /****
+     * @param {number} depth: Number of this resolver() called recursively.
+     *
+     * 1. Check modulename and version are valid
+     * 2. Store corrected moduleName + @ + corrected version to setOfModuleNameVersion
+     * 3. get requested module's file list which files are .d.ts or @types/moduleName
+     * 4. download files from the file list and store data to `fsMap`.
+     * 5. also download requested module's package.json file.
+     * 6. Recursively call resolver if there are dependency's dependencies.
+     *
+     * - TODO: moduleNameとversionのvalidationはここでやらなくてもいい気がする。resolverを呼び出す前にやればいいかも。
+     *          結局file listを取得してからのresolver()呼び出し時に渡すversionはfile listの情報をもとに渡しているので検査の必要がない
+     * */
     const resolver = async (
         _moduleName: string,
         version: string,
         depth: number
     ) => {
-        // // DEBUG:
-        // console.log(`[fetching ${fetchingModuleTitle}] depth: ${depth}`);
-
         // Exclude invalid module name and invalid version.
         if (!excludeInvalidModuleName(_moduleName)) {
             if (depth > 0) return;
@@ -376,31 +419,7 @@ const fetchTypeAgent = (
         // And strip module filepath e.g. react-dom/client --> react-dom
         const moduleName = mapModuleNameToModule(_moduleName);
 
-        // // DEBUG:
-        // console.log(
-        //   `[fetching ${fetchingModuleTitle}] depsToGet: ${_moduleName}@${version}`
-        // );
-
-        // Return if it's already downloaded.
-        const isAlreadyExists = await getItem(
-            moduleName,
-            storeModuleNameVersion
-        );
-        if (isAlreadyExists) {
-            // console.log(
-            //   `[fetching ${fetchingModuleTitle}] Module ${moduleName} is already downloaded.`
-            // );
-            return;
-        }
-
         // Find where the .d.ts file at.
-        // moduleMap.set(moduleName, { state: "loading" });
-        await setItem(
-            moduleName,
-            `${moduleName}@${version}`,
-            storeModuleNameVersion
-        );
-
         const _tree: iTree = await getFileTreeForModule(
             config,
             moduleName,
@@ -415,15 +434,17 @@ const fetchTypeAgent = (
         const tree = _tree as iTreeMeta;
 
         // Update requested module's version.
-        if (depth === 0) {
+        // Store if requested module and version are valid.
+        if (!depth) {
             correctVersion = tree.version;
+            await setItem(
+                `${moduleName}@${correctVersion}`,
+                `${moduleName}@${correctVersion}`,
+                storeModuleNameVersion
+            );
         }
 
         const hasDtsFile = tree.files.find((f) => f.name.endsWith('.d.ts'));
-
-        // // DEBUG:
-        // console.log(`[fetching ${fetchingModuleTitle}] hasDtsFile:`);
-        // console.log(hasDtsFile);
 
         let DTSFiles1: iDTSFile[] = [];
         let DTSFiles2: iDTSFile[] = [];
@@ -449,10 +470,6 @@ const fetchTypeAgent = (
             }
             const dtTree = _dtTree as iTreeMeta;
 
-            // // DEBUG:
-            // console.log(`[fetching ${fetchingModuleTitle}] dtTreesOnly:`);
-            // console.log(dtTree);
-
             DTSFiles2 = getDTSFilesFromTree(
                 dtTree,
                 `/node_modules/@types/${getDTName(moduleName).replace(
@@ -460,20 +477,10 @@ const fetchTypeAgent = (
                     ''
                 )}`
             );
-
-            // // DEBUG:
-            // console.log(`[fetching ${fetchingModuleTitle}] dtsFilesFromDT:`);
-            // console.log(DTSFiles2);
         }
 
         const downloadListOfDTSFiles = DTSFiles1.concat(DTSFiles2);
         downloading = downloadListOfDTSFiles.length;
-
-        // // DEBUG:
-        // console.log(`[fetching ${fetchingModuleTitle}] allDTSFiles:`);
-        // console.log(downloadListOfDTSFiles);
-
-        // downloadListOfDTSFilesの長さがゼロの時はそのまま戻るので特に
 
         // Get package.json for module.
         await resolverOfPackageJson(tree);
@@ -544,317 +551,100 @@ const fetchTypeAgent = (
         }
     };
 
-    return resolver(moduleName, version, 0).then(() => {
-        // TODO: download数がゼロだった場合の処理を決める
-
-        return {
+    return resolver(moduleName, version, 0)
+        .then(() =>
+            setItem(
+                moduleName + '@' + correctVersion,
+                fsMap,
+                storeSetOfDependency
+            )
+        )
+        .then(() => ({
             vfs: fsMap,
             moduleName: moduleName,
-            // version: version,
             version: correctVersion,
-        };
-    });
+        }))
+        .catch((e) => {
+            removeLibs(moduleName, version);
+            throw e;
+        });
 };
 
-// self.addEventListener('message', (e: MessageEvent<iRequestFetchLibs>) => {
-self.onmessage = (e: MessageEvent<iRequestFetchLibs>) => {
-    const { payload, order } = e.data;
-    if (order !== 'RESOLVE_DEPENDENCY') return;
-    const { moduleName, version } = payload;
-
-    // TODO: configは必要か検討
-    const config = {
-        typescript: ts,
-        logger: console,
-    };
-
-    let temporaryEvacuateExistDependency:
-        | { moduleName: string; version: string }
-        | undefined = undefined;
-
-    // DEBUG:
-    console.log(
-        `[fetchLibs.worker][onmessage] Got request: ${moduleName}@${version}`
-    );
-
+/***
+ * Check same `moduleName@version` has been cached in storeModuleNameVersion IndexedDB.
+ * */
+const isAlreadyExist = (moduleName: string, version: string) =>
     getItem<iStoreModuleNameVersionValue>(
-        moduleName,
+        `${moduleName}@${version}`,
         storeModuleNameVersion
-    ).then((existItem) => {
-        // もしもmoduleName@versionがキャッシュ済であるならば
-        if (
+    ).then(
+        (existItem: iStoreModuleNameVersionValue | undefined) =>
             existItem !== undefined &&
             !compareTwoModuleNameAndVersion(moduleName, version, existItem)
-        ) {
-            // console.log(
-            //     `[fetchLibs.worker][onmessage] return cached data of ${moduleName}@${version}`
-            // );
+    );
 
-            // キャッシュ済のデータを返す
-            return getItem<iStoreSetOfDependencyValue>(
-                moduleName + '@' + version,
-                storeSetOfDependency
-            ).then((vfs) => {
-                self.postMessage({
-                    order: 'RESOLVE_DEPENDENCY',
-                    payload: {
-                        moduleName: moduleName,
-                        version: version,
-                        depsMap: vfs,
-                    },
-                } as iResponseFetchLibs);
-            });
-        } else {
-            // console.log(
-            //     `[fetchLibs.worker][onmessage] Start fetching ${moduleName}@${version}`
-            // );
-
-            // キャッシュしていないならそのまま新規取得
-            // 新規モジュール取得、同名モジュール別バージョン取得の場合がある
-            //
-            // TODO: 新規モジュール取得と同名モジュール別バージョン取得の処理は完全に分けなくてはならない。そうしないと同名モジュール別バージョン取得の処理中にエラーが起こった場合、storeModuleNameVersionに登録されている同名モジュール前バージョンまで削除される。これの修正。
-            //
-            return (
-                new Promise<void>((resolve) => {
-                    if (existItem !== undefined) {
-                        temporaryEvacuateExistDependency = {
-                            moduleName: moduleName,
-                            version: existItem!.split('@').slice(-1)[0],
-                        };
-                    }
-                    return resolve();
-                })
-                    // 一旦削除しておかないと後の処理で「ダウンロード済」判定されるのでここで削除しておかなくてはならない
-                    .then(() => deleteItem(moduleName, storeModuleNameVersion))
-                    // storeSetOfDependencyは削除要求されても残す
-                    .then(() => fetchTypeAgent(config, moduleName, version))
-                    .then(
-                        (r: {
-                            vfs: Map<string, string>;
-                            moduleName: string;
-                            version: string;
-                        }) => {
-                            // 新規取得モジュールのファイル群はこのタイミングで保存する
-                            setItem(
-                                r.moduleName + '@' + r.version,
-                                r.vfs,
-                                storeSetOfDependency
-                            );
-                            self.postMessage({
-                                order: 'RESOLVE_DEPENDENCY',
-                                payload: {
-                                    moduleName: r.moduleName,
-                                    version: r.version,
-                                    depsMap: r.vfs,
-                                },
-                            } as iResponseFetchLibs);
-
-                            // console.log(
-                            //     `[fetchLibs.worker][onmessage] Succeed to fetch ${moduleName}@${version}`
-                            // );
-                        }
-                    )
-                    .catch((e: Error) => {
-                        // console.log(
-                        //     `[fetchLibs.worker][onmessage] Failed to fetch ${moduleName}@${version}`
-                        // );
-
-                        const emptyMap = new Map<string, string>();
-
-                        // 取得失敗。既存依存関係が存在するならばその依存関係をstoreModuleNameVersionへ再登録処理を行う。
-                        //
-                        // temporaryEvacuateExistDependencyに依存関係が保存されているか？
-                        // --> NO: 念のためdeleteItem(moduleName, storeModuleNameVersion)しておく。
-                        // --> YES:
-                        //              deleteItem(moduleName, storeModuleNameVersion)
-                        //              getItem(moduleName, storeSetOfDependency)
-                        //              not undefinedならsetItem(moduleName, temporaryEvacuateExistDependencyの依存関係@versionで, storeModuleNameVersion)
-                        if (temporaryEvacuateExistDependency !== undefined) {
-                            const reregisterItem =
-                                temporaryEvacuateExistDependency!.moduleName +
-                                '@' +
-                                temporaryEvacuateExistDependency!.version;
-                            deleteItem(moduleName, storeModuleNameVersion)
-                                .then(() =>
-                                    getItem(
-                                        reregisterItem,
-                                        storeSetOfDependency
-                                    )
-                                )
-                                .then((item) => {
-                                    if (item !== undefined) {
-                                        return setItem(
-                                            moduleName,
-                                            reregisterItem,
-                                            storeModuleNameVersion
-                                        );
-                                    }
-                                });
-                        } else {
-                            deleteItem(moduleName, storeModuleNameVersion);
-                        }
-
-                        console.error(e);
-
-                        self.postMessage({
-                            order: 'RESOLVE_DEPENDENCY',
-                            payload: {
-                                moduleName: moduleName,
-                                version: version,
-                                depsMap: emptyMap,
-                            },
-                            error: e,
-                        } as iResponseFetchLibs);
-                    })
-            );
-        }
+/***
+ * Get dependency of requested module from cache.
+ * Doesn't check if not cached.
+ * */
+const getCachedModule = (moduleName: string, version: string) =>
+    getItem<iStoreSetOfDependencyValue>(
+        moduleName + '@' + version,
+        storeSetOfDependency
+    ).then((vfs: iStoreSetOfDependencyValue | undefined) => {
+        return {
+            moduleName: moduleName,
+            version: version,
+            vfs: vfs,
+            notCached: vfs === undefined ? true : false,
+        };
     });
+
+/***
+ * Get dependencies path of requested module for utility purpose.
+ * */
+const getModuleDependenciesPath = (moduleName: string, version: string) =>
+    getItem<iStoreSetOfDependencyValue>(
+        moduleName + '@' + version,
+        storeSetOfDependency
+    ).then((vfs: iStoreSetOfDependencyValue | undefined) => {
+        if (vfs !== undefined) {
+            const paths: string[] = [];
+            for (const path of vfs.keys()) {
+                paths.push(path);
+            }
+            return paths;
+        }
+        return [];
+    });
+
+/***
+ * Delete requested dependency and its dependencies from cache.
+ * @returns {Array<string>} - Array of deleted module's dependencies path.
+ * */
+const removeLibs = (moduleName: string, version: string) => {
+    const deletedDependencies: string[] = [];
+    return deleteItem(`${moduleName}@${version}`, storeModuleNameVersion)
+        .then(() => getItem(moduleName + '@' + version, storeSetOfDependency))
+        .then((dependencies: Map<string, string>) => {
+            if (dependencies !== undefined) {
+                for (const key of dependencies.keys()) {
+                    deletedDependencies.push(key);
+                }
+            }
+            return deleteItem(moduleName + '@' + version, storeSetOfDependency);
+        })
+        .then(() => deletedDependencies);
 };
 
-// /***
-//  *
-//  * NOTE: Stackblitz.comで動作確認するためワーカの代わりにagent関数を呼び出す。
-//  *
-//  * */
-// const agent = (
-//   moduleName: string,
-//   version: string
-// ): Promise<{
-//   moduleName: string;
-//   version: string;
-//   depsMap: Map<string, string>;
-//   error?: Error;
-// }> => {
-//   // TODO: configは必要か検討
-//   const config = {
-//     typescript: ts,
-//     logger: console,
-//   };
-
-//   // DEBUG:
-//   console.log(`[fetchLibs.worker] Got request: ${moduleName}@${version}`);
-
-//   return getItem<iStoreModuleNameVersionValue>(
-//     moduleName,
-//     storeModuleNameVersion
-//   ).then((existItem) => {
-//     // もしもmoduleName@versionがキャッシュ済であるならば
-//     if (
-//       existItem !== undefined &&
-//       !compareTwoModuleNameAndVersion(moduleName, version, existItem)
-//     ) {
-//       // キャッシュ済のデータを返す
-//       console.log(
-//         `[fetchDependencies] return cached data of ${moduleName}@${version}`
-//       );
-
-//       return getItem<iStoreSetOfDependencyValue>(
-//         moduleName + '@' + version,
-//         storeSetOfDependency
-//       ).then((vfs) => {
-//         return {
-//           moduleName: moduleName,
-//           // TODO: versionがコレクトされていないのでコレクトされたバージョンを返すこと
-//           version: version,
-//           depsMap: vfs,
-//         };
-//       });
-//     } else {
-//       // キャッシュしていないならそのまま新規取得
-//       // 新規モジュール取得、同名モジュール別バージョン取得の場合がある
-//       return (
-//         deleteItem(moduleName, storeModuleNameVersion)
-//           // NOTE: storeSetOfDependencyは削除要求されても残す
-//           .then(() => fetchTypeAgent(config, moduleName, version))
-//           .then(
-//             (r: {
-//               vfs: Map<string, string>;
-//               moduleName: string;
-//               version: string;
-//             }) => {
-//               // 新規取得モジュールのファイル群はこのタイミングで保存する
-//               setItem(
-//                 r.moduleName + '@' + r.version,
-//                 r.vfs,
-//                 storeSetOfDependency
-//               );
-//               return {
-//                 moduleName: r.moduleName,
-//                 version: r.version,
-//                 depsMap: r.vfs,
-//               };
-//             }
-//           )
-//           .catch((e: Error) => {
-//             const empty = new Map<string, string>();
-//             deleteItem(moduleName, storeModuleNameVersion);
-//             // // DEBUG:
-//             // .then(() => {
-//             //   console.log(
-//             //     `deleted ${moduleName} from storeModuleNameVersion`
-//             //   );
-//             // });
-
-//             console.log(
-//               `[fetchDependencies] Failed to acquire ${moduleName}@${version}`
-//             );
-
-//             console.error(e);
-//             return {
-//               moduleName: moduleName,
-//               version: version,
-//               depsMap: empty,
-//               error: e,
-//             };
-//           })
-//       );
-//     }
-//   });
+// const terminateWorker = () => {
+//   self.close();
 // };
 
-// export default agent;
-
-//  // Incase this was worker.
-//  // self.addEventListener('message', (e: MessageEvent<iRequestFetchLibs>) => {
-//  self.onmessage = (e: MessageEvent<iRequestFetchLibs>) => {
-//    const { payload, order } = e.data;
-//    if (order !== 'RESOLVE_DEPENDENCY') return;
-//    const { moduleName, version } = payload;
-
-//    // TODO: configは必要か検討
-//    const config = {
-//      typescript: ts,
-//      logger: console,
-//    };
-
-//    // DEBUG:
-//    console.log(`[fetchLibs.worker] Got request: ${moduleName}@${version}`);
-
-//    fetchTypeAgent(config, moduleName, version)
-//      .then(
-//        (r: {
-//          vfs: Map<string, string>;
-//          moduleName: string;
-//          version: string;
-//        }) => {
-//          self.postMessage({
-//            order: 'RESOLVE_DEPENDENCY',
-//            payload: {
-//              moduleName: r.moduleName,
-//              version: r.version,
-//              depsMap: r.vfs,
-//            },
-//          } as iResponseFetchLibs);
-//        }
-//      )
-//      .catch((e: Error) => {
-//        const emptyMap = new Map<string, string>();
-//        self.postMessage({
-//          order: 'RESOLVE_DEPENDENCY',
-//          payload: {
-//            depsMap: emptyMap,
-//          },
-//          error: e,
-//        } as iResponseFetchLibs);
-//      });
-//  };
+Comlink.expose({
+    fetchLibs,
+    isAlreadyExist,
+    getCachedModule,
+    removeLibs,
+    getModuleDependenciesPath,
+} as iFetchLibsApi);

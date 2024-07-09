@@ -1,16 +1,18 @@
 {
     "name": "sandbox-editor",
     "scripts": {
-        "start": "node ./node_modules/webpack-dev-server/bin/webpack-dev-server.js",
-        "build": "NODE_ENV='production' node ./node_modules/webpack/bin/webpack.js --progress"
+        "start": "node ./node_modules/webpack-dev-server/bin/webpack-dev-server.js --config webpack.dev.js",
+        "build": "NODE_ENV='production' node ./node_modules/webpack/bin/webpack.js --progress --config webpack.prod.js"
     },
     "dependencies": {
         "@mdi/js": "^7.4.47",
         "@mdi/react": "^1.6.1",
+        "@reduxjs/toolkit": "^2.2.5",
         "@types/path-browserify": "^1.0.0",
         "@typescript/ata": "^0.9.4",
         "@typescript/vfs": "^1.5.0",
         "axios": "^1.4.0",
+        "comlink": "^4.4.1",
         "esbuild-wasm": "^0.18.17",
         "idb-keyval": "^6.2.1",
         "keyboardjs": "^2.7.0",
@@ -18,6 +20,7 @@
         "lodash.debounce": "^4.0.8",
         "path-browserify": "^1.0.1",
         "prettier": "2.8.8",
+        "react-redux": "8.1.3",
         "react-resizable": "^3.0.5",
         "react-use": "^17.5.0",
         "semver": "^7.5.4"

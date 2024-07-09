@@ -23,4 +23,5 @@ export { isSameShallowObject } from './isSameShallowObject';
 export { mustache } from './mustache';
 export { getPathExcludeFilename } from './getPathExcludeFilename';
 export { getAllDescendantsPath } from './getAllDescendantsPath';
-export { getFileIconName } from "./getFileIconName";
+export { getFileIconName } from './getFileIconName';
+export { ascendingOrderComparerFactory } from './ascendingOrderComparerFactory';

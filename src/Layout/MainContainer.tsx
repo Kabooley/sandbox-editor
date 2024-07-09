@@ -1,47 +1,37 @@
-import React from "react";
-import useKey from "react-use/lib/useKey";
-import { Types as ActionTypesOfLayoutContext } from "../context/LayoutContext";
-import { useLayoutDispatch } from "../context/LayoutContext";
+import React from 'react';
+import useKey from 'react-use/lib/useKey';
+import { useAppDispatch } from '../store/hooks';
+import { layoutActions } from '../slices/layoutSlice';
 
 interface iProps {
-  children: any;
+    children: any;
 }
 
 const KEYCODES_FOR_CHROME = {
-  ctrl: 17,
-  shift: 16,
-  d: 68,
-  b: 66,
+    ctrl: 17,
+    shift: 16,
+    d: 68,
+    b: 66,
 };
 
-const MainContainer: React.FC<iProps> = ({ children }) => {
-  const dispatchLayoutAction = useLayoutDispatch();
-  useKey(
-    (e) => e.ctrlKey && e.keyCode === KEYCODES_FOR_CHROME.d && e.shiftKey,
-    (e) => {
-      e.preventDefault();
-      // console.log("[MainContainer] ACTION: TOGGLE_PREVIEW");
+const MainContainer = ({ children }: iProps) => {
+    const dispatch = useAppDispatch();
+    useKey(
+        (e) => e.ctrlKey && e.keyCode === KEYCODES_FOR_CHROME.d && e.shiftKey,
+        (e) => {
+            e.preventDefault();
+            dispatch(layoutActions.TogglePreview());
+        }
+    );
+    useKey(
+        (e) => e.ctrlKey && e.keyCode === KEYCODES_FOR_CHROME.b,
+        (e) => {
+            e.preventDefault();
+            dispatch(layoutActions.ToggleSidebar());
+        }
+    );
 
-      dispatchLayoutAction({
-        type: ActionTypesOfLayoutContext.TogglePreview,
-        payload: {},
-      });
-    }
-  );
-  useKey(
-    (e) => e.ctrlKey && e.keyCode === KEYCODES_FOR_CHROME.b,
-    (e) => {
-      e.preventDefault();
-      // console.log("[MainContainer] ACTION: TOGGLE_SIDEBAR");
-
-      dispatchLayoutAction({
-        type: ActionTypesOfLayoutContext.ToggleSidebar,
-        payload: {},
-      });
-    }
-  );
-
-  return <div className="main-container">{children}</div>;
+    return <div className="main-container">{children}</div>;
 };
 
 export default MainContainer;

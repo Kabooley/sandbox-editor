@@ -1,7 +1,15 @@
 import * as esbuild from 'esbuild-wasm';
-// import { fetchPlugins, unpkgPathPlugin } from '../Bundle';
+import * as Comlink from 'comlink';
 import { virtualTreePlugin } from '../Bundle/plugins/virtualTreePlugin';
 import type { iOrderBundle } from './types';
+// import { fetchPlugins, unpkgPathPlugin } from '../Bundle';
+
+export interface iBundlerApi {
+    bundler: (
+        entryPoinst: string,
+        tree: Record<string, string>
+    ) => Promise<string>;
+}
 
 /**
  * This must be same as
@@ -27,7 +35,7 @@ let isInitialized: boolean = false;
 const bundler = async (
     entryPoint: string,
     tree: Record<string, string>
-): Promise<iBuildResult> => {
+): Promise<string> => {
     try {
         // 必ずesbuildAPIを使い始める前に一度だけ呼出す
         if (!isInitialized) {
@@ -51,65 +59,49 @@ const bundler = async (
 
         if (result === undefined) throw new Error();
 
-        // // DEBUG:
-        // console.log('[bundle.worker] result:');
-        // console.log(result);
-
-        return {
-            bundledCode: result.outputFiles![0].text,
-            err: null,
-        };
+        return result.outputFiles![0].text;
     } catch (e) {
-        if (e instanceof Error) {
-            return {
-                bundledCode: '',
-                err: e,
-            };
-        } else throw e;
+        console.error(e);
+        throw e;
     }
 };
 
-/***
- * NOTE: Validate MessageEvent.origin is unavailable because origin is always empty string...
- *
- * */
-self.onmessage = (e: MessageEvent<iOrderBundle>): void => {
-    if (e.data.order !== 'bundle') return;
+Comlink.expose({
+    bundler,
+} as iBundlerApi);
 
-    // // DEBUG:
-    // console.log('[bundle.worker.ts] start bundle process...');
+// /***
+//  * NOTE: Validate MessageEvent.origin is unavailable because origin is always empty string...
+//  *
+//  * */
+// self.onmessage = (e: MessageEvent<iOrderBundle>): void => {
+//     if (e.data.order !== 'bundle') return;
 
-    const { entryPoint, tree } = e.data;
+//     // // DEBUG:
+//     // console.log('[bundle.worker.ts] start bundle process...');
 
-    if (entryPoint && tree) {
-        bundler(entryPoint, tree)
-            .then((result: iBuildResult) => {
-                if (result.err instanceof Error) throw result.err;
+//     const { entryPoint, tree } = e.data;
 
-                // // DEBUG:
-                // console.log('[budle.worker.ts] sending bundled code');
+//     if (entryPoint && tree) {
+//         bundler(entryPoint, tree)
+//             .then((result: iBuildResult) => {
+//                 if (result.err instanceof Error) throw result.err;
 
-                // NOTE: Follow iOrderBundleResult type
-                // which defined in `./types.ts`.
-                self.postMessage({
-                    bundledCode: result.bundledCode,
-                    err: null,
-                });
-            })
-            .catch((e) => {
-                self.postMessage({
-                    bundledCode: '',
-                    err: e,
-                });
-            });
-    }
-};
+//                 // // DEBUG:
+//                 // console.log('[budle.worker.ts] sending bundled code');
 
-// workerが正常に生成されているのかの確認
-// `self`は`DedicatedWebWorkerGlobalScope`になっていないとならない
-// もしも`self`が`Window`である場合、それは破棄されなくてはならない
-// ReactはStrictModeだとuseEffectを2度実行するのでuseEffectでworkerを生成すると2度生成することになる
-// この内globalがwindowになる方を破棄するはず
-// console.log('[bundle.worker.ts]...');
-// console.log(self);
-// console.log(self.importScripts);
+//                 // NOTE: Follow iOrderBundleResult type
+//                 // which defined in `./types.ts`.
+//                 self.postMessage({
+//                     bundledCode: result.bundledCode,
+//                     err: null,
+//                 });
+//             })
+//             .catch((e) => {
+//                 self.postMessage({
+//                     bundledCode: '',
+//                     err: e,
+//                 });
+//             });
+//     }
+// };

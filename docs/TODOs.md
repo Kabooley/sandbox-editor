@@ -15,6 +15,7 @@
 
 - TODO: JSX色付け
 - TODO: monaco-editorの最低限の設定機能の提供（ミニマップの表示非表示など）
+- TODO: Dependenciesやpackage.jsonで依存関係の取得をしたときに失敗したらユーザへ通知する
 
 ## 修正
 

@@ -1,8 +1,7 @@
 import React from 'react';
 import FooterContainer from '../components/Footer';
 
-
-// 
+//
 const FooterSection = () => {
     return (
         <div className="footer-section">

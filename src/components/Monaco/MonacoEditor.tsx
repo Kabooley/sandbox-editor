@@ -11,7 +11,7 @@ import type * as Monaco from 'monaco-editor';
 import prettier from 'prettier';
 import parser from 'prettier/parser-babel';
 import { getModelByPath, removeFirstSlash } from '../../utils';
-import type { File } from '../../data/files';
+import type { iFile } from '../../data/types';
 
 // import viewStateFiles from '../../data/viewStates';
 
@@ -124,8 +124,8 @@ monaco.languages.typescript.javascriptDefaults.setCompilerOptions(
  *
  * */
 interface iProps extends Monaco.editor.IStandaloneEditorConstructionOptions {
-    files: File[];
-    selectedFile: File | undefined;
+    files: iFile[];
+    selectedFile: iFile | undefined;
     onEditorContentChange: (code: string, path: string) => void;
     onDidChangeModel: (path: string, value: string) => void;
 }
@@ -166,6 +166,9 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
         const { files, selectedFile, onEditorContentChange, ...options } =
             this.props;
 
+        // DEBUG:
+        console.log('[MonacoEditor] on mount');
+
         // Generate Editor instance.
         const editor = monaco.editor.create(
             this._refEditorNode.current as HTMLDivElement,
@@ -188,7 +191,7 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
         );
 
         // Set current path's model to editor.
-        // const currentFile = files.find((f) => f.getPath() === path);
+        // const currentFile = files.find((f) => f.path === path);
         if (selectedFile !== undefined) {
             // Set specified model to editor.
             this._openFile(selectedFile, true);
@@ -196,6 +199,25 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
 
         // Load all the files  so the editor can provide proper intelliscense
         files.forEach((f) => this._initializeFile(f));
+
+        // Triggers bundle to initialize preview window
+        if (selectedFile !== undefined) {
+            // DEBUG:
+            console.log('[MonacoEditor] trigger bundle');
+
+            onEditorContentChange(selectedFile?.value, selectedFile?.path);
+        } else {
+            const _selectedFile = files.find((f) => f.path === 'src/App.tsx');
+            if (_selectedFile !== undefined) {
+                // DEBUG:
+                console.log('[MonacoEditor] trigger bundle');
+
+                onEditorContentChange(
+                    _selectedFile?.value,
+                    _selectedFile?.path
+                );
+            }
+        }
 
         this._refEditorNode.current &&
             this._refEditorNode.current.addEventListener(
@@ -205,27 +227,30 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
     }
 
     /***
-     * filesの変更をmonaco-editorに反映させる。
+     * Apply any changes of files to editor.
      *
      * */
     componentDidUpdate(prevProps: iProps, prevState: iState) {
         const { files, selectedFile, onEditorContentChange, ...options } =
             this.props;
 
+        console.log(`[MonacoEditor] did update.`);
+        console.log(`[MonacoEditor] selected file`);
+        console.dir(selectedFile);
+
         if (this._refEditor) {
             this._refEditor.updateOptions(options);
 
             const model = this._refEditor.getModel();
-            const value = selectedFile?.getValue();
+            const value = selectedFile?.value;
 
-            // TODO: 要確認。アンマウント時にcomponentDidMountは呼ばれない?
             if (selectedFile === undefined) {
                 console.log(`[MonacoEditor][did update] no selectedFile`);
 
                 // Save the editor state for the previous file so we can restore it when it's re-opened
                 if (prevProps.selectedFile !== undefined) {
                     editorStates.set(
-                        prevProps.selectedFile.getPath(),
+                        prevProps.selectedFile.path,
                         this._refEditor.saveViewState()
                     );
                 }
@@ -233,14 +258,16 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
             // Change model and save view state if path is changed
             else if (
                 selectedFile !== undefined &&
-                selectedFile !== prevProps.selectedFile
+                selectedFile.path !== prevProps.selectedFile?.path
             ) {
-                console.log(`[MonacoEditor][did update] selectedFile ${prevProps.selectedFile?.getPath()} --> ${selectedFile.getPath()}`);
+                console.log(
+                    `[MonacoEditor][did update] selectedFile ${prevProps.selectedFile?.path} --> ${selectedFile.path}`
+                );
 
                 // Save the editor state for the previous file so we can restore it when it's re-opened
                 if (prevProps.selectedFile !== undefined) {
                     editorStates.set(
-                        prevProps.selectedFile.getPath(),
+                        prevProps.selectedFile.path,
                         this._refEditor.saveViewState()
                     );
                 }
@@ -248,7 +275,7 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
                 selectedFile && this._openFile(selectedFile, true);
             } else if (model && value !== model.getValue()) {
                 console.log(
-                    `[MonacoEditor][did update] excuteEdits ${selectedFile?.getPath()}`
+                    `[MonacoEditor][did update] excuteEdits ${selectedFile?.path}`
                 );
 
                 // @ts-ignore
@@ -263,7 +290,6 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
     }
 
     componentWillUnmount() {
-
         console.log('[MonacoEditor][will unmount]');
 
         this._refEditorNode.current &&
@@ -278,7 +304,7 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
     /***
      * 渡されたfileをmonaco-editorのmodelとして登録する。
      *
-     * @param {File} file - model登録するFile.
+     * @param {iFile} file - model登録するFile.
      *
      * 引数のfileの`monaco.editor.ITextModel`を生成する。
      * modelが生成済の場合、引数fileの変更内容を既存modelに反映させる。
@@ -286,10 +312,10 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
      * あとでmonaco.editor.getModels()などから取り出すことができる。
      *
      * */
-    _initializeFile = (file: File) => {
-        const path = file.getPath();
-        const language = file.getLanguage();
-        const value = file.getValue();
+    _initializeFile = (file: iFile) => {
+        const path = file.path;
+        const language = file.language;
+        const value = file.value;
 
         let model = getModelByPath(path);
 
@@ -323,16 +349,16 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
     };
 
     // _openFile = (path: string, value: string, focus?: boolean) => {
-    _openFile = (file: File, focus?: boolean) => {
+    _openFile = (file: iFile, focus?: boolean) => {
         this._initializeFile(file);
 
-        const model = getModelByPath(file.getPath());
+        const model = getModelByPath(file.path);
 
         if (this._refEditor && model) {
             this._refEditor.setModel(model);
 
             // Restore the editor state for the file
-            const editorState = editorStates.get(file.getPath());
+            const editorState = editorStates.get(file.path);
 
             if (editorState) {
                 this._refEditor.restoreViewState(editorState);
@@ -352,12 +378,9 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
             const path = removeFirstSlash(model.uri.path);
             if (
                 value !==
-                this.props.files
-                    .find(
-                        (f) =>
-                            f.getPath() === this.props.selectedFile?.getPath()
-                    )
-                    ?.getValue()
+                this.props.files.find(
+                    (f) => f.path === this.props.selectedFile?.path
+                )?.value
             ) {
                 this.props.onEditorContentChange(value, path);
             }

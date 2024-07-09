@@ -1,9 +1,10 @@
 import React from 'react';
 import Preview from '../components/Preview';
-import { useLayoutState } from '../context/LayoutContext';
+import { useAppSelector } from '../store/hooks';
+import { selectLayoutState } from '../slices/layoutSlice';
 
 const PreviewSection = (): JSX.Element => {
-    const { isPreviewDisplay } = useLayoutState();
+    const { isPreviewDisplay } = useAppSelector(selectLayoutState);
 
     if (isPreviewDisplay) {
         return (
