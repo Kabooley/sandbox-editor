@@ -1,8 +1,8 @@
 import React from 'react';
-import DialogAction from './DialogAction';
+import DialogActions from './DialogActions';
 import closeButton from '../../assets/vscode/dark/close.svg';
+import { CancelAction } from './CancelAction';
 import type { iModalAction } from '../../slices/layoutSlice';
-
 
 interface iProps {
     closeHandler: () => void;
@@ -43,14 +43,9 @@ const Dialog = ({
             </div>
             <div className="dialog__actions">
                 {actions.map((action, index) => (
-                    <DialogAction key={index} {...action} />
+                    <DialogActions key={index} action={action} />
                 ))}
-                <DialogAction
-                    key={999}
-                    label="Cancel"
-                    callback={closeHandler}
-                    style={'transparent'}
-                />
+                <CancelAction />
             </div>
         </div>
     );

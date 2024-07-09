@@ -2,10 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Resizable } from 'react-resizable';
 import type { ResizeCallbackData } from 'react-resizable';
 import { useWindowSize } from '../hooks';
-import EditorContext from '../context/EditorContext';
+import EditorSkeleton from '../components/Skeletons/SkeletonEditor';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { selectLayoutState, layoutActions } from '../slices/layoutSlice';
 import { $heightOfHeader, $heightOfFooter, $initialLayout } from '../constants';
+
+
+const EditorContainer = React.lazy(
+    () => import('../components/EditorContainer')
+);
 
 const EditorSection = (): JSX.Element => {
     const [height, setHeight] = useState(
@@ -53,7 +58,11 @@ const EditorSection = (): JSX.Element => {
                     width: editorWidth,
                 }}
             >
-                <EditorContext width={editorWidth} />
+            <div className="editor-container">
+                <React.Suspense fallback={<EditorSkeleton />}>
+                    <EditorContainer width={editorWidth} />
+                </React.Suspense>
+            </div>
             </div>
         </Resizable>
     );

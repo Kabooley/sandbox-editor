@@ -3,11 +3,7 @@ import { createPortal } from 'react-dom';
 import Dialog from './Dialog';
 import Overlay from './Overlay';
 import { useAppSelector, useAppDispatch } from '../../store/hooks';
-import {
-    selectLayoutState,
-    layoutSlice,
-    layoutActions,
-} from '../../slices/layoutSlice';
+import { selectLayoutState, layoutActions } from '../../slices/layoutSlice';
 
 const Modal = () => {
     const { showModal, modalDataSet } = useAppSelector(selectLayoutState);
@@ -21,6 +17,8 @@ const Modal = () => {
 
     // const parent = parentNode ? parentNode : document.body;
     const parent = document.body;
+
+    // console.log(`[Modal] rendering. ${showModal ? 'show' : 'hide'}`);
 
     if (showModal) {
         return (
