@@ -9,23 +9,23 @@
  * - Registers latest files to monaco-editor's extraLibs.
  *
  *******************************************************************************/
-import React, { useEffect, useRef } from 'react';
-import * as monaco from 'monaco-editor';
-import type { SerializedError } from '@reduxjs/toolkit';
-import { useAppSelector, useAppDispatch } from '../store/hooks';
-import type { iFile } from '../data/types';
+import React, { useEffect, useRef } from 'react'
+import * as monaco from 'monaco-editor'
+import type { SerializedError } from '@reduxjs/toolkit'
+import { useAppSelector, useAppDispatch } from '../store/hooks'
+import type { iFile } from '../data/types'
 
-import MonacoEditor from './Monaco/MonacoEditor';
-import TabsAndActionsContainer from './TabsAndActions';
-import EditorNoSelectedFile from './NoSelectedEditor';
-import { selectFiles, filesActions } from '../slices/filesSlice';
-import { bundler } from '../slices/bundlerSlice';
+import MonacoEditor from './Monaco/MonacoEditor'
+import TabsAndActionsContainer from './TabsAndActions'
+import EditorNoSelectedFile from './NoSelectedEditor'
+import { selectFiles, filesActions } from '../slices/filesSlice'
+import { bundler } from '../slices/bundlerSlice'
 import {
     updatePackageJson,
     reflectDependenciesToPackageJson,
-} from '../slices/packageJsonSlice';
-import { generateTreeForBundler, getFilenameFromPath } from '../utils';
-import { usePrevious } from '../hooks/usePrevious';
+} from '../slices/packageJsonSlice'
+import { generateTreeForBundler, getFilenameFromPath } from '../utils'
+import { usePrevious } from '../hooks/usePrevious'
 
 const editorConstructOptions: monaco.editor.IStandaloneEditorConstructionOptions =
     {
@@ -37,35 +37,35 @@ const editorConstructOptions: monaco.editor.IStandaloneEditorConstructionOptions
         theme: 'vs-dark',
         dragAndDrop: false,
         automaticLayout: true, // NOTE: これ設定しておかないとリサイズ時に壊れる
-    };
+    }
 
-const delay = 500;
-const $FiveSec = 5000;
+const delay = 500
+const $FiveSec = 5000
 
 // Store details about typings we have loaded.
 const extraLibs = new Map<
     string,
     { js: monaco.IDisposable; ts: monaco.IDisposable }
->();
+>()
 
 interface iProps {
-    width: number;
+    width: number
 }
 
 const EditorContainer = ({ width }: iProps) => {
-    const { files } = useAppSelector(selectFiles);
-    const dispatch = useAppDispatch();
-    const { changeSelectedFile, changeFile } = filesActions;
-    const previousFiles = usePrevious<iFile[]>(files);
+    const { files } = useAppSelector(selectFiles)
+    const dispatch = useAppDispatch()
+    const { changeSelectedFile, changeFile } = filesActions
+    const previousFiles = usePrevious<iFile[]>(files)
     const refDebounceAddTypingTimer = useRef<
         ReturnType<typeof setTimeout> | undefined
-    >();
+    >()
     const refDebounceBundleTimer = useRef<
         ReturnType<typeof setTimeout> | undefined
-    >();
+    >()
     const refDebounceUpdatePackageJsonTimer = useRef<
         ReturnType<typeof setTimeout> | undefined
-    >();
+    >()
 
     /***
      * - Registeres all files to monaco-editor extraLibs.
@@ -74,14 +74,14 @@ const EditorContainer = ({ width }: iProps) => {
      * */
     useEffect(() => {
         files.forEach((f) => {
-            addExtraLibs(f.value, f.path);
-        });
+            addExtraLibs(f.value, f.path)
+        })
 
-        const packageJson = files.find((f) => f.path === 'package.json');
+        const packageJson = files.find((f) => f.path === 'package.json')
         if (packageJson !== undefined) {
-            _updatePackageJson(packageJson.value);
+            _updatePackageJson(packageJson.value)
         }
-    }, []);
+    }, [])
 
     /***
      * File may changes its properties or added, and deleted.
@@ -98,7 +98,7 @@ const EditorContainer = ({ width }: iProps) => {
      * */
     useEffect(() => {
         if (previousFiles !== undefined) {
-            const didFileDelete = previousFiles.length > files.length;
+            const didFileDelete = previousFiles.length > files.length
 
             for (const file of files) {
                 if (
@@ -109,20 +109,20 @@ const EditorContainer = ({ width }: iProps) => {
                     // いずれの場合も結局`addExtraLibs`へ渡すだけ
                     // rename前のpathに該当するextralibsファイルは削除できない
                     // どれか判別できないけど、extralibsに残っていても問題ないから
-                    addExtraLibs(file.value, file.path);
+                    addExtraLibs(file.value, file.path)
                 }
             }
             if (didFileDelete) {
-                const prevFilesPath = previousFiles.map((pf) => pf.path);
-                const currentFilesPath = files.map((pf) => pf.path);
+                const prevFilesPath = previousFiles.map((pf) => pf.path)
+                const currentFilesPath = files.map((pf) => pf.path)
                 // deletedFile: prevFilesPathには存在してcurrentFilesPathには存在しない要素駆らなる配列
                 const deletedFiles = prevFilesPath.filter(
                     (pf) => currentFilesPath.indexOf(pf) === -1
-                );
-                deletedFiles.forEach((df) => _removeFileFromExtraLibs(df));
+                )
+                deletedFiles.forEach((df) => _removeFileFromExtraLibs(df))
             }
         }
-    }, [files]);
+    }, [files])
 
     /**
      * Dispatches code to filesSlice to update file's value.
@@ -141,30 +141,30 @@ const EditorContainer = ({ width }: iProps) => {
                     newValue: code,
                 },
             })
-        );
+        )
         // Debouncing adding code typings.
         if (refDebounceAddTypingTimer.current !== undefined) {
-            clearTimeout(refDebounceAddTypingTimer.current);
+            clearTimeout(refDebounceAddTypingTimer.current)
         }
         refDebounceAddTypingTimer.current = setTimeout(
             () => _addTypings(code, path),
             delay
-        );
+        )
         // Debouncing bundling
         if (refDebounceBundleTimer.current !== undefined) {
-            clearTimeout(refDebounceBundleTimer.current);
+            clearTimeout(refDebounceBundleTimer.current)
         }
-        refDebounceBundleTimer.current = setTimeout(() => _onBundle(), delay);
+        refDebounceBundleTimer.current = setTimeout(() => _onBundle(), delay)
         // Debouncing updating package.json file dependencies
         if (path === 'package.json') {
             if (refDebounceUpdatePackageJsonTimer.current !== undefined) {
-                clearTimeout(refDebounceUpdatePackageJsonTimer.current);
+                clearTimeout(refDebounceUpdatePackageJsonTimer.current)
             }
             refDebounceUpdatePackageJsonTimer.current = setTimeout(() => {
-                _updatePackageJson(code);
-            }, $FiveSec);
+                _updatePackageJson(code)
+            }, $FiveSec)
         }
-    };
+    }
 
     /***
      * Send all files to bundle.worker to bundle them.
@@ -175,8 +175,8 @@ const EditorContainer = ({ width }: iProps) => {
                 entryPoint: getFilenameFromPath('src/index.tsx'),
                 tree: generateTreeForBundler(files),
             })
-        );
-    };
+        )
+    }
 
     /***
      * @param {string} oldModelpath -
@@ -189,19 +189,19 @@ const EditorContainer = ({ width }: iProps) => {
     const _onDidChangeModel = (oldModelPath: string, newModelPath: string) => {
         console.log(
             `[EditorContainer][_onDidChangeModel] old model path: ${oldModelPath}`
-        );
-    };
+        )
+    }
 
     const _onChangeSelectedTab = (selected: string) => {
-        dispatch(changeSelectedFile({ selectedFilePath: selected }));
-    };
+        dispatch(changeSelectedFile({ selectedFilePath: selected }))
+    }
 
     /***
      *
      * */
     const _addTypings = (code: string, path: string) => {
-        addExtraLibs(code, path);
-    };
+        addExtraLibs(code, path)
+    }
 
     /***
      * filesから`selected: true`のファイルを取り出して
@@ -214,14 +214,14 @@ const EditorContainer = ({ width }: iProps) => {
             .filter((f) => f.opening)
             .sort((a: iFile, b: iFile): number => {
                 if (a.tabIndex! < b.tabIndex!) {
-                    return -1;
+                    return -1
                 }
                 if (a.tabIndex! > b.tabIndex!) {
-                    return 1;
+                    return 1
                 }
-                return 0;
-            });
-    };
+                return 0
+            })
+    }
 
     /***
      * NOTE: THIS METHOD IS ONLY FOR files NOT FOR DEPENDENCIES.
@@ -232,10 +232,10 @@ const EditorContainer = ({ width }: iProps) => {
      * Reset code if passed path has already been registered.
      * */
     const addExtraLibs = (code: string, path: string) => {
-        const cachedLib = extraLibs.get(path);
+        const cachedLib = extraLibs.get(path)
         if (cachedLib) {
-            cachedLib.js.dispose();
-            cachedLib.ts.dispose();
+            cachedLib.js.dispose()
+            cachedLib.ts.dispose()
         }
         // Monaco Uri parsing contains a bug which escapes characters unwantedly.
         // This causes package-names such as `@expo/vector-icons` to not work.
@@ -243,34 +243,34 @@ const EditorContainer = ({ width }: iProps) => {
         let uri = monaco.Uri.from({
             scheme: 'file',
             path: path,
-        }).toString();
+        }).toString()
         if (path.includes('@')) {
-            uri = uri.replace('%40', '@');
+            uri = uri.replace('%40', '@')
         }
 
         const js = monaco.languages.typescript.javascriptDefaults.addExtraLib(
             code,
             uri
-        );
+        )
         const ts = monaco.languages.typescript.typescriptDefaults.addExtraLib(
             code,
             uri
-        );
-        extraLibs.set(path, { js, ts });
-    };
+        )
+        extraLibs.set(path, { js, ts })
+    }
 
     /***
      * Dispose monaco-editor IExtraLibs.
      *
      * */
     const _removeFileFromExtraLibs = (path: string) => {
-        const cachedLib = extraLibs.get(path);
+        const cachedLib = extraLibs.get(path)
         if (cachedLib) {
-            cachedLib.js.dispose();
-            cachedLib.ts.dispose();
-            extraLibs.delete(path);
+            cachedLib.js.dispose()
+            cachedLib.ts.dispose()
+            extraLibs.delete(path)
         }
-    };
+    }
 
     const _updatePackageJson = (code: string) => {
         dispatch(updatePackageJson(code))
@@ -278,15 +278,15 @@ const EditorContainer = ({ width }: iProps) => {
             // 問題なかった場合だけpackage.jsonを更新させる
             .then(() => dispatch(reflectDependenciesToPackageJson()))
             .catch((rejectedValue: SerializedError) => {
-                dispatch(reflectDependenciesToPackageJson());
-                console.error('[TestPackageJsonManagement] there was an error');
-                console.error(rejectedValue.name + ' ' + rejectedValue.message);
-                console.error(rejectedValue.stack);
-            });
-    };
+                dispatch(reflectDependenciesToPackageJson())
+                console.error('[TestPackageJsonManagement] there was an error')
+                console.error(rejectedValue.name + ' ' + rejectedValue.message)
+                console.error(rejectedValue.stack)
+            })
+    }
 
-    const selectedFilePath = files.find((f) => f.selected);
-    const filesOpening = getFilesOpening(files);
+    const selectedFilePath = files.find((f) => f.selected)
+    const filesOpening = getFilesOpening(files)
 
     if (filesOpening.length) {
         return (
@@ -305,7 +305,7 @@ const EditorContainer = ({ width }: iProps) => {
                     {...editorConstructOptions}
                 />
             </>
-        );
+        )
     } else {
         return (
             <>
@@ -317,8 +317,8 @@ const EditorContainer = ({ width }: iProps) => {
                 />
                 <EditorNoSelectedFile />
             </>
-        );
+        )
     }
-};
+}
 
-export default EditorContainer;
+export default EditorContainer
