@@ -1,7 +1,7 @@
 /** @type {import('ts-jest').JestConfigWithTsJest} */
 // export default {
 module.exports = {
-    roots: ['<rootDir>/src'],
+    // roots: ['<rootDir>/src'],
     testEnvironment: 'jsdom',
     extensionsToTreatAsEsm: ['.ts', '.tsx', '.jsx'],
     transform: {
@@ -35,7 +35,8 @@ module.exports = {
     // jestのsetupファイルの指定：
     // 以下のプロパティは非推奨になったらしく、`setupFilesAfterEnv`にしろと言われる
     // setupTestFrameworkScriptFile: ['<rootDir>/src/__tests__/setup-jest.js'],
-    setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup-jest.js'],
+    // setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup-jest.js'],
+    setupFilesAfterEnv: ['<rootDir>/__tests__/setup-jest.js'],
     // モジュールが使用するファイルの拡張子群
     // 推奨：よく用いる拡張子は配列の初めの方に記述すること
     moduleFileExtensions: ['tsx', 'ts', 'js', 'json', 'node'],

@@ -1,4 +1,4 @@
-# Test
+# Test 環境を React + Webpack 環境へ導入する手順
 
 branch: `test/setup-test`
 
@@ -9,6 +9,10 @@ https://zenn.dev/crsc1206/articles/de79af226d0c69
 ↑ 本当に助かった
 
 ## Dependencies
+
+JavaScript ファイルをテストするために`jest`、
+TypeScript ファイルをテストするために`ts-jest`、
+React ファイルをテストするために`RTL`
 
 ```
 jest
@@ -25,9 +29,13 @@ jest-environment-jsdom
 
 ## 手順
 
+-   [1. jest と ts-jest の設定](#1.-jest-と-ts-jest-の設定)
+-   [2. RTL フレームワーク他を現在のテスト環境に追加、有効にする](#2.-RTL-フレームワーク他を現在のテスト環境に追加、有効にする)
+-   [3. webpack 設定](#3.-webpack-設定)
+
 ## 1. jest と ts-jest の設定
 
-ECMAScript 文法、且つ TypeScript で書かれた JavaScript ファイルのテストを可能とさせる。
+目標： ECMAScript 文法、且つ TypeScript で書かれた JavaScript ファイルのテストを可能とさせる。
 
 以下のような設定を行っていく：
 
@@ -205,9 +213,9 @@ module.exports = {
 
 ```
 
-TODO: `extensionsToTreatAsESM`の設定は意味があるのか確認。今のところ package.json は`type: module`設定していない
-
 #### import 文なしでテスト API を使えるようにする
+
+テストファイルでいちいち`import <テストAPI>`したくないための設定。
 
 https://jestjs.io/docs/getting-started#type-definitions
 
@@ -269,9 +277,9 @@ test ファイル群を指定するプロパティは`testMatch`と`testRegex`�
 
 `testMatch`は`micromatch`という glob という正規表現の一種を採用している模様。
 
-正直この正規表現はさっぱりいじることができないので公式に乗っている指定方法をそのまま踏襲するほかない。
+正直この正規表現はさっぱりわからん（そこに掛ける時間がない）いじることができないので公式に乗っている指定方法をそのまま踏襲。
 
-複数の正規表現を渡すことでテストファイル群を詳しく指定している。
+複数の正規表現を渡すことで上から順番にテストファイル群を探してたどり着く仕組み。
 
 ```JavaScript
 testMatch: [
@@ -293,6 +301,8 @@ testMatch: [
 個人的に jest の setup ファイルは`__tests__/`以下に置きたかったのでこのような指定方法にした。
 
 #### tsconfig.jest.json を認識させる、設定する
+
+テスト時にだけ参照する tsconfig ファイルを用意する
 
 ```diff JavaScript
 // jest.config.js
@@ -338,11 +348,7 @@ module.exports = {
 
 概ねの tsconfig.jest.json の設定は`tsconfig.json`の方と同じになるはずなので、
 
-`extends`プロパティでオリジナルの設定を引っ張ってくればいいのだが
-
-なんでか知らんが tsconfig.jest.json で`extends`を設定しても認識しないっぽい
-
-なので今のところ tsconfig.json をそのままコピペしている。
+`extends`プロパティでオリジナルの設定を引っ張ってくればいい。
 
 #### @babel/preset-typescript vs ts-jest
 
@@ -360,7 +366,7 @@ babel の仕様として、
 -   babel は`tsconfig.json`の変更を反映しない。
 -   babel は TypeScript コードをトランスパイルするだけである。
 
-#### testEnvironment
+#### `testEnvironment`
 
 https://jestjs.io/docs/configuration#testenvironment-string
 
@@ -401,7 +407,7 @@ module.exports = {
 };
 ```
 
-#### 他の設定
+#### `jest.config.js` 他の設定
 
 ```JavaScript
 /** @type {import('ts-jest').JestConfigWithTsJest} */
@@ -445,7 +451,7 @@ https://jestjs.io/docs/configuration#setupfilesafterenv-array
 
 たとえば`@testing-library/react`などのフレームワークの API をｸﾞﾛｰﾊﾞﾙで使いたい場合、`setup-jest.js`でその設定を書けばすべてのテストに適用できるなど。
 
-#### moduleFileExtensions
+#### `moduleFileExtensions`
 
 https://jestjs.io/docs/configuration#modulefileextensions-arraystring
 
@@ -550,19 +556,33 @@ configure({ testIdAttribute: 'data-my-test-id' });
 
 ## 3. webpack 設定
 
+実をいうと設定することはない。
+
+要はバンドルにテストディレクトリ以下を含めたくないのでこれを webpack の設定なりで指定できないか調べたが、デフォルトの設定のままで問題ない。
+
+webpack では、entry point で指定したファイルから参照できないファイルはバンドルに含まれない。
+
+webpack はエントリーポイントからエントリーポイントから始まる依存グラフを生成しこのグラフの一部であるファイルのみがバンドルに含まれる。
+
+また、production モードで webpack の tree shaking 機能がテストディレクトリを排除するようにしてあれば猶更必要はない。
+
 参考:
 
-https://gist.github.com/kpunith8/51d43ed6adaaa5698e49ed2cab3f514e
+https://webpack.js.org/concepts/dependency-graph/
 
-https://riptutorial.com/web-component/example/30849/webpack-and-jest
+https://webpack.js.org/guides/tree-shaking/#root
 
-#### webpack のバンドルから特定のファイルを除外するという設定はできるのか
+#### Module オプション、`exclude`を指定すればバンドルから除外できるわけではない
 
-できない。
-
-TODO: ルート直下のファイルなら除外されるのか確認
+参考：
 
 https://stackoverflow.com/a/46305792/22007575
+
+https://webpack.js.org/loaders/babel-loader/
+
+`exclude`というプロパティが webpack config にあるけど、これを指定すればバンドルから外れるのでは？という疑問に対する回答。
+
+できない。
 
 `exclude`という設定は webpack の`module`設定に追加できるプロパティだけど、
 
@@ -595,15 +615,132 @@ https://stackoverflow.com/a/46305792/22007575
             },
 ```
 
-`/node_modules/`は`babel-loadder`のトランスパイルには含めないという意味である。
+`babel-loader`は`exclude`に指定されている`/node_modules/`をトランスパイルしないよという意味である。
 
-#### test 関連のファイルがバンドルに含まれないようにする
+しかし webpack は`node_modules`をバンドルには含めるので、バンドルに含めないという意味ではない。
 
-バンドルに**tests**ファイルが含まれているか確認 --> わからん
+#### `webpack-bundle-analyzer`をつかってバンドル結果を分析する
 
-`src/__tests__/`というディレクトリ構成が問題なのかも
+出力結果を視覚的にわかりやすく表示してくれるプラグイン。
 
-`__tests__`をルート直下に移動できるか？
+`webpack-bundle-analyzer`を使うとバンドルした結果を分析して
+
+バンドル内容を視覚化したインタラクティブなツリーマップが作成してくれる。
+
+この結果を見て予期せぬディレクトリが含まれていないか確認することはできる。
+
+## 出来上がったもの
+
+ディレクトリ構成:
+
+```bash
+.
+|-- __tests__           # テストファイル群はここへ
+`   -- setup-jest.js
+|-- jest.config.js
+|-- node_modules
+|-- package.json
+|-- src
+|-- tsconfig.jest.json
+|-- tsconfig.json
+|-- webpack.config.js
+`-- yarn.lock
+```
+
+`jest.config.js`:
+
+```JavaScript
+/** @type {import('ts-jest').JestConfigWithTsJest} */
+module.exports = {
+    testEnvironment: 'jsdom',
+    extensionsToTreatAsEsm: ['.ts', '.tsx', '.jsx'],
+    transform: {
+        '^.+\\.(ts|tsx)?$': [
+            'ts-jest',
+            {
+                useESM: true,
+                tsconfig: './tsconfig.jest.json',
+            },
+        ],
+        '^.+\\.(js|jsx)$': '<rootDir>/node_modules/babel-jest',
+    },
+    testMatch: [
+        '**/__tests__/**/*.+(ts|tsx|js)',
+        '**/?(*.)+(spec|test).+(ts|tsx|js)',
+        '!**/__tests__/setup-jest.js',
+    ],
+    // jestのsetupファイルの指定
+    setupFilesAfterEnv: ['<rootDir>/__tests__/setup-jest.js'],
+    // モジュールが使用するファイルの拡張子群
+    // 推奨：よく用いる拡張子は配列の初めの方に記述すること
+    moduleFileExtensions: ['tsx', 'ts', 'js', 'json', 'node'],
+    //
+    // moduleDirectories: ['node_modules'],
+    //
+    collectCoverageFrom: ['src/**/*.{js,jsx,ts,tsx}'],
+    // `transform`処理の対象外をここに含める
+    // ここに含まれたリソースは`transform`設定が適用されない
+    transformIgnorePatterns: ['/node_modules/.*'],
+    // (テストから)もみ消していい対象をここに含める
+    // 例えばcssファイルやassets群はテストに関係ないのでここに含めたりする
+    // moduleNameMapper: []
+};
+```
+
+`jest.config.js`:
+
+```JavaScript
+import { configure } from '@testing-library/react';
+import '@testing-library/jest-dom';
+import '@testing-library/user-event';
+
+configure({ testIdAttribute: 'data-my-test-id' });
+```
+
+`.babelrc.json`:
+
+```json
+{
+    "presets": [
+        ["@babel/preset-env", { "targets": { "node": "16.16.0" } }],
+        ["@babel/preset-react", { "runtime": "automatic" }]
+    ]
+}
+```
+
+`tsconfig.jest.json`:
+
+```JSON
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "types": ["jest"],
+        "jsx": "react-jsx",
+    },
+    "include": ["./src/**/*"],
+    "exclude": ["node_modules"]
+}
+
+```
+
+`webpack.config.js`: 変更なし
+
+`package.json`:
+
+```diff json
+{
+    "scripts": {
+        ...
++       "test": "jest --config=jest.config.js"
+    },
+}
+```
+
+## 検証
+
+```bash
+$ npm run test
+```
 
 ## .babelrc vs babel.config.js
 

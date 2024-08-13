@@ -1,6 +1,8 @@
 const path = require('path');
 const HtmlWebPackPlugin = require('html-webpack-plugin');
 const ReactRefreshWebpackPlugin = require('@pmmmwh/react-refresh-webpack-plugin');
+// DEBUG:
+const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
@@ -85,5 +87,6 @@ module.exports = {
             template: 'src/index.html',
         }),
         isDevelopment && new ReactRefreshWebpackPlugin(),
+        new BundleAnalyzerPlugin()
     ].filter(Boolean),
 };
