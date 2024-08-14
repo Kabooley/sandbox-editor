@@ -1,5 +1,7 @@
 # Test 環境を React + Webpack 環境へ導入する手順
 
+この手順でやればReact + Webpack環境にテストを導入できるはずという記事。
+
 branch: `test/setup-test`
 
 ## 参考
@@ -17,6 +19,9 @@ React ファイルをテストするために`RTL`
 ```
 jest
 ts-jest
+babel-jest
+@babel/core
+@babel/preset-env
 @testing-library/react
 @testing-library/jest-dom
 @testing-library/user-event
@@ -39,12 +44,12 @@ jest-environment-jsdom
 
 以下のような設定を行っていく：
 
--   CommonJS 文法で書かれたファイルの babel-jest が行う
+-   CommonJS 文法で書かれたファイルのテストは babel-jest が行う
 -   TypeScript で書かれたファイルのテストは ts-jest が行う
 -   global 型情報の取得
 -   ECMAScript 文法を許容させる
--   test ファイル群は`src/__tests__/`へ納める
--   webpack でビルドするプロジェクトなので、ビルド時に`src/__tests__`などテスト関係が含まれないように webpack の設定を変更する
+-   test ファイル群は`<rootDir>/__tests__/`へ納める
+-   ビルド時に`src/__tests__`などテスト関係が含まれないように webpack の設定を変更する
 -   テスト用の tsconfig ファイルを用意する
 
 Installation:
@@ -97,7 +102,7 @@ https://jestjs.io/docs/configuration#transform-objectstring-pathtotransformer--p
 
 これに`ts-jest`の設定を追加することで TypeScript ファイルをテスト可能とさせる。
 
-NOTE: `ts-jest`の設定で`transform`設定を定義する場合は`preset`設定を除外すること。
+`ts-jest`の設定で`transform`設定を定義する場合は`preset`設定を除外すること。
 
 > If you are using custom transform config, please remove preset from your Jest config to avoid issues that Jest doesn't transform files correctly.
 
@@ -128,7 +133,7 @@ TypeScript 拡張子ファイルを ts-jest に変換させるルールを書い
 
 デフォルトの`{"\\.[jt]sx?$": "babel-jest"}`設定がなくなっているので、
 
-TypeScript 拡張子以外の JavaScript はお前がやってくれと設定を追加しなくてはならない。
+TypeScript 拡張子以外の JavaScript ファイルはお前がやってくれと設定を追加しなくてはならない。
 
 > Remember to include the default babel-jest transformer explicitly, if you wish to use it alongside with additional code preprocessors:
 
@@ -159,7 +164,7 @@ https://jestjs.io/docs/getting-started#using-babel
 $ touch .babelrc.json
 ```
 
-`.bablerc`:
+`.bablerc.json`:
 
 ```JSON
 {
@@ -169,7 +174,7 @@ $ touch .babelrc.json
 
 `current`の部分は使用環境の Node のバージョンを指定する。
 
-[`.babelrc`と`babel.config.js`どちらを定義すればいいのかについてはこちら](#.babelrc-vs-babel.config.js)
+[`.babelrc`と`babel.config.js`どちらを定義すればいいのかについて](#.babelrc-vs-babel.config.js)
 
 #### ECMAScript 文法を許容させる
 
@@ -204,7 +209,7 @@ module.exports = {
 
 > jest は package.json で`"type": "module"`が定義されているときに`.js`や`.mjs`のファイルを ECMAScript として扱う。
 
-`.js`は常に package.json の設定に従って常に(ESM だと)推測されるので含めるなというエラーが発生するので`.js`は含めない。
+`.js`は常に package.json の設定に従って常に(ESM だと)推測されるから含めるなというエラーが発生するので`.js`は含めない。
 
 ```bash
 ● Validation Error:
@@ -239,10 +244,6 @@ API を使用するには
     }
 }
 ```
-
-TODO: tsconfig の該当項目を要確認。
-
-types と typeRoots の項目
 
 #### test ファイル群のディレクトリを認識させる
 
@@ -328,24 +329,6 @@ module.exports = {
 };
 ```
 
-ディレクトリ構成：
-
-```diff
-    src/
-        __tests__/
-            setup-jest.js
-            XXXX.test.tsx
-            ZZZZ.test.ts
-            YYYY.test.js
-        XXXX.tsx
-        ZZZZ.ts
-        YYYY.js
-    jest.config.js
-    tsconfig.json
-+   tsconfig.jest.json
-    webpack.config.js
-```
-
 概ねの tsconfig.jest.json の設定は`tsconfig.json`の方と同じになるはずなので、
 
 `extends`プロパティでオリジナルの設定を引っ張ってくればいい。
@@ -413,7 +396,7 @@ module.exports = {
 /** @type {import('ts-jest').JestConfigWithTsJest} */
 // export default {
 module.exports = {
-    roots: ['<rootDir>/src'],
+    roots: ['<rootDir>/src', '<rootDir>/__tests__'],
     testEnvironment: 'jsdom',
     extensionsToTreatAsEsm: ['.ts', '.tsx', '.jsx'],
     transform: {
@@ -433,9 +416,29 @@ module.exports = {
     ],
     setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup-jest.js'],
     moduleFileExtensions: ['tsx', 'ts', 'js', 'json', 'node'],
-    collectCoverageFrom: ['src/**/*.{js,jsx,ts,tsx}'],    transformIgnorePatterns: ['/node_modules/.*']
+    collectCoverageFrom: ['src/**/*.{js,jsx,ts,tsx}'],    
+    transformIgnorePatterns: ['/node_modules/.*']
 };
 
+```
+
+#### `roots`
+
+https://jestjs.io/ja/docs/configuration#roots-arraystring
+
+jestが探索してよいディレクトリを指定できる。
+
+jestの探索対象はテストファイルとテストされるファイルなので、
+
+もしも`roots`を指定したい場合、そのディレクトリはテストファイルもテストされるファイルも両方収まっていないとならない
+
+例： `__tests__`は`src`以下の場所でないディレクトリの場合
+
+```JavaScript
+module.exports = {
+    roots: ['<rootDir>/src', '<rootDir>/__tests__'],
+    ...
+}
 ```
 
 #### `setupFilesAfterEnv`
@@ -458,7 +461,22 @@ https://jestjs.io/docs/configuration#modulefileextensions-arraystring
 > モジュールが使用するファイル拡張子の配列。ファイル拡張子を指定せずにモジュールが必要な場合、これらの拡張子が Jest によって左から右の順序で検索されます。
 > プロジェクトで最もよく使用される拡張子を左側に配置することをお勧めします。そのため、TypeScript を使用している場合は、「ts」または「tsx」、あるいはその両方を配列の先頭に移動することを検討してください。
 
+#### `collectCoverageFrom`
+
+コードカバレッジのレポートにどのファイルを含めるのか指定する。
+
+デフォルトだとテスト中にロードされたすべてのファイルが対象になる。
+
+レポートに余計なファイルが含まれる可能性はあるのでそうした場合を回避したいならば指定する。
+
+今回は`src/`以下の特定の拡張子のファイルのみを指定した。
+
+
+
+
 ## 2. RTL フレームワーク他を現在のテスト環境に追加、有効にする
+
+目標：Reactファイルをテストできるようにする。
 
 #### Installation
 
@@ -467,7 +485,7 @@ https://jestjs.io/docs/configuration#modulefileextensions-arraystring
 $ yarn add --dev @testing-library/react
 # ユーザの操作を模倣するフレームワーク
 $ yarn add --dev @testing-library/user-event
-#
+# DOMの状態についてアサートできるライブラリ
 $ yarn add --dev @testing-library/jest-dom
 ```
 
@@ -542,6 +560,10 @@ Jest encountered an unexpected token
 
 `setup-jest.js`:
 
+```bash
+$ touch ./__tests__/setup-jest.js
+```
+
 ```JavaScript
 import { configure } from '@testing-library/react';
 import '@testing-library/jest-dom';
@@ -550,7 +572,9 @@ import '@testing-library/user-event';
 configure({ testIdAttribute: 'data-my-test-id' });
 ```
 
-これで、すべての` @testing-library/react``@testing-library/user-event `,`@testing-library/jest-dom`を使いたいテストファイルは import なしで API が使えるようになる...はずなのだが使えるようになっていない。
+これで、すべての` @testing-library/react``@testing-library/user-event `,`@testing-library/jest-dom`を使いたいテストファイルは import なしで API が使えるようになる
+
+...はずなのだが自身の環境では使えるようになっていない。
 
 現状個別にすべて各テストファイルに import している。
 
@@ -572,7 +596,7 @@ https://webpack.js.org/concepts/dependency-graph/
 
 https://webpack.js.org/guides/tree-shaking/#root
 
-#### Module オプション、`exclude`を指定すればバンドルから除外できるわけではない
+#### Module オプション、`exclude`の指定対象はバンドルから除外できるわけではない
 
 参考：
 
@@ -652,6 +676,7 @@ https://webpack.js.org/loaders/babel-loader/
 ```JavaScript
 /** @type {import('ts-jest').JestConfigWithTsJest} */
 module.exports = {
+    roots: ['<rootDir>/src', '<rootDir>/__tests__'],
     testEnvironment: 'jsdom',
     extensionsToTreatAsEsm: ['.ts', '.tsx', '.jsx'],
     transform: {
@@ -669,21 +694,10 @@ module.exports = {
         '**/?(*.)+(spec|test).+(ts|tsx|js)',
         '!**/__tests__/setup-jest.js',
     ],
-    // jestのsetupファイルの指定
     setupFilesAfterEnv: ['<rootDir>/__tests__/setup-jest.js'],
-    // モジュールが使用するファイルの拡張子群
-    // 推奨：よく用いる拡張子は配列の初めの方に記述すること
     moduleFileExtensions: ['tsx', 'ts', 'js', 'json', 'node'],
-    //
-    // moduleDirectories: ['node_modules'],
-    //
     collectCoverageFrom: ['src/**/*.{js,jsx,ts,tsx}'],
-    // `transform`処理の対象外をここに含める
-    // ここに含まれたリソースは`transform`設定が適用されない
     transformIgnorePatterns: ['/node_modules/.*'],
-    // (テストから)もみ消していい対象をここに含める
-    // 例えばcssファイルやassets群はテストに関係ないのでここに含めたりする
-    // moduleNameMapper: []
 };
 ```
 
@@ -716,9 +730,7 @@ configure({ testIdAttribute: 'data-my-test-id' });
     "compilerOptions": {
         "types": ["jest"],
         "jsx": "react-jsx",
-    },
-    "include": ["./src/**/*"],
-    "exclude": ["node_modules"]
+    }
 }
 
 ```
@@ -736,7 +748,7 @@ configure({ testIdAttribute: 'data-my-test-id' });
 }
 ```
 
-## 検証
+これで以下のコマンドが正常に稼働すればテスト環境の導入は完了です。
 
 ```bash
 $ npm run test
@@ -762,13 +774,6 @@ https://babeljs.io/docs/config-files#project-wide-configuration
 もしもコンパイル中の特定のファイルを見つけたとき、babel は`.babelrc.json`に基づいてコンパイル処理を決定する。
 なので、特定のファイルやサブセットに対して特別に設定を設けたいときに`.babelrc`を用いるべき。
 
-## jest における`<rootDir>`
-
-https://jestjs.io/docs/webpack#configuring-jest-to-find-our-files
-
-> <rootDir> is a special token that gets replaced by Jest with the root of your project. Most of the time this will be the folder where your package.json is located unless you specify a custom rootDir option in your configuration.
-
-> <rootDir> は、Jest によってプロジェクトのルートに置き換えられる特別なトークンです。ほとんどの場合、構成でカスタム rootDir オプションを指定しない限り、これは package.json が配置されるフォルダーになります。
 
 ## `Cannot find module 'react-dom/client' from 'node_modules/@testing-library/react/dist/pure.js'`
 
