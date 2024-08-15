@@ -167,7 +167,7 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
             this.props;
 
         // DEBUG:
-        console.log('[MonacoEditor] on mount');
+        // console.log('[MonacoEditor] on mount');
 
         // Generate Editor instance.
         const editor = monaco.editor.create(
@@ -203,14 +203,14 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
         // Triggers bundle to initialize preview window
         if (selectedFile !== undefined) {
             // DEBUG:
-            console.log('[MonacoEditor] trigger bundle');
+            // console.log('[MonacoEditor] trigger bundle');
 
             onEditorContentChange(selectedFile?.value, selectedFile?.path);
         } else {
             const _selectedFile = files.find((f) => f.path === 'src/App.tsx');
             if (_selectedFile !== undefined) {
                 // DEBUG:
-                console.log('[MonacoEditor] trigger bundle');
+                // console.log('[MonacoEditor] trigger bundle');
 
                 onEditorContentChange(
                     _selectedFile?.value,
@@ -234,9 +234,9 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
         const { files, selectedFile, onEditorContentChange, ...options } =
             this.props;
 
-        console.log(`[MonacoEditor] did update.`);
-        console.log(`[MonacoEditor] selected file`);
-        console.dir(selectedFile);
+        // console.log(`[MonacoEditor] did update.`);
+        // console.log(`[MonacoEditor] selected file`);
+        // console.dir(selectedFile);
 
         if (this._refEditor) {
             this._refEditor.updateOptions(options);
@@ -245,7 +245,7 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
             const value = selectedFile?.value;
 
             if (selectedFile === undefined) {
-                console.log(`[MonacoEditor][did update] no selectedFile`);
+                // console.log(`[MonacoEditor][did update] no selectedFile`);
 
                 // Save the editor state for the previous file so we can restore it when it's re-opened
                 if (prevProps.selectedFile !== undefined) {
@@ -260,9 +260,9 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
                 selectedFile !== undefined &&
                 selectedFile.path !== prevProps.selectedFile?.path
             ) {
-                console.log(
-                    `[MonacoEditor][did update] selectedFile ${prevProps.selectedFile?.path} --> ${selectedFile.path}`
-                );
+                // console.log(
+                //     `[MonacoEditor][did update] selectedFile ${prevProps.selectedFile?.path} --> ${selectedFile.path}`
+                // );
 
                 // Save the editor state for the previous file so we can restore it when it's re-opened
                 if (prevProps.selectedFile !== undefined) {
@@ -274,9 +274,9 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
 
                 selectedFile && this._openFile(selectedFile, true);
             } else if (model && value !== model.getValue()) {
-                console.log(
-                    `[MonacoEditor][did update] excuteEdits ${selectedFile?.path}`
-                );
+                // console.log(
+                //     `[MonacoEditor][did update] excuteEdits ${selectedFile?.path}`
+                // );
 
                 // @ts-ignore
                 this._refEditor.executeEdits(null, [
@@ -290,7 +290,7 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
     }
 
     componentWillUnmount() {
-        console.log('[MonacoEditor][will unmount]');
+        // console.log('[MonacoEditor][will unmount]');
 
         this._refEditorNode.current &&
             this._refEditorNode.current.removeEventListener(
@@ -391,23 +391,23 @@ export default class MonacoEditor extends React.Component<iProps, iState> {
     _handleChangeModel(e: monaco.editor.IModelChangedEvent) {
         const { oldModelUrl, newModelUrl } = e;
 
-        // DEBUG:
-        console.log(
-            `[MonacoEditor][_handleChangeModel] old model url: ${oldModelUrl}`
-        );
-        console.log(
-            `[MonacoEditor][_handleChangeModel] new model url: ${newModelUrl}`
-        );
+        // // DEBUG:
+        // console.log(
+        //     `[MonacoEditor][_handleChangeModel] old model url: ${oldModelUrl}`
+        // );
+        // console.log(
+        //     `[MonacoEditor][_handleChangeModel] new model url: ${newModelUrl}`
+        // );
 
         if (oldModelUrl) {
             const model = monaco.editor
                 .getModels()
                 .find((m) => m.uri === oldModelUrl);
 
-            // DEBUG:
-            console.log(
-                `[MonacoEditor][_handleChangeModel] old model url: ${oldModelUrl}`
-            );
+            // // DEBUG:
+            // console.log(
+            //     `[MonacoEditor][_handleChangeModel] old model url: ${oldModelUrl}`
+            // );
 
             model &&
                 this.props.onDidChangeModel(

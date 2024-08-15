@@ -1,21 +1,35 @@
 .header-section {
-    & > nav {
-        display: flex;
-        flex-shrink: 0;
-        align-items: center;
-        height: 100%;
-        width: 100%;
+  & > nav {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    height: 100%;
+    width: 100%;
+  }
+  &.nav--item {
+    margin-left: 4px;
+    display: flex;
+    flex: 4;
+    &:last-child {
+      flex: 1;
     }
-    &.nav--item {
-        margin-left: 4px;
-        display: flex;
+  }
+  & > button {
+    background-color: transparent;
+    border: none;
+    color: inherit;
+    // margin: auto 0;
+    padding: 0 8px;
+    // padding: 0 4px;
+    cursor: pointer;
+    margin-right: 16px;
+
+    &:hover {
+      background-color: #16181d;
     }
-    & > button {
-        background-color: transparent;
-        border: none;
-        color: inherit;
-        margin: auto 0;
-        padding: 0 4px;
-        cursor: pointer;
+
+    &.selected {
+      background-color: #000000;
     }
+  }
 }

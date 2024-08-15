@@ -21,3 +21,49 @@
 @import 'components/preview';
 @import 'components/footer';
 @import 'components/tabsAndActions';
+
+/* 
+NOTE: Temporarily put css for SliderPane.tsx
+TODO: Move code below to another scss file.
+*/
+.slider-pane__container {
+  box-sizing: content-box;
+  position: fixed;
+  display: block;
+  z-index: 1000;
+  width: 300px;
+  max-width: 300px;
+  top: 0px;
+  left: 0px;
+  margin: 0px;
+  transition: all 0.5s;
+  opacity: 1;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-drag: none;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+
+  background-color: rgb(14, 14, 14);
+  border-right: 1px solid #8c8c8c;
+
+  &.slide-in {
+    left: -300px;
+    border-right: none;
+    transition: all 0.5s;
+  }
+
+  & > nav > .nav--item {
+    padding-left: 4px;
+    height: 48px;
+    display: flex;
+
+    & > button {
+      background-color: transparent;
+      border: none;
+      color: inherit;
+      margin: auto 0;
+      padding: 0 4px;
+      cursor: pointer;
+    }
+  }
+}
