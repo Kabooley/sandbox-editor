@@ -26,7 +26,6 @@ const Header = (): JSX.Element => {
   const handleClickSelectEditor = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault()
     e.stopPropagation()
-    console.log('[Header] select Editor')
     if (isPhonePreviewDisplay) {
       dispatch(layoutActions.TogglePhonePreview())
     }
@@ -35,7 +34,6 @@ const Header = (): JSX.Element => {
   const handleClickSelectPreview = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault()
     e.stopPropagation()
-    console.log('[Header] select Preview')
     if (!isPhonePreviewDisplay) {
       dispatch(layoutActions.TogglePhonePreview())
     }

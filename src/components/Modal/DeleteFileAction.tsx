@@ -9,41 +9,33 @@ interface iProps extends iModalAction {}
 /***
  * Delete button for deletion file or folder from files.
  * NOTE: NOT only file, also folder.
- * */ 
+ * */
 export const DeleteFileAction = ({ label, requiredAction, style }: iProps) => {
-    const dispatch = useAppDispatch();
-    const { type } = requiredAction;
+  const dispatch = useAppDispatch();
+  const { type } = requiredAction;
 
-    const onClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-        e.stopPropagation();
-        e.preventDefault();
-        if (type === ModalTypes.DeleteAFolder) {
+  const onClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (type === ModalTypes.DeleteAFolder) {
+      dispatch(
+        filesActions.deleteMultipleFiles({
+          requiredPaths: requiredAction.payload.deletionFilesPath,
+        })
+      );
+    } else if (type === ModalTypes.DeleteAFile) {
+      dispatch(
+        filesActions.deleteFile({
+          requiredPath: requiredAction.payload.deletionFilePath,
+        })
+      );
+    }
+    dispatch(layoutActions.RemoveModal());
+  };
 
-            // DEBUG: 
-            console.log(`[DeleteFileAction] delete ${requiredAction.payload.deletionFilesPath}`);
-
-            dispatch(
-                filesActions.deleteMultipleFiles({
-                    requiredPaths: requiredAction.payload.deletionFilesPath,
-                })
-            );
-        } else if (type === ModalTypes.DeleteAFile) {
-            
-            // DEBUG: 
-            console.log(`[DeleteFileAction] delete ${requiredAction.payload.deletionFilePath}`);
-
-            dispatch(
-                filesActions.deleteFile({
-                    requiredPath: requiredAction.payload.deletionFilePath,
-                })
-            );
-        }
-        dispatch(layoutActions.RemoveModal());
-    };
-
-    return (
-        <button className="action danger" onClick={onClick}>
-            {label}
-        </button>
-    );
+  return (
+    <button className="action danger" onClick={onClick}>
+      {label}
+    </button>
+  );
 };

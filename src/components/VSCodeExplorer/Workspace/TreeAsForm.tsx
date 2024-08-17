@@ -2,13 +2,13 @@
  * Tree only for new item form.
  * This Tree will be provided if explorer id is '9999' as Tree for new item.
  *
- * 
+ *
  * TODO: 要統合。
  * 現状、Workspace/index.tsxからFormColumnを呼び出すためだけに存在している
  * Tree.tsxからはFormColumnは直接呼出されるので、このTreeAsFormを使用していない
  * つまり
  * FormColumnを呼び出す手段は現在二つあるという状態
- * 
+ *
  * 実際使ってみるとTreeAsFormを使う方法だと処理が遅い*****************************************************************************/
 import React, { useState } from 'react';
 import FormColumn from './FormColumn';
@@ -55,9 +55,6 @@ const TreeAsForm: React.FC<iProps> = ({
     const requiredPath = explorer.path.length
       ? explorer.path + '/' + providedValue
       : providedValue;
-    
-      
-    console.log(`[TreeAsForm] on add item: ${requiredPath}`);
 
     handleInsertNode(requiredPath, showInput.isFolder);
     setShowInput({ ...showInput, visible: false });
@@ -102,8 +99,6 @@ const TreeAsForm: React.FC<iProps> = ({
     } else {
       setIsNameValid(false);
     }
-
-    console.log(`[TreeAsForm] on change`);
   };
 
   /************************************
@@ -113,7 +108,7 @@ const TreeAsForm: React.FC<iProps> = ({
   const columnIndent = `${nestDepth * 1.6}rem`;
 
   // Indent for new item input form
-//   const columnIndentForNewItemForm = `${nestDepth * 1.6 + 1.6}rem`;
+  //   const columnIndentForNewItemForm = `${nestDepth * 1.6 + 1.6}rem`;
   // input.inputContainer--inputの動的style
   let inputStyle = {};
   if (isInputBegun && isNameValid) {
