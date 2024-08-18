@@ -1,3 +1,4 @@
 .monaco-editor {
-  height: 100%;
+  // 28px is height of TabsAndActions
+  height: calc(100% - 28px);
 }

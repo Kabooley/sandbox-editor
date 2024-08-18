@@ -1,0 +1,32 @@
+/*
+参考
+
+https://www.w3schools.com/howto/howto_css_media_query_breakpoints.asp
+
+https://github.com/codesandbox/codesandbox-client/blob/6969e2e2aa306d0bb2e1e1376cd32f7339fa7968/packages/common/src/utils/media.ts#L5
+
+
+px: window.innerWidth
+defition order: As this is cascading style sheet, it chooses last definition if you apply two rules that collide to the same elements.
+*/
+
+$media-phone: 660px;
+$media-tablet: 1279px;
+$media-fromTablet: 660px;
+$media-fromDesktop: 1280px;
+
+/* max size of tablet */
+@media only screen and (max-width: $media-tablet) {
+}
+
+/* less than phone size */
+@media only screen and (max-width: $media-phone) {
+}
+
+/* min size of tablet */
+@media only screen and (min-width: $media-fromTablet) {
+}
+
+/* min size of desktop */
+@media only screen and (min-width: $media-fromDesktop) {
+}

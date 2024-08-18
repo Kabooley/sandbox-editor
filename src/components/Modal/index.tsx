@@ -18,8 +18,6 @@ const Modal = () => {
     // const parent = parentNode ? parentNode : document.body;
     const parent = document.body;
 
-    // console.log(`[Modal] rendering. ${showModal ? 'show' : 'hide'}`);
-
     if (showModal) {
         return (
             <>

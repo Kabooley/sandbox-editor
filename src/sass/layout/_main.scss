@@ -7,13 +7,14 @@ WATCH:
 .header-section {
   height: $--height-header-section;
   min-height: $--height-header-section;
+  background-color: #2d3139;
 }
 
 .main-container {
   display: flex;
   flex: 1 1 auto;
   width: 100%;
-  height: 100%;
+  height: calc(100% - 48px);
 }
 
 .split-pane {
