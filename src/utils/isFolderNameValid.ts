@@ -4,6 +4,7 @@ const foldernmaeRegexp = /^[^\\\/?%*:|"'<>\.]+$/;
 
 /****
  * Checks if passed name includes any invalid characters.
+ * Only `-` and `_`, `.` can be allowed. 
  *
  * Filename should not contain...
  * \ / ? % * : | " < >

@@ -5,7 +5,7 @@
  *
  * ************************************************************/
 import { describe, test, expect, it } from 'vitest';
-import { moveInArray } from '../src/utils/moveInArray';
+import { moveInArray } from '../../src/utils/moveInArray';
 
 const cases = [
   {

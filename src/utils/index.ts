@@ -1,4 +1,3 @@
-export { getModelByPath } from './getModelByPath'
 export { getFileLanguage } from './getFileLanguage'
 export { getFileType } from './getFileType'
 export { getFilenameFromPath } from './getFilenameFromPath'

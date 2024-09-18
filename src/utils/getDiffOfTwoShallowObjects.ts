@@ -7,14 +7,16 @@ interface iDiffsOfTwoObjects {
 
 /***
  * ２つのオブジェクトを比較して、その差分を返す。
+ * targetオブジェクトをcompareWithオブジェクトと比較して、
+ * 削除されているプロパティ、変更されているプロパティ、追加されたプロパティ
+ * の３つに分けて結果を返す。
+ * NOTE: ネストが1段階のpropertyのみもつオブジェクトしか対応しない。
  *
  * @returns
  *  deleted:     compareWithにあってtargetにないプロパティ(key比較)
  *  created:     targetにあってcompareWithにないプロパティ(key比較)
- *  modifiedVal: targetにもcompareWithにも存在するけど値が異なるプロパティがある場合、
- *               targetの方の要素を返す。
+ *  modifiedVal: targetにもcompareWithにも存在するけど値が異なるプロパティがある場合、targetの方の要素を返す。
  *
- * NOTE: ネストが1段階のpropertyのみもつオブジェクトしか対応しない。
  *
  * 参考：
  * https://github.com/moroshko/shallow-equal/blob/master/src/objects.ts
