@@ -2,7 +2,7 @@ import React from 'react';
 import Stack from '../Stack';
 import Action from '../Action';
 import type { iFile } from '../../../data/types';
-import { getFilenameFromPath, getFileIconName } from '../../../utils';
+import { getLasComponentFromPath, getFileIconName } from '../../../utils';
 import { Icon } from '../../Icon';
 import closeAllIcon from '../../../assets/vscode/dark/close-all.svg';
 import closeIcon from '../../../assets/vscode/dark/close.svg';
@@ -143,7 +143,7 @@ const OpenEditor: React.FC<iProps> = ({
                         <Icon name={getFileIconName(f.path)} size="16px" />
                     </div>
                     <h3 className="item-label">
-                        {getFilenameFromPath(f.path)}
+                        {getLasComponentFromPath(f.path)}
                     </h3>
                     <span>{f.path}</span>
                 </div>

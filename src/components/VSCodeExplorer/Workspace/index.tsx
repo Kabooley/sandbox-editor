@@ -17,7 +17,7 @@ import {
 } from '../utils'
 import type { iExplorer } from '../../../data/types'
 import { generateTreeNodeData } from './generateTree'
-import { getAllDescendantsPath, getFilenameFromPath } from '../../../utils'
+import { getAllDescendantsPath, getLasComponentFromPath } from '../../../utils'
 import { useAppSelector, useAppDispatch } from '../../../store/hooks'
 import { layoutActions, ModalTypes } from '../../../slices/layoutSlice'
 import { selectFiles, filesActions } from '../../../slices/filesSlice'
@@ -115,7 +115,7 @@ const Workspace: React.FC<iProps> = ({
           type: ModalTypes.DeleteAFolder,
           payload: {
             deletionFilesPath: deletionTargetFilesPath,
-            filename: getFilenameFromPath(_explorer.path),
+            filename: getLasComponentFromPath(_explorer.path),
           },
         })
       )
@@ -125,7 +125,7 @@ const Workspace: React.FC<iProps> = ({
           type: ModalTypes.DeleteAFile,
           payload: {
             deletionFilePath: _explorer.path,
-            filename: getFilenameFromPath(_explorer.path),
+            filename: getLasComponentFromPath(_explorer.path),
           },
         })
       )
