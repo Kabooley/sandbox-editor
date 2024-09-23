@@ -1,5 +1,8 @@
 /**
  * Sort object properties by key.
+ * 
+ * keys are sorted by Array.prototype.sort() default sort order.
+ * (ascending, comparing sequences of UTF-16 units code value)
  *
  * https://stackoverflow.com/a/31102605
  * */

@@ -1,17 +1,12 @@
+/********************************************************
+ * 文字列の頭文字が`/`(slash)の時にその`/`を取り除いた文字列を返す
+ *
+ * 頭文字が`/`でなかった場合文字列はそのまま返される
+ * *****************************************************/
 const matchFirstSlashPattern = /^\//g;
 
 export const removeFirstSlash = (str: string): string => {
-  if(matchFirstSlashPattern.test(str)) return str.replace(matchFirstSlashPattern, '');
+  if (matchFirstSlashPattern.test(str))
+    return str.replace(matchFirstSlashPattern, '');
   return str;
 };
-
-// USAGE
-// const paths = [
-//     "/model/16",
-//     "/src/index.tsx",
-//     "/src/index.tsx",
-//     "/public/js/jctajr.min.js",
-//     "public/js/jctajr.min.js",
-//   ];
-
-// paths.forEach(p => console.log(removeFirstSlash(p)));
