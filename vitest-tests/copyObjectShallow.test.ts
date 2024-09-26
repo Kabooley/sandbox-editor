@@ -7,6 +7,7 @@
  * propertyだけコピーする
  * */
 import { describe, test, expect } from 'vitest';
+import { shallowCopyObject } from './utils/copyObjectShallow';
 
 export interface iFile {
   path: string;
@@ -147,10 +148,6 @@ root.render(
     tabIndex: null,
   },
 ];
-
-export const shallowCopyObject = <T extends {}>(o: T) => {
-  return Object.assign({} as T, o);
-};
 
 describe('Test shallowCopyObject', () => {
   const copiedFiles = files.map((f) => shallowCopyObject<iFile>(f));

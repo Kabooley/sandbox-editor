@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
-import { ascendingOrderComparerFactory } from '../src/utils/ascendingOrderComparerFactory';
+import { ascendingOrderComparerFactory } from '../../src/utils/ascendingOrderComparerFactory';
 
 interface iDep {
   moduleName: string;

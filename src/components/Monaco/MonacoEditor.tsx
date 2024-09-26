@@ -10,7 +10,7 @@ import * as monaco from 'monaco-editor';
 import type * as Monaco from 'monaco-editor';
 import prettier from 'prettier';
 import parser from 'prettier/parser-babel';
-import { getModelByPath, removeFirstSlash } from '../../utils';
+import { removeFirstSlash } from '../../utils';
 import type { iFile } from '../../data/types';
 
 // import viewStateFiles from '../../data/viewStates';
@@ -140,6 +140,27 @@ const editorStates = new Map<
     string,
     monaco.editor.ICodeEditorViewState | undefined | null
 >();
+
+
+// Helper
+/**
+ * Get model by using path as a clue.
+ * 
+ * NOTE: monaco.editor.ITextModel.uri.path returns string like this:
+ * `/src/index.js`.
+ * On the other hand, path parameter string is like this;
+ * `src/index.js`.
+ * To compare them correctly, 
+ * removing first slash of model.uri.path.
+ * 
+ * RE:
+ * https://stackoverflow.com/a/3840645/22007575
+ * */ 
+export const getModelByPath = (path: string): monaco.editor.ITextModel | undefined=> {
+    return monaco.editor.getModels().find(m => 
+        m.uri.path.replace(/^\/+|\/+$/gm, '') === path
+    );
+};
 
 export default class MonacoEditor extends React.Component<iProps, iState> {
     _refEditorNode = React.createRef<HTMLDivElement>();

@@ -1,3 +1,11 @@
+/***
+ * Method that returns the path without the filename and extension from a given path string.
+ * 
+ * @param {string} path - path including filename.
+ * @retunrs {string|null} - Path without filename
+ * 
+ * NOTE: Returned string includes `/` at its tail.
+ * */ 
 export const getPathExcludeFilename = (path: string): string | null => {
     const matched = /^.*[\\\/]/.exec(path);
     return matched ? matched[0] : null;

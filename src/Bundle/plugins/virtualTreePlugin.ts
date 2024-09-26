@@ -25,8 +25,9 @@ const chacheDB: LocalForage = createDBInstance({
 /**
  * Polyfill of Object.entires
  *
- * MDN:
- * https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Object/entries#%E3%83%9D%E3%83%AA%E3%83%95%E3%82%A3%E3%83%AB
+ * Ref:
+ * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/entries
+ * https://github.com/zloirock/core-js/blob/master/packages/core-js/modules/es.object.entries.js
  * */
 const objectEntries = (obj: any) => {
     var ownProps = Object.keys(obj),
