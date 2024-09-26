@@ -1,111 +1,211 @@
-/**
- * バージョン範囲を示す表記はsemver.valid()でいうとinvalidである。
- *
- * caret:   `^1.2.3`のような表記の意味は、そのバージョンのメジャーバージョンさえ変更しなければ、
- *          マイナーバージョン以下は変更してもいいという、バージョンの許容範囲を示す表記である。
- *          ただし下に下がるのはダメで
- *          1.2.3 ~ 2.0.0が許容範囲となる。
- *
- * tilde:   `~1.2.3`のような表記の意味は、そのバージョンのメジャーバージョンとマイナーバージョンを変更しなければ、
- *          パッチバージョンは変更してもいいという、バージョンの許容範囲を示す表記である。
- *          1.2.3 ~ 1.3.0が許容範囲となる。
- *
- * */
-import semver from 'semver';
+// /**
+//  * バージョン範囲を示す表記はsemver.valid()でいうとinvalidである。
+//  *
+//  * caret:   `^1.2.3`のような表記の意味は、そのバージョンのメジャーバージョンさえ変更しなければ、
+//  *          マイナーバージョン以下は変更してもいいという、バージョンの許容範囲を示す表記である。
+//  *          ただし下に下がるのはダメで
+//  *          1.2.3 ~ 2.0.0が許容範囲となる。
+//  *
+//  * tilde:   `~1.2.3`のような表記の意味は、そのバージョンのメジャーバージョンとマイナーバージョンを変更しなければ、
+//  *          パッチバージョンは変更してもいいという、バージョンの許容範囲を示す表記である。
+//  *          1.2.3 ~ 1.3.0が許容範囲となる。
+//  *
+//  * */
+// import semver from 'semver';
 
-/***
- * WIP: package.jsonファイルのdependenciesのversion表記をある程度受け入れられるバージョン表記を返せるようにしたい
- * 現状使っていないが将来的に使用したいので残しておく。
- * 
- * vitest-test/src-utilsにテストファイルあり
- * 
- * semver.valid(version)の結果を返す関数。
- * 引数`version`がtag（`latest`や`beta`など）を示す場合nullを返す
- *
- * 範囲を示すcaretかtildeが付いている場合それを取り除いた値で
- * semver.validを実行する。
- *
- * 参考：
- * https://github.com/npm/node-semver?tab=readme-ov-file#advanced-range-syntax
- * */
-export const getValidSemver = (version: string): string | null => {
-    if (version === 'latest') return null;
-    // tildeとcaretがついている場合を考慮して取り除く
-    const removedCaretOrTildeAtBeginning = version
-        .replace(/^[\^+]/g, '')
-        .replace(/^[\~+]/g, '');
-    const cleaned = semver.clean(removedCaretOrTildeAtBeginning);
-    // returns null if invalid, returns passed value if valid.
-    return semver.valid(cleaned);
-};
+// /***
+//  * WIP: package.jsonファイルのdependenciesのversion表記をある程度受け入れられるバージョン表記を返せるようにしたい
+//  * 現状使っていないが将来的に使用したいので残しておく。
+//  *
+//  * vitest-test/src-utilsにテストファイルあり
+//  *
+//  * semver.valid(version)の結果を返す関数。
+//  * 引数`version`がtag（`latest`や`beta`など）を示す場合nullを返す
+//  *
+//  * 範囲を示すcaretかtildeが付いている場合それを取り除いた値で
+//  * semver.validを実行する。
+//  *
+//  * 参考：
+//  * https://github.com/npm/node-semver?tab=readme-ov-file#advanced-range-syntax
+//  * */
+// export const getValidSemver = (version: string): string | null => {
+//     if (version === 'latest') return null;
+//     // tildeとcaretがついている場合を考慮して取り除く
+//     const removedCaretOrTildeAtBeginning = version
+//         .replace(/^[\^+]/g, '')
+//         .replace(/^[\~+]/g, '');
+//     const cleaned = semver.clean(removedCaretOrTildeAtBeginning);
+//     // returns null if invalid, returns passed value if valid.
+//     return semver.valid(cleaned);
+// };
 
-/*
-npm はどうやってリクエストされたnpm パッケージのバージョンを決定するのか？
+// /*
+// npm はどうやってリクエストされたnpm パッケージのバージョンを決定するのか？
 
-chatgptに聞いてみた
+// chatgptに聞いてみた
 
-When you run `npm install`, npm resolves the package version to be installed based on several factors, following the rules of **semantic versioning (SemVer)** and **dependency constraints** specified in your project's `package.json` or from the default behavior when no version is specified.
+// When you run `npm install`, npm resolves the package version to be installed based on several factors, following the rules of **semantic versioning (SemVer)** and **dependency constraints** specified in your project's `package.json` or from the default behavior when no version is specified.
 
-Here's how npm resolves the package version:
+// Here's how npm resolves the package version:
 
-### 1. **Exact Version Specified**
-   If you specify an exact version, npm installs that version directly. For example:
+// ### 1. **Exact Version Specified**
+//    If you specify an exact version, npm installs that version directly. For example:
 
-   ```bash
-   npm install some-package@1.2.3
-   ```
+//    ```bash
+//    npm install some-package@1.2.3
+//    ```
 
-   - Npm installs version `1.2.3` exactly.
+//    - Npm installs version `1.2.3` exactly.
 
-### 2. **No Version Specified**
-   If no version is specified, npm installs the **latest** version published to the npm registry. For example:
+// ### 2. **No Version Specified**
+//    If no version is specified, npm installs the **latest** version published to the npm registry. For example:
 
-   ```bash
-   npm install some-package
-   ```
+//    ```bash
+//    npm install some-package
+//    ```
 
-   - Npm installs the latest version (as per the registry’s `latest` tag, which typically points to the most recent stable release).
+//    - Npm installs the latest version (as per the registry’s `latest` tag, which typically points to the most recent stable release).
 
-### 3. **Version Range Specified**
-   When you specify a range of versions, npm uses the SemVer rules to select the highest version that satisfies the range. Here are some common scenarios:
+// ### 3. **Version Range Specified**
+//    When you specify a range of versions, npm uses the SemVer rules to select the highest version that satisfies the range. Here are some common scenarios:
 
-   - **Tilde (`~`)**: Matches the latest patch version within the same minor version.
-     - Example: `~1.2.0` matches `1.2.3`, but not `1.3.0`.
+//    - **Tilde (`~`)**: Matches the latest patch version within the same minor version.
+//      - Example: `~1.2.0` matches `1.2.3`, but not `1.3.0`.
 
-   - **Caret (`^`)**: Matches the latest minor version within the same major version.
-     - Example: `^1.2.0` matches `1.2.3` and `1.3.0`, but not `2.0.0`.
+//    - **Caret (`^`)**: Matches the latest minor version within the same major version.
+//      - Example: `^1.2.0` matches `1.2.3` and `1.3.0`, but not `2.0.0`.
 
-   - **Greater than / Less than (`>`, `<`, `>=`, `<=`)**: Matches versions that meet the specified range.
-     - Example: `>=1.2.0 <2.0.0` matches any version between `1.2.0` and `1.9.x`.
+//    - **Greater than / Less than (`>`, `<`, `>=`, `<=`)**: Matches versions that meet the specified range.
+//      - Example: `>=1.2.0 <2.0.0` matches any version between `1.2.0` and `1.9.x`.
 
-### 4. **Pre-release Versions**
-   Pre-release versions (like `1.2.0-alpha.1`) are not installed by default unless specifically requested with a version range that includes pre-releases or using a tag like `next`:
+// ### 4. **Pre-release Versions**
+//    Pre-release versions (like `1.2.0-alpha.1`) are not installed by default unless specifically requested with a version range that includes pre-releases or using a tag like `next`:
 
-   ```bash
-   npm install some-package@next
-   ```
+//    ```bash
+//    npm install some-package@next
+//    ```
 
-   Or by specifying a pre-release version range:
+//    Or by specifying a pre-release version range:
 
-   ```bash
-   npm install some-package@^1.2.0-alpha
-   ```
+//    ```bash
+//    npm install some-package@^1.2.0-alpha
+//    ```
 
-### 5. **Package Lock File (`package-lock.json`)**
-   If your project has a `package-lock.json` file (or `npm-shrinkwrap.json`), npm will use the exact versions listed in that file to ensure consistency across installations, regardless of the version range specified in `package.json`. This file is automatically generated and updated when you install, update, or remove packages.
+// ### 5. **Package Lock File (`package-lock.json`)**
+//    If your project has a `package-lock.json` file (or `npm-shrinkwrap.json`), npm will use the exact versions listed in that file to ensure consistency across installations, regardless of the version range specified in `package.json`. This file is automatically generated and updated when you install, update, or remove packages.
 
-   - This ensures that your project dependencies remain consistent across different environments or when cloned by another developer.
+//    - This ensures that your project dependencies remain consistent across different environments or when cloned by another developer.
 
-### 6. **Npm Caching and Resolution**
-   - Npm uses a local cache for packages. If a package is already cached and matches the version or range requested, npm will install it from the cache.
-   - Npm fetches any missing or updated package versions from the registry if needed.
+// ### 6. **Npm Caching and Resolution**
+//    - Npm uses a local cache for packages. If a package is already cached and matches the version or range requested, npm will install it from the cache.
+//    - Npm fetches any missing or updated package versions from the registry if needed.
 
-### 7. **Dependency Tree and Nested Dependencies**
-   Npm resolves dependencies by building a dependency tree. If a package has its own dependencies, npm will recursively resolve and install those as well, considering their version constraints. If two dependencies require different versions of the same package, npm installs both versions, nesting them within their respective dependency.
+// ### 7. **Dependency Tree and Nested Dependencies**
+//    Npm resolves dependencies by building a dependency tree. If a package has its own dependencies, npm will recursively resolve and install those as well, considering their version constraints. If two dependencies require different versions of the same package, npm installs both versions, nesting them within their respective dependency.
 
----
+// ---
 
-### Summary:
-When you run `npm install`, npm uses SemVer rules, the version range specified in `package.json`, and the `package-lock.json` to determine the correct package version. It also resolves and installs nested dependencies, ensuring the project's dependency tree is satisfied.
+// ### Summary:
+// When you run `npm install`, npm uses SemVer rules, the version range specified in `package.json`, and the `package-lock.json` to determine the correct package version. It also resolves and installs nested dependencies, ensuring the project's dependency tree is satisfied.
 
-*/ 
+// */
+
+// import { describe, test, expect, it } from 'vitest';
+// import { getValidSemver } from '../../src/utils/getValidSemver';
+
+// /**
+//  * 文字列を直接扱う方法をやめてsemverオブジェクトからバージョンを判断する機能にした方がいいかも
+//  *
+//  * 一旦semverの挙動をテストする（vitest-tests/semver.test.ts）
+//  *
+//  * */
+// describe('Test getValidSemver()', () => {
+//   test('`^1.2.3` should be `1.2.3`', () => {
+//     const result = getValidSemver('^1.2.3');
+//     expect(result).toEqual('1.2.3');
+//   });
+//   test('`=v1.2.3` should be `1.2.3`', () => {
+//     const result = getValidSemver('=v1.2.3');
+//     expect(result).toEqual('1.2.3');
+//   });
+
+//   // TODO: returned null.
+//   test('`>=1.2.3` should be `1.2.3`', () => {
+//     const result = getValidSemver('>=1.2.3');
+//     expect(result).toEqual('1.2.3');
+//   });
+//   test('`a.b.c` should be null', () => {
+//     const result = getValidSemver('a.b.c');
+//     expect(result).toEqual(null);
+//   });
+//   test('tags e.g.`latest` should be null', () => {
+//     const result = getValidSemver('latest');
+//     expect(result).toEqual(null);
+//   });
+//   test('`v2` should be null', () => {
+//     const result = getValidSemver('v2');
+//     expect(result).toEqual(null);
+//   });
+//   test('`42.6.7.9.3-alpha` should be null', () => {
+//     const result = getValidSemver('42.6.7.9.3-alpha');
+//     expect(result).toEqual(null);
+//   });
+// });
+
+// /*
+// package.jsonのdependenciesのプロパティにおける表記可能性のあるsemantice versions表現：
+
+// In your Node environment, when managing dependencies and `devDependencies` in `package.json`, you use semantic versioning (semver) to specify which versions of a package your project depends on. Here's a breakdown of all possible version expressions:
+
+// ### 1. **Exact Version**
+//    - `"package-name": "1.2.3"`
+//      - Installs exactly version `1.2.3` with no updates.
+
+// ### 2. **Caret (`^`)**
+//    - `"package-name": "^1.2.3"`
+//      - Installs the most recent compatible minor or patch version.
+//      - For example, `^1.2.3` allows any version `>=1.2.3` but `<2.0.0`.
+
+// ### 3. **Tilde (`~`)**
+//    - `"package-name": "~1.2.3"`
+//      - Installs the most recent patch version, i.e., `>=1.2.3` but `<1.3.0`.
+
+// ### 4. **Greater Than or Equal (`>=`)**
+//    - `"package-name": ">=1.2.3"`
+//      - Installs versions greater than or equal to `1.2.3`.
+
+// ### 5. **Less Than (`<`)**
+//    - `"package-name": "<2.0.0"`
+//      - Installs any version lower than `2.0.0`.
+
+// ### 6. **Range**
+//    - `"package-name": ">=1.2.3 <2.0.0"`
+//      - Installs versions within a specific range.
+
+// ### 7. **Wildcards (`*`)**
+//    - `"package-name": "*"`, `"package-name": "1.x"`
+//      - Installs any version of the package, or a specific major version with any minor/patch.
+
+// ### 8. **Latest**
+//    - `"package-name": "latest"`
+//      - Always installs the latest version.
+
+// ### 9. **Pre-releases**
+//    - `"package-name": "1.2.3-alpha.0"`
+//      - Installs a specific pre-release version (like `alpha`, `beta`).
+
+// ### 10. **X-Ranges**
+//    - `"package-name": "1.2.x"`
+//      - Installs any patch version for the minor version `1.2`.
+
+// ### 11. **Hyphen Ranges**
+//    - `"package-name": "1.2.3 - 1.3.0"`
+//      - Installs versions between `1.2.3` and `1.3.0`.
+
+// ### 12. **Exact Version with Pre-releases**
+//    - `"package-name": "1.2.3-beta.1"`
+//      - Allows installation of a pre-release version of a package.
+
+// These different expressions allow for flexibility in updating dependencies while still maintaining control over which versions are installed.
+
+// */

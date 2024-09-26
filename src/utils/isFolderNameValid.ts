@@ -1,16 +1,18 @@
-// https://stackoverflow.com/questions/6222215/regex-for-validating-folder-name-file-name
+// const foldernmaeRegexp = /^[^\\\/?%*:|"'<>\.]+$/;
+const foldernmaeRegexp = /^[^\\\/\r\s\n\0]+$/;
 
-const foldernmaeRegexp = /^[^\\\/?%*:|"'<>\.]+$/;
-
-/****
- * Checks if passed name includes any invalid characters.
- * Only `-` and `_`, `.` can be allowed. 
+/**
+ * @param {string} name - Folder name.
+ * @returns {boolean} - True as valid foldername.
  *
- * Filename should not contain...
- * \ / ? % * : | " < >
+ * Foldername must not include `/` (slash), `\` (back slash), `\0` (null character)
+ * Additionally the method does not allow `\s` (whitespace).
  *
- * NOTE: 改行抜きの文字列が渡されることが前提となっている。
- ****/
+ * Other special characters and alphanumeric should be allowed.
+ *
+ * Ref:
+ * https://stackoverflow.com/questions/6222215/regex-for-validating-folder-name-file-name
+ * */
 export const isFolderNameValid = (name: string): boolean => {
-    return foldernmaeRegexp.test(name);
+  return foldernmaeRegexp.test(name);
 };
