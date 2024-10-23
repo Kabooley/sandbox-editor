@@ -1,7 +1,10 @@
 /*********************************************************************
  * Test src/worker/fetchLibs.worker.ts on browser.
  *
- * *******************************************************************/
+ * - Make sure each api from worker runs as expected.
+ * - Make sure worker generates IndexedDb db and store as expected.
+ *
+ ********************************************************************/
 import 'mocha/mocha';
 import * as chai from 'chai';
 import * as Comlink from 'comlink';
@@ -153,13 +156,21 @@ const checkDataExistByKeyFromDBStore = (
   });
 };
 
+const deleteDB = (dbName: string) => {
+  return new Promise((resolve, reject) => {
+    const request = window.indexedDB.deleteDatabase(dbName);
+    request.onerror = (e) => {
+      console.error('Error: Faield to delete db: ' + dbName);
+    };
+    request.onsuccess = (e) => {
+      console.log('Succeeded to delete db: ' + dbName);
+    };
+  });
+};
+
 mocha.setup('tdd');
 mocha.checkLeaks();
 
-/***
- * TODO: テストがすべて終了したらworkerインスタンスとComlinkの生成物をそれぞれterminate
- *
- * */
 (async () => {
   let worker: Worker | undefined;
   let api: Comlink.Remote<iFetchLibsApi>;
@@ -188,20 +199,13 @@ mocha.checkLeaks();
   };
 
   suite('Environment should support WebWorker', () => {
-    console.log('test 1');
     test('Environment should support WebWorker', () => {
       chai.expect(window.Worker).to.not.be.undefined;
       chai.expect(window.Worker).to.not.be.null;
     });
   });
 
-  /***
-   * Worker(): SecurityError, NetworkError, SyntaxError
-   *
-   *
-   * */
   suite('Worker thread should be generated correctly', () => {
-    console.log('test 2');
     test('generated successfully', () => {
       try {
         chai.expect(generateWorkerAndApi).to.not.throw();
@@ -217,8 +221,9 @@ mocha.checkLeaks();
     });
   });
 
+  // NOTE: checkDBAndStoreGenerated()がエラーになるので修正できるまで避けておく
+  //
   // suite('IndexedDB db and store should be generated', () => {
-  //   console.log('test 3');
   //   test('', async () => {
   //     try {
   //       chai.expect(() => checkDBAndStoreGenerated(db1, store1)).to.not.throw();
@@ -235,7 +240,6 @@ mocha.checkLeaks();
   // });
 
   suite('api.fetchLibs()', () => {
-    console.log('test 4');
     test('should get axios@1.7.7', async () => {
       const { moduleName, version, vfs } = await api.fetchLibs(
         'axios',
@@ -351,13 +355,24 @@ mocha.checkLeaks();
     });
   });
 
+  // 後始末
   // mocha/mochaだとafterが呼び出せないため
   suite('[Not test] Clean up', () => {
     test('Terminate worker instance and Comlink proxy', () => {
-      worker && worker.terminate();
-      api && api[Comlink.releaseProxy]();
+      try {
+        worker && worker.terminate();
+        api && api[Comlink.releaseProxy]();
+        deleteDB(db1);
+        deleteDB(db2);
+      } catch (e) {
+        if (e instanceof Error) {
+          console.error(e.message);
+        } else {
+          console.log(e);
+        }
+        chai.assert.fail();
+      }
     });
-    // TODO: IndexedDBもドロップして
   });
 
   mocha.run();
