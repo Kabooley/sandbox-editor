@@ -1,4 +1,25 @@
-# eslintするまえに私を読んで
+## 私を読んで
+
+## TODOs
+
+- TODO: テストフレームワークを動作させるためにpackage.jsonの`"type": "module"`を追加したけど開発用途においてまだ対応していないことの対応
+
+## Browser Test
+
+```bash
+$ npm run test:browser
+```
+
+関連ディレクトリ
+
+- `output`
+- `browser`
+
+要確認：`package.json`に`"type": "module"`が追加されていること
+
+NOTE: `src/worker/fetchLibs.worker.ts`はbrowserテストをするけど、worker apiをテストするには開発者の技術が足りていないので、通常のモジュール（`browser/fetchLibs.ts`）として本来のファイルを変更してテストしている
+
+## Lint
 
 本プロジェクトはyarn@1.22.22を前提とする。
 
@@ -6,11 +27,11 @@
 
 なのでlintするときだけバージョンを切り替えて！！（用が済んだらyarnを戻して！)
 
-## 前提
+#### 前提
 
 Node.jsバージョンはv20.xである。
 
-## 手順
+#### 手順
 
 NOTE: yarnのバージョン切り替えにcorepackを使っている。
 
@@ -40,7 +61,7 @@ $ yarn set version 1.22.22
 
 要は、lintを使うときだけモダンyarnを使うのである。
 
-## 背景
+#### 背景
 
 yarn@4.3.1でアプリケーションを実行すると必ずエラーになるからで、かつ解決方法が見つかっていないから。
 

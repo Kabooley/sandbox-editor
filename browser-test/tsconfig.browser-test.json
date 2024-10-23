@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "lib": ["esnext", "dom", "WebWorker"],
+    "jsx": "preserve",
+    "module": "ESNext",
+    "noEmit": true,
+    "esModuleInterop": true,
+    "moduleResolution": "Bundler"
+  }
+}
