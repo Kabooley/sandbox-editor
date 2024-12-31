@@ -39,7 +39,7 @@ $ npm run test:browser
 
 要確認：`package.json`に`"type": "module"`が追加されていること
 
-NOTE: `src/worker/fetchLibs.worker.ts`はbrowserテストをするけど、worker apiをテストするには開発者の技術が足りていないので、通常のモジュール（`browser/fetchLibs.ts`）として本来のファイルを変更してテストしている
+NOTE: `test:browser`コマンドはrollupのエントリファイルがbrowser/index.test.ts固定なので任意のファイルをエントリファイルにしたい場合はscriptを使わず直接コマンドを打つこと
 
 ## Lint
 

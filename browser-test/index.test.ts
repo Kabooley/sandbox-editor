@@ -1,12 +1,15 @@
 /*********************************************************************
- * Test src/worker/fetchLibs.worker.ts on browser.
+ * Test src/worker/bundle.worker.ts on browser.
  *
  * *******************************************************************/
 import 'mocha/mocha';
 import * as chai from 'chai';
 import * as Comlink from 'comlink';
-import { get as getItem, set as setItem, createStore } from 'idb-keyval';
-import type { iFetchLibsApi } from '../src/worker/fetchLibs.worker';
+import { files } from '../src/data/files';
+import type { iFile } from '../src/data/types';
+import { generateTreeForBundler } from '../src/utils/generateTreeForBundler';
+import { getLasComponentFromPath } from '../src/utils/getLasComponentFromPath';
+import type { iBundlerApi } from '../src/worker/bundle.worker';
 
 // 指定のdbNameであるdbとそのdbにあるストアstoreNameが存在するか否かを返す関数
 const checkDBAndStoreGenerated = (dbName: string, storeName: string) => {
@@ -24,6 +27,10 @@ const checkDBAndStoreGenerated = (dbName: string, storeName: string) => {
     // 起動成功
     request.onsuccess = (e) => {
       const db: IDBDatabase = (e.target as IDBOpenDBRequest).result;
+
+      console.log(db);
+      console.log(storeName);
+
       if (db.objectStoreNames.contains(storeName)) {
         console.log(`[checkDBAndStoreGenerated] the store is generated`);
         resolve(true);
@@ -35,11 +42,11 @@ const checkDBAndStoreGenerated = (dbName: string, storeName: string) => {
       }
     };
 
-    // そんなdbは存在しない
-    request.onupgradeneeded = (e) => {
-      console.error('[checkDBAndStoreGenerated] Error: db is not exist');
-      reject('Error: db is not exist');
-    };
+    // // そんなdbは存在しない
+    // request.onupgradeneeded = (e) => {
+    //   console.error('[checkDBAndStoreGenerated] Error: db is not exist');
+    //   reject('Error: db is not exist');
+    // };
   });
 };
 
@@ -152,31 +159,207 @@ const checkDataExistByKeyFromDBStore = (
   });
 };
 
+/***
+ * tree case 1: TypeScriptとcssだけのファイル群
+ * */
+const dummyFiles1: iFile[] = [
+  {
+    path: 'src/App.tsx',
+    language: 'typescript',
+    selected: false,
+    opening: false,
+    tabIndex: null,
+    value: `
+ import React from 'react';
+ import "./styles.css";
+ 
+ export default function App(): React.JSX.Element {
+ return (
+   <div className="App">
+     <h1>Hello CodeSandbox</h1>
+     <h2>Start editing to see some magic happen!</h2>
+   </div>
+ );
+ };
+     `,
+    isFolder: false,
+  },
+  {
+    path: 'src/index.tsx',
+    language: 'typescript',
+    selected: false,
+    opening: false,
+    tabIndex: null,
+    value: `
+ import React from "react";
+ import ReactDOM from "react-dom/client";
+ import App from "./App";
+ 
+ const rootElement = document.getElementById("root");
+ if(rootElement) {
+ const root = ReactDOM.createRoot(rootElement);
+ 
+ root.render(
+   <React.StrictMode>
+     <App />
+   </React.StrictMode>
+ );   
+ }`,
+    isFolder: false,
+  },
+  {
+    path: 'src/styles.css',
+    language: 'css',
+    selected: false,
+    opening: false,
+    tabIndex: null,
+    value: `.App {
+       font-family: sans-serif;
+       text-align: center;
+     }
+     `,
+    isFolder: false,
+  },
+];
+
+const dummyFiles2 = [
+  {
+    path: 'src/Calculator.ts',
+    language: 'typescript',
+    selected: false,
+    opening: false,
+    tabIndex: null,
+    value: `// Calculator.ts
+ 
+ export class Calculator {
+     // Adds two numbers
+     add(a: number, b: number): number {
+         return a + b;
+     }
+ 
+     // Subtracts the second number from the first
+     subtract(a: number, b: number): number {
+         return a - b;
+     }
+ 
+     // Multiplies two numbers
+     multiply(a: number, b: number): number {
+         return a * b;
+     }
+ 
+     // Divides the first number by the second
+     divide(a: number, b: number): number {
+         if (b === 0) {
+             throw new Error("Division by zero is not allowed.");
+         }
+         return a / b;
+     }
+ }
+ 
+     `,
+    isFolder: false,
+  },
+  {
+    path: 'src/index.ts',
+    language: 'typescript',
+    selected: false,
+    opening: false,
+    tabIndex: null,
+    value: `
+ import { Calculator } from './Calculator';
+ import './styles.css';
+ 
+ const calculator: Calculator = new Calculator();
+ 
+ console.log("Addition:", calculator.add(5, 3));         // Output: 8
+ console.log("Subtraction:", calculator.subtract(5, 3)); // Output: 2
+ console.log("Multiplication:", calculator.multiply(5, 3)); // Output: 15
+ console.log("Division:", calculator.divide(5, 2));       // Output: 2.5
+ 
+ // Uncommenting the next line will throw an error
+ // console.log("Division by zero:", calculator.divide(5, 0));
+ 
+ const heading = document.createElement('h1');
+ heading.innerText = calculator.add(10, 10) + "";
+ document.body.appendChild(heading);
+ `,
+    isFolder: false,
+  },
+  {
+    path: 'src/styles.css',
+    language: 'css',
+    selected: false,
+    opening: false,
+    tabIndex: null,
+    value: `.App {
+   font-family: sans-serif;
+   text-align: center;
+     }`,
+    isFolder: false,
+  },
+];
+
+// helper
+const containsString = (source: string, search: string): boolean => {
+  // Normalize line breaks to '\n'
+  const normalizedSource = source
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .replace(/\n/, '');
+  const normalizedSearch = search
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .replace(/\n/, '');
+
+  console.log(normalizedSource);
+  console.log(normalizedSearch);
+
+  return normalizedSource.includes(normalizedSearch);
+};
+
 mocha.setup('tdd');
 mocha.checkLeaks();
 
 /***
- * TODO: テストがすべて終了したらworkerインスタンスとComlinkの生成物をそれぞれterminate
+ * test bundle.worker.ts
  *
+ * - localforageはINDEXEDDB driverを選択している
+ *
+ * テスト：
+ * - typescriptファイルはただしくトランスパイルされているか
+ * - reactファイルはただしくトランスパイルされているか
+ * - エントリーポイントからたどれるすべての相対パスのファイルは取り込まれているか
+ * - 依存関係はすべて取得されているか
+ * - cssファイルはstyle要素を埋め込むJavaScriptファイルに変換されているか
+ * - imgファイルは
+ * - svgファイルは
+ * - workerが呼び出すlocalforageは指定のIndexedDBのdbとstoreを生成しているか
+ *
+ * 要修正：
+ *
+ * - TODO: localforageではなくidb-keyvalでいいのでは？
+ * - TODO: src/Storage/index.tsの"jbook"表記をすべて修正
+ * - TODO: 名称変更：src/utils/getLasComponentFromPath.ts -> src/utils/getLastPathnameComponent()
+ * - TODO: "src/Bundle/plugins/virtualTreePlugin.ts"のunpkg取得はhttpsから取得するようにすること
+ *
+ * NOTE: not loadable pluginのエラーが出た場合、entryPointが正しいpathになっているか、esbuildwasmのバージョンが依存関係とバージョンが一致しているか確認すること
  * */
 (async () => {
   let worker: Worker | undefined;
-  let api: Comlink.Remote<iFetchLibsApi>;
-  const db1 = 'sandbox-editor--modulename-n-version--cache-v1-db';
-  const store1 = 'sandbox-editor--modulename-n-version--cache-v1-store';
-  const db2 = 'sandbox-editor--set-of-dependency--cachde-v1-db';
-  const store2 = 'sandbox-editor--set-of-dependency--cachde-v1-store';
+  let api: Comlink.Remote<iBundlerApi>;
+  const dbName = 'sandbox-editor-cache-db';
+  const storeName = 'keyvaluepairs';
+  // const dummyTree = generateTreeForBundler(files);
 
   const generateWorkerAndApi = () => {
     try {
       worker = new Worker(
-        new URL('../src/worker/fetchLibs.worker.ts', import.meta.url),
+        new URL('../src/worker/bundle.worker.ts', import.meta.url),
         { type: 'module' }
       );
-      api = Comlink.wrap<iFetchLibsApi>(worker);
+      api = Comlink.wrap<iBundlerApi>(worker);
       worker.onerror = (e) => {
         console.error(e);
-        console.error(e.message);
         throw e;
       };
     } catch (e) {
@@ -192,17 +375,11 @@ mocha.checkLeaks();
     });
   });
 
-  /***
-   * Worker(): SecurityError, NetworkError, SyntaxError
-   *
-   *
-   * */
   suite('Worker thread should be generated correctly', () => {
     test('generated successfully', () => {
       try {
         chai.expect(generateWorkerAndApi).to.not.throw();
       } catch (e) {
-        console.error('Anyway worker or api failed to be generated.');
         if (e instanceof Error) {
           console.error(e.message);
         } else {
@@ -213,165 +390,102 @@ mocha.checkLeaks();
     });
   });
 
-  suite('Indexed db and store should be generated as expected', () => {
-    test('basic idb-keyval', async () => {
-      try {
-        const _s = createStore('test-db-fdjfskds', 'test-store-fjgfdsdjsl');
-        await setItem('foo', 'FOO', _s);
-        const item = await getItem('foo', _s);
-        const isGen: boolean = (await checkDBAndStoreGenerated(
-          'test-db-fdjfskds',
-          'test-store-fjgfdsdjsl'
-        )) as boolean;
-        chai.assert.strictEqual(isGen, true);
-        chai.assert.strictEqual(item, 'FOO');
-      } catch (e) {
-        console.log(e);
-        chai.assert.fail();
-      }
-    });
-  });
-
-  suite('IndexedDB db and store should be generated', () => {
-    test('', async () => {
-      try {
-        chai.expect(() => checkDBAndStoreGenerated(db1, store1)).to.not.throw();
-        chai.expect(() => checkDBAndStoreGenerated(db2, store2)).to.not.throw();
-        const result1 = await checkDBAndStoreGenerated(db1, store1);
-        const result2 = await checkDBAndStoreGenerated(db2, store2);
-        chai.assert.strictEqual(result1, true);
-        chai.assert.strictEqual(result2, true);
-      } catch (e) {
-        console.error(e);
-        chai.assert.fail();
-      }
-    });
-  });
-
-  suite('api.fetchLibs()', () => {
-    test('should get axios@1.7.7', async () => {
-      const { moduleName, version, vfs } = await api.fetchLibs(
-        'axios',
-        '1.7.7'
-      );
-
-      chai.assert.strictEqual(moduleName, 'axios');
-      chai.assert.strictEqual(version, '1.7.7');
-
-      chai.expect(vfs).to.be.a('map');
-      chai.expect(vfs.size).to.be.greaterThan(0);
-    });
-
-    test('axios@1.7.7 should be saved in IndexedDB', async () => {
-      try {
-        const value = await getDataByKeyFromDBStore(db1, store1, 'axios@1.7.7');
-        chai.assert.strictEqual(value, 'axios@1.7.7');
-      } catch (e) {
-        console.error(e);
-        chai.assert.fail();
-      }
-    });
-  });
-
-  suite('api.isAlreadyExist()', () => {
-    test('should exist `axios@1.7.7` already', async () => {
-      const result = await api.isAlreadyExist('axios', '1.7.7');
-      chai.assert.strictEqual(result, true);
-    });
-
-    test('Should be false if passed non-exist module', async () => {
-      const result = await api.isAlreadyExist('react', '17.0.2');
-      chai.assert.strictEqual(result, false);
-    });
-  });
-
-  /**
-   * removeLibs() returns array of deleted module's dependencies path.
-   * removeLibs() returns promise but has no catch block.
-   *
-   * - should return deleted module's dependencies path
-   * - should have no `axios@1.7.7' key and value in store1 and store2
-   * - 存在しないモジュールを指定した場合どうなるか確認
-   * */
-  suite('api.removeLibs():', () => {
-    test('Should remove axios@1.7.7 from IndexedDB', async () => {
-      try {
-        const deletionPaths = await api.removeLibs('axios', '1.7.7');
-        chai.expect(deletionPaths.length).to.be.greaterThan(0);
-        const isExistInStore1: boolean = await checkDataExistByKeyFromDBStore(
-          db1,
-          store1,
-          'axios@1.7.7'
-        );
-        const isExistInStore2: boolean = await checkDataExistByKeyFromDBStore(
-          db2,
-          store2,
-          'axios@1.7.7'
-        );
-        chai.assert.strictEqual(isExistInStore1, false);
-        chai.assert.strictEqual(isExistInStore2, false);
-      } catch (e) {
-        if (e instanceof Error) {
-          console.error(e.message);
-          chai.assert.fail();
-        } else {
-          console.error(e);
-          chai.assert.fail();
-        }
-      }
-    });
-
-    test('Should get empty array if non exist dependencies has passed', async () => {
-      const emptyArr: string[] = await api.removeLibs('react', '17.0.2');
-      chai.expect(emptyArr.length).to.be.equal(0);
-    });
-  });
+  // /**
+  //  * Test if localforage generates db and store as specified.
+  //  * */
+  // suite('IndexedDB db and store should be generated', () => {
+  //   test(`${dbName} db and ${storeName} store should be generated`, async () => {
+  //     try {
+  //       chai
+  //         .expect(() => checkDBAndStoreGenerated(dbName, storeName))
+  //         .to.not.throw();
+  //       const result = await checkDBAndStoreGenerated(dbName, storeName);
+  //       chai.assert.strictEqual(result, true);
+  //     } catch (e) {
+  //       console.error(e);
+  //       chai.assert.fail();
+  //     }
+  //   });
+  // });
 
   /***
-   * IndexedDB db set of dependencyから指定の依存関係を返す関数
-   * 指定の依存関係がない場合、vfsはundefinedになり、notCachedはfalseになるはず
-   * */
-  suite('api.getCachedModule(): ', () => {
-    test('Should get "axios@1.7.7" vfs', async () => {
-      await api.fetchLibs('axios', '1.7.7');
-      const { moduleName, version, vfs, notCached } = await api.getCachedModule(
-        'axios',
-        '1.7.7'
-      );
-      chai.assert.strictEqual(notCached, false);
-      chai.assert.isDefined(vfs);
-      chai.expect(vfs.size).to.be.greaterThan(0);
-      chai.assert.strictEqual(moduleName, 'axios');
-      chai.assert.strictEqual(version, '1.7.7');
-    });
-    test('Should get empty vfs if passed non exist dependency', async () => {
-      const { vfs, notCached } = await api.getCachedModule('react', '17.0.2');
-      chai.assert.strictEqual(notCached, true);
-      chai.assert.isUndefined(vfs);
-    });
-  });
+   * `getLasComponentFromPath`と`generateTreeForBundle`が正しい前提
+   *
+   * - `*.css`ファイルは動的にstyle要素を生成して要素.innerText = ファイルの中身をするJavaScriptファイルになっていること
+   * - 相対pathでimportされるファイルはすべてfilesから取得されていること
+   * -
+   *
+   *
+   ***/
+  suite('bundler() should generate bundled file as expected.', () => {
+    let bundledCode = '';
 
-  suite('api.getModuleDependenciesPath(): ', () => {
-    test('Should return paths of axios@1.7.7 typed files', async () => {
-      const paths = await api.getModuleDependenciesPath('axios', '1.7.7');
-      chai.expect(paths.length).to.be.greaterThan(0);
-      paths.forEach((p) => {
-        chai.assert.isTrue(
-          p.startsWith('/node_modules/axios'),
-          'String does not start with "/node_modules/axios"'
+    test('bundle dummyFiles2 successfully:', async () => {
+      try {
+        const dummyTree = generateTreeForBundler(dummyFiles2);
+        bundledCode = await api.bundler(
+          getLasComponentFromPath('src/index.ts'),
+          dummyTree
         );
-      });
-    });
-  });
 
-  // // mocha/mochaだとafterが呼び出せないため
-  // suite('[Not test] Clean up', () => {
-  //   test('Terminate worker instance and Comlink proxy', () => {
-  //     worker && worker.terminate();
-  //     api && api[Comlink.releaseProxy]();
-  //   });
-  //   // TODO: IndexedDBもドロップして
-  // });
+        console.log(bundledCode);
+
+        chai.expect(bundledCode.length).to.be.greaterThan(0);
+      } catch (e) {
+        if (e instanceof Error) {
+          console.error(e.message);
+        } else {
+          console.error(e);
+        }
+        chai.assert.fail();
+      }
+    }, 10000);
+
+    test('Bundled code should includes src/index.ts', () => {
+      const isIncluding = bundledCode.includes('// virtual-file:src/index.ts');
+      chai.assert.strictEqual(isIncluding, true);
+    });
+
+    test('Bundled code should includes src/Calculator.ts', () => {
+      const isIncluding = bundledCode.includes(
+        '// virtual-file:src/Calculator.ts'
+      );
+      chai.assert.strictEqual(isIncluding, true);
+    });
+
+    test('Bundled code should includes JavaScript code converted from src/styles.css', () => {
+      const f = dummyFiles2.find((d) => d.path === 'src/styles.css');
+      if (f !== undefined) {
+        const isIncludingLine1 = bundledCode.includes(
+          '// virtual-file:src/styles.css'
+        );
+        const isIncludingLine2 = bundledCode.includes(
+          'var style = document.createElement("style");'
+        );
+        // virtulTreePllugin.tsでは`\n`だけエスケープしているのでその通りにする
+        const isIncludingLine3 = bundledCode.includes(
+          'style.innerText = "' + f.value.replace(/[\n]+/g, '') + '";'
+        );
+        const isIncludingLine4 = bundledCode.includes(
+          'document.head.appendChild(style);'
+        );
+        chai.assert.strictEqual(
+          isIncludingLine1 &&
+            isIncludingLine2 &&
+            isIncludingLine3 &&
+            isIncludingLine4,
+          true
+        );
+      }
+    });
+
+    // .cssファイルが複数でも正しく取り込まれているのか確認
+    // ECMAScriptファイルがCJSに変換されていることの確認
+    // TypeScriptがただしくトランスパイルされていることの確認
+    // 依存関係はすべて取り込まれているか確認
+    //
+    // suite()
+  });
 
   mocha.run();
 })();
