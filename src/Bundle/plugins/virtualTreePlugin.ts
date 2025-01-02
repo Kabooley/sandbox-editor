@@ -11,19 +11,27 @@
  * unpkgで取得するモジュールはキャッシュできていると思うけれど、どの程度できていればいいのかわからないのでそのまま。
  * **********************************************************************/
 import * as esbuild from 'esbuild-wasm';
-import localforage from 'localforage';
 import axios from 'axios';
-import { createDBInstance } from '../../Storage';
 import * as Path from '../../Path';
+// import localforage from 'localforage';
+// import { createDBInstance } from '../../Storage';
+import {
+  createStore,
+  set as setItem,
+  get as getItem,
+  del as deleteItem,
+} from 'idb-keyval';
 
 // Specifies npm package if matched
 const reLibrary = /^(?!\.)(?!.*\.$)(?!.*\.\.)[a-zA-Z0-9_.\/\-_$@]+$/;
 
-const chacheDB: LocalForage = createDBInstance({
-  driver: localforage.INDEXEDDB,
-  name: 'sandbox-editor-cache-db',
-  storeName: 'keyvaluepairs',
-});
+// const chacheDB: LocalForage = createDBInstance({
+//   driver: localforage.INDEXEDDB,
+//   name: 'sandbox-editor-cache-db',
+//   storeName: 'keyvaluepairs',
+// });
+
+const cacheDB = createStore('sandbox-editor-cache-db', 'keyvaluepairs');
 
 /**
  * Polyfill of Object.entires
@@ -203,18 +211,19 @@ export function virtualTreePlugin(
 
       build.onLoad({ filter: /.*/ }, async (args: esbuild.OnLoadArgs) => {
         if (args.namespace === 'npm') {
-          // // DEBUG:
-          // console.log('[virtualTreePlugin][onload /.*/] npm');
-          // console.log(args);
+          // DEBUG:
+          console.log('[virtualTreePlugin][onload /.*/] npm');
+          console.log(args);
 
-          const cachedModule = await chacheDB.getItem<esbuild.OnLoadResult>(
-            args.path
+          const cachedModule = await getItem<esbuild.OnLoadResult>(
+            args.path,
+            cacheDB
           );
 
           if (cachedModule) {
-            // // DEBUG:
-            // console.log('[virtualTreePlugin] cached');
-            // console.log(cachedModule);
+            // DEBUG:
+            console.log('[virtualTreePlugin] cached');
+            console.log(cachedModule);
             return cachedModule;
           }
 
@@ -229,7 +238,9 @@ export function virtualTreePlugin(
             resolveDir: new URL('./', request.responseURL).pathname,
           };
 
-          chacheDB.setItem<esbuild.OnLoadResult>(args.path, result);
+          console.log(`store to cacheDB: ${args.path}`);
+
+          await setItem(args.path, result, cacheDB);
           return result;
         }
 

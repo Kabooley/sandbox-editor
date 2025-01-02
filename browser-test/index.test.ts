@@ -1,163 +1,28 @@
 /*********************************************************************
  * Test src/worker/bundle.worker.ts on browser.
  *
+ * NOTE: src/Bundle/plugins/virtualTreePlugin.tsはIndexedDBライブラリをlocalforageからidb-keyvalへ変更した
+ * NOTE: IndexedDB apiでidb-keyvalが生成したindexedDBにアクセスする際、バージョンは１（現バージョン）で指定すること
+ * NOTE: 変数`dbName`, `storeName`は``virtualTreePlugin.ts`でidb-keyvalがcreateStore()したときに渡す文字列をそのまま転記（ハードコード）している。
+ * NOTE: not loadable pluginのエラーが出た場合、entryPointが正しいpathになっているか、esbuildwasmのバージョンが依存関係とバージョンが一致しているか確認すること
+ * 
+ * TODO: localforageを使わなくなったのでsrc/Storage/を削除すること
+ * TODO: unpkg.comはhttpsプロトコルでアクセスするようにすること
  * *******************************************************************/
 import 'mocha/mocha';
 import * as chai from 'chai';
 import * as Comlink from 'comlink';
+import {
+  isIndexedDBAndStoreGenerated,
+  isDataExistsInIndexedDBStoreByKey,
+  getDataByKeyFromIndexedDBStore,
+  deleteIndexedDB,
+} from './utils';
 import { files } from '../src/data/files';
 import type { iFile } from '../src/data/types';
 import { generateTreeForBundler } from '../src/utils/generateTreeForBundler';
 import { getLasComponentFromPath } from '../src/utils/getLasComponentFromPath';
 import type { iBundlerApi } from '../src/worker/bundle.worker';
-
-// 指定のdbNameであるdbとそのdbにあるストアstoreNameが存在するか否かを返す関数
-const checkDBAndStoreGenerated = (dbName: string, storeName: string) => {
-  return new Promise((resolve, reject) => {
-    const request: IDBOpenDBRequest = window.indexedDB.open(dbName);
-
-    // 起動に失敗
-    request.onerror = () => {
-      console.error(
-        '[checkDBAndStoreGenerated] Error while requesting indexeddb'
-      );
-      reject('Error while requesting indexeddb');
-    };
-
-    // 起動成功
-    request.onsuccess = (e) => {
-      const db: IDBDatabase = (e.target as IDBOpenDBRequest).result;
-
-      console.log(db);
-      console.log(storeName);
-
-      if (db.objectStoreNames.contains(storeName)) {
-        console.log(`[checkDBAndStoreGenerated] the store is generated`);
-        resolve(true);
-      } else {
-        console.error(
-          '[checkDBAndStoreGenerated] Error: store is not exist in db'
-        );
-        reject('Error: store is not exist in db');
-      }
-    };
-
-    // // そんなdbは存在しない
-    // request.onupgradeneeded = (e) => {
-    //   console.error('[checkDBAndStoreGenerated] Error: db is not exist');
-    //   reject('Error: db is not exist');
-    // };
-  });
-};
-
-// 指定のdbのstoreからkeyを指定することでそのkeyに対応する値を取得する関数
-const getDataByKeyFromDBStore = (
-  dbName: string,
-  store: string,
-  key: string
-) => {
-  return new Promise((resolve, reject) => {
-    const request = window.indexedDB.open(dbName);
-
-    // そんなdbNameのdbがないとき
-    request.onupgradeneeded = (e) => {
-      console.error(
-        '[getDataByKeyFromDBStore] Error: Not exist such a db:',
-        dbName
-      );
-      reject('Error: Not exist such a db');
-    };
-
-    /***
-     * IDBDatabase -> IDBTransaction -> IDBObjectStore
-     *
-     * https://developer.mozilla.org/en-US/docs/Web/API/IDBObjectStore
-     * */
-    request.onsuccess = (e) => {
-      const db: IDBDatabase = (e.target as IDBOpenDBRequest).result;
-      const trans: IDBTransaction = db.transaction(store, 'readonly');
-      const _store: IDBObjectStore = trans.objectStore(store);
-      const count: IDBRequest<number> = _store.count();
-      const dataRequest = _store.get(key);
-      dataRequest.onsuccess = (_e) => {
-        const data: string = (_e.target as IDBRequest).result;
-        resolve(data);
-      };
-      dataRequest.onerror = (_e) => {
-        console.error(
-          '[getDataByKeyFromDBStore]  Error: Failed to get data from store: ',
-          store
-        );
-        reject('Error: Failed to get data from store: ' + store);
-      };
-    };
-
-    // dbNameに該当するdbの起動失敗
-    request.onerror = (e) => {
-      console.error(
-        '[getDataByKeyFromDBStore] Error: Failed to open db:',
-        dbName
-      );
-      reject('Error: Failed to open db');
-    };
-  });
-};
-
-// 指定のdbのstoreからkeyを指定することでそのkeyと値が削除されているか確認する
-// true: keyは存在する、 false: keyは存在しない
-const checkDataExistByKeyFromDBStore = (
-  dbName: string,
-  store: string,
-  key: string
-): Promise<boolean> => {
-  return new Promise((resolve, reject) => {
-    const request = window.indexedDB.open(dbName);
-
-    // そんなdbNameのdbがないとき
-    request.onupgradeneeded = (e) => {
-      console.error(
-        '[checkDataExistByKeyFromDBStore] Error: Not exist such a db:',
-        dbName
-      );
-      reject('Error: Not exist such a db');
-    };
-
-    /***
-     * IDBDatabase -> IDBTransaction -> IDBObjectStore
-     *
-     * https://developer.mozilla.org/en-US/docs/Web/API/IDBObjectStore
-     * */
-    request.onsuccess = (e) => {
-      const db: IDBDatabase = (e.target as IDBOpenDBRequest).result;
-      const trans: IDBTransaction = db.transaction(store, 'readonly');
-      const _store: IDBObjectStore = trans.objectStore(store);
-      const dataRequest = _store.get(key);
-      dataRequest.onsuccess = (_e) => {
-        if (dataRequest.result !== undefined) {
-          resolve(true);
-        } else {
-          resolve(false);
-        }
-      };
-      dataRequest.onerror = (_e) => {
-        console.error(
-          '[checkDataExistByKeyFromDBStore]  Error: Failed to get data from store: ',
-          store
-        );
-        reject('Error: Failed to get data from store: ' + store);
-      };
-    };
-
-    // dbNameに該当するdbの起動失敗
-    request.onerror = (e) => {
-      console.error(
-        '[checkDataExistByKeyFromDBStore] Error: Failed to open db:',
-        dbName
-      );
-      reject('Error: Failed to open db');
-    };
-  });
-};
 
 /***
  * tree case 1: TypeScriptとcssだけのファイル群
@@ -221,6 +86,8 @@ const dummyFiles1: iFile[] = [
     isFolder: false,
   },
 ];
+
+const dummyFiles1Dependencies = ['react', 'react-dom', 'react-dom/client'];
 
 const dummyFiles2 = [
   {
@@ -299,31 +166,18 @@ const dummyFiles2 = [
   },
 ];
 
-// helper
-const containsString = (source: string, search: string): boolean => {
-  // Normalize line breaks to '\n'
-  const normalizedSource = source
-    .replace(/\r\n/g, '\n')
-    .replace(/\r/g, '\n')
-    .replace(/\n/, '');
-  const normalizedSearch = search
-    .replace(/\r\n/g, '\n')
-    .replace(/\r/g, '\n')
-    .replace(/\n/, '');
 
-  console.log(normalizedSource);
-  console.log(normalizedSearch);
-
-  return normalizedSource.includes(normalizedSearch);
-};
-
-mocha.setup('tdd');
+// TODO: test初めと終わりにcacheDBを削除すること
+mocha.setup({
+//   rootHooks: {
+//     beforeEach() {},
+//     afterAll() {},
+//   },
+  ui: 'tdd',
+});
 mocha.checkLeaks();
 
-/***
- * test bundle.worker.ts
- *
- * - localforageはINDEXEDDB driverを選択している
+/**
  *
  * テスト：
  * - typescriptファイルはただしくトランスパイルされているか
@@ -333,17 +187,9 @@ mocha.checkLeaks();
  * - cssファイルはstyle要素を埋め込むJavaScriptファイルに変換されているか
  * - imgファイルは
  * - svgファイルは
- * - workerが呼び出すlocalforageは指定のIndexedDBのdbとstoreを生成しているか
  *
- * 要修正：
- *
- * - TODO: localforageではなくidb-keyvalでいいのでは？
- * - TODO: src/Storage/index.tsの"jbook"表記をすべて修正
- * - TODO: 名称変更：src/utils/getLasComponentFromPath.ts -> src/utils/getLastPathnameComponent()
- * - TODO: "src/Bundle/plugins/virtualTreePlugin.ts"のunpkg取得はhttpsから取得するようにすること
- *
- * NOTE: not loadable pluginのエラーが出た場合、entryPointが正しいpathになっているか、esbuildwasmのバージョンが依存関係とバージョンが一致しているか確認すること
- * */
+ * 
+ */
 (async () => {
   let worker: Worker | undefined;
   let api: Comlink.Remote<iBundlerApi>;
@@ -390,33 +236,24 @@ mocha.checkLeaks();
     });
   });
 
-  // /**
-  //  * Test if localforage generates db and store as specified.
-  //  * */
-  // suite('IndexedDB db and store should be generated', () => {
-  //   test(`${dbName} db and ${storeName} store should be generated`, async () => {
-  //     try {
-  //       chai
-  //         .expect(() => checkDBAndStoreGenerated(dbName, storeName))
-  //         .to.not.throw();
-  //       const result = await checkDBAndStoreGenerated(dbName, storeName);
-  //       chai.assert.strictEqual(result, true);
-  //     } catch (e) {
-  //       console.error(e);
-  //       chai.assert.fail();
-  //     }
-  //   });
-  // });
+  suite('IndexedDB db and store should be existed', () => {
+    test(`db: ${dbName}, object store: ${storeName} should be existed`, async () => {
+      try {
+        chai
+          .expect(() => isIndexedDBAndStoreGenerated(dbName, 1, storeName))
+          .to.not.throw();
+        const result = await isIndexedDBAndStoreGenerated(dbName, 1, storeName);
+        chai.assert.strictEqual(result, true);
+      } catch (e) {
+        console.error(e);
+        chai.assert.fail();
+      }
+    });
+  });
 
-  /***
-   * `getLasComponentFromPath`と`generateTreeForBundle`が正しい前提
-   *
-   * - `*.css`ファイルは動的にstyle要素を生成して要素.innerText = ファイルの中身をするJavaScriptファイルになっていること
-   * - 相対pathでimportされるファイルはすべてfilesから取得されていること
-   * -
-   *
-   *
-   ***/
+  /**
+   * dummyFiles2が期待通りバンドルされていることを確認する
+   */
   suite('bundler() should generate bundled file as expected.', () => {
     let bundledCode = '';
 
@@ -427,8 +264,6 @@ mocha.checkLeaks();
           getLasComponentFromPath('src/index.ts'),
           dummyTree
         );
-
-        console.log(bundledCode);
 
         chai.expect(bundledCode.length).to.be.greaterThan(0);
       } catch (e) {
@@ -479,12 +314,41 @@ mocha.checkLeaks();
       }
     });
 
+    /**
+     * dummyFiles1のコード中にimportしているnpm依存関係がすべて取得され、
+     * IndexedDBへ保存されていることを確認
+     *
+     * 保存されるデータ例：
+     * key: 'https://unpkg.com/react', value: reactのコード
+     */
+    suite('All dependencies should be stored in cacheDB', () => {
+      test('react, react-dom, react-dom/client should be stored', async () => {
+        try {
+          const dummyTree = generateTreeForBundler(dummyFiles1);
+          bundledCode = await api.bundler(
+            getLasComponentFromPath('src/index.tsx'),
+            dummyTree
+          );
+
+          for (let i = 0; i < dummyFiles1Dependencies.length; i++) {
+            chai.assert.strictEqual(
+              await isDataExistsInIndexedDBStoreByKey(
+                dbName,
+                1,
+                storeName,
+                `https://unpkg.com/${dummyFiles1Dependencies[i]}`
+              ),
+              true
+            );
+          }
+        } catch (e) {
+          console.error(e);
+          chai.assert.fail();
+        }
+      }, 10000);
+    });
+
     // .cssファイルが複数でも正しく取り込まれているのか確認
-    // ECMAScriptファイルがCJSに変換されていることの確認
-    // TypeScriptがただしくトランスパイルされていることの確認
-    // 依存関係はすべて取り込まれているか確認
-    //
-    // suite()
   });
 
   mocha.run();
