@@ -1,5 +1,26 @@
 ## 私を読んで
 
+## TEST
+
+#### Directory構成
+
+```bash
++---__tests__/       # NOTE: jest排除予定につき削除予定。jestを使ったテスト対象ファイル群。
++---browser-test/    # ブラウザ環境で実行されるテストファイル群。
++---mocha-tests/     # TODO: 削除予定。mochaの使い方を知るために設けたディレクトリ。
++---vitest-tests/    # ローカル環境でテスト可能なテストファイル群。
+|   +---mocks/       # Web APIもキングファイル群
+|   +---src-utils/   # src/utils/ファイル群のテストファイル群
+|   +---src-worker/  # TODO: 削除予定。workerファイルはbrowser-testでテストすることにしたいので。
+|   +---utils/       # TODO: 削除予定。
+|   +--- *.test.ts[x]    # src/以下のReactファイルのテストファイル
+|
+|
++---babel.config.js  # TODO: 削除していいのか要確認。jestで使っていたbabelコンフィグファイル。jest削除予定につき削除予定。
++---jest.config.mjs  # TODO: 削除予定。jest削除予定につき。
++---rollup.config.js # browser-test用バンドラ。
+```
+
 ## TODOs
 
 #### 機能
@@ -25,6 +46,13 @@
 - TODO: format 機能がいつの間にかなくなっている？右クリックメニューでできるようにする
 
 - TODO: テストフレームワークを動作させるためにpackage.jsonの`"type": "module"`を追加したけど開発用途においてまだ対応していないことの対応
+
+
+#### TEST
+
+- TODO: script `test:browser`でブラウザテストする対象全てをテストしたい
+- TODO: 自動テスト（watchモード）の導入
+
 
 ## Browser Test
 

@@ -1,33 +1,30 @@
 /*********************************************************************
- * Test src/worker/bundle.worker.ts on browser.
- *
- * NOTE: src/Bundle/plugins/virtualTreePlugin.tsはIndexedDBライブラリをlocalforageからidb-keyvalへ変更した
- * NOTE: IndexedDB apiでidb-keyvalが生成したindexedDBにアクセスする際、バージョンは１（現バージョン）で指定すること
- * NOTE: 変数`dbName`, `storeName`は``virtualTreePlugin.ts`でidb-keyvalがcreateStore()したときに渡す文字列をそのまま転記（ハードコード）している。
- * NOTE: not loadable pluginのエラーが出た場合、entryPointが正しいpathになっているか、esbuildwasmのバージョンが依存関係とバージョンが一致しているか確認すること
+ * Test src/Bundler/plugins/virtualTreePlugin2.ts
  * 
- * TODO: localforageを使わなくなったのでsrc/Storage/を削除すること
- * TODO: unpkg.comはhttpsプロトコルでアクセスするようにすること
+ * NOTE: テストのために変更したvirtualTreePlugin2.tsをテストしており、本来のファイルvirtualTreePlugin.tsとは異なる
+ *
+ * バンドルされたコードをテストする方法の参考
+ * https://github.com/markwylde/esbuild-plugin-resolve/blob/master/test/index.js
+ * 
+ * TODO: resolve関数とload関数をspyできるか試す
+ * 
+ * https://github.com/vitest-dev/vitest/issues/2771#issuecomment-1408489296
  * *******************************************************************/
 import 'mocha/mocha';
 import * as chai from 'chai';
-import * as Comlink from 'comlink';
-import {
-  isIndexedDBAndStoreGenerated,
-  isDataExistsInIndexedDBStoreByKey,
-  getDataByKeyFromIndexedDBStore,
-  deleteIndexedDB,
-} from './utils';
-import { files } from '../src/data/files';
-import type { iFile } from '../src/data/types';
-import { generateTreeForBundler } from '../src/utils/generateTreeForBundler';
+import * as esbuild from 'esbuild-wasm';
 import { getLasComponentFromPath } from '../src/utils/getLasComponentFromPath';
-import type { iBundlerApi } from '../src/worker/bundle.worker';
+import { generateTreeForBundler } from '../src/utils/generateTreeForBundler';
+import { virtualTreePlugin, resolveAllPath, resolveRelativePaths, loadAllFiles, loadSrcFiles, loadCSSFile } from '../src/Bundle/plugins/virtualTreePlugin2';
+import type { iFile } from '../src/data/types';
 
-/***
- * tree case 1: TypeScriptとcssだけのファイル群
- * */
-const dummyFiles1: iFile[] = [
+const dbName = 'dummy-db-for-test';
+const storeName = 'dummy-store-for-test';
+
+/**
+ * react, react-domを依存関係に持つファイル群
+ */
+const dummyFilesWithDependencies: iFile[] = [
   {
     path: 'src/App.tsx',
     language: 'typescript',
@@ -87,42 +84,33 @@ const dummyFiles1: iFile[] = [
   },
 ];
 
-const dummyFiles1Dependencies = ['react', 'react-dom', 'react-dom/client'];
-
-const dummyFiles2 = [
+const dummyFilesWitRelativePaths = [
   {
-    path: 'src/Calculator.ts',
+    path: 'src/double.ts',
     language: 'typescript',
     selected: false,
     opening: false,
     tabIndex: null,
-    value: `// Calculator.ts
- 
- export class Calculator {
-     // Adds two numbers
-     add(a: number, b: number): number {
-         return a + b;
-     }
- 
-     // Subtracts the second number from the first
-     subtract(a: number, b: number): number {
-         return a - b;
-     }
- 
-     // Multiplies two numbers
-     multiply(a: number, b: number): number {
-         return a * b;
-     }
- 
-     // Divides the first number by the second
-     divide(a: number, b: number): number {
-         if (b === 0) {
-             throw new Error("Division by zero is not allowed.");
-         }
-         return a / b;
-     }
- }
- 
+    value: `// double.ts
+export const double = (n: number) => {
+  return n * n;
+}
+     `,
+    isFolder: false,
+  },
+  {
+    path: 'src/doubleSquare.ts',
+    language: 'typescript',
+    selected: false,
+    opening: false,
+    tabIndex: null,
+    value: `// doubleSquare.ts
+import { double } from './double';
+
+export const doubleSquare = (n: number) => {
+  const d = double(n);
+  return d * d;
+}
      `,
     isFolder: false,
   },
@@ -133,22 +121,10 @@ const dummyFiles2 = [
     opening: false,
     tabIndex: null,
     value: `
- import { Calculator } from './Calculator';
- import './styles.css';
- 
- const calculator: Calculator = new Calculator();
- 
- console.log("Addition:", calculator.add(5, 3));         // Output: 8
- console.log("Subtraction:", calculator.subtract(5, 3)); // Output: 2
- console.log("Multiplication:", calculator.multiply(5, 3)); // Output: 15
- console.log("Division:", calculator.divide(5, 2));       // Output: 2.5
- 
- // Uncommenting the next line will throw an error
- // console.log("Division by zero:", calculator.divide(5, 0));
- 
- const heading = document.createElement('h1');
- heading.innerText = calculator.add(10, 10) + "";
- document.body.appendChild(heading);
+import { doubleSquare } from './doubleSquare';
+import './styles.css';
+
+console.log(doubleSquare(2));
  `,
     isFolder: false,
   },
@@ -166,189 +142,115 @@ const dummyFiles2 = [
   },
 ];
 
-
-// TODO: test初めと終わりにcacheDBを削除すること
+//
 mocha.setup({
-//   rootHooks: {
-//     beforeEach() {},
-//     afterAll() {},
-//   },
   ui: 'tdd',
+  rootHooks: {
+    async beforeAll() {
+      if (!isInitialized) {
+        await esbuild.initialize(initializeOptions);
+        isInitialized = true;
+        console.log('initialized');
+      }
+    },
+  },
+  timeout: 30000,
 });
 mocha.checkLeaks();
 
-/**
- *
- * テスト：
- * - typescriptファイルはただしくトランスパイルされているか
- * - reactファイルはただしくトランスパイルされているか
- * - エントリーポイントからたどれるすべての相対パスのファイルは取り込まれているか
- * - 依存関係はすべて取得されているか
- * - cssファイルはstyle要素を埋め込むJavaScriptファイルに変換されているか
- * - imgファイルは
- * - svgファイルは
- *
- * 
- */
+const initializeOptions: esbuild.InitializeOptions = {
+  // wasmURL:  '/esbuild.wasm',
+  worker: true,
+  wasmURL: 'http://unpkg.com/esbuild-wasm@0.18.20/esbuild.wasm',
+};
+
+let isInitialized = false;
+
 (async () => {
-  let worker: Worker | undefined;
-  let api: Comlink.Remote<iBundlerApi>;
-  const dbName = 'sandbox-editor-cache-db';
-  const storeName = 'keyvaluepairs';
-  // const dummyTree = generateTreeForBundler(files);
-
-  const generateWorkerAndApi = () => {
-    try {
-      worker = new Worker(
-        new URL('../src/worker/bundle.worker.ts', import.meta.url),
-        { type: 'module' }
-      );
-      api = Comlink.wrap<iBundlerApi>(worker);
-      worker.onerror = (e) => {
-        console.error(e);
-        throw e;
-      };
-    } catch (e) {
-      console.error('Error during generating worker or api');
-      throw e;
-    }
-  };
-
-  suite('Environment should support WebWorker', () => {
-    test('Environment should support WebWorker', () => {
-      chai.expect(window.Worker).to.not.be.undefined;
-      chai.expect(window.Worker).to.not.be.null;
-    });
-  });
-
-  suite('Worker thread should be generated correctly', () => {
-    test('generated successfully', () => {
+  suite('Resolve all files imported via relative path', () => {
+    let bundledCode: string;
+    test('Bundled code should contain all files imported via relative path.', async () => {
       try {
-        chai.expect(generateWorkerAndApi).to.not.throw();
-      } catch (e) {
-        if (e instanceof Error) {
-          console.error(e.message);
-        } else {
-          console.error(e);
-        }
-        chai.assert.fail();
-      }
-    });
-  });
-
-  suite('IndexedDB db and store should be existed', () => {
-    test(`db: ${dbName}, object store: ${storeName} should be existed`, async () => {
-      try {
-        chai
-          .expect(() => isIndexedDBAndStoreGenerated(dbName, 1, storeName))
-          .to.not.throw();
-        const result = await isIndexedDBAndStoreGenerated(dbName, 1, storeName);
-        chai.assert.strictEqual(result, true);
-      } catch (e) {
-        console.error(e);
-        chai.assert.fail();
-      }
-    });
-  });
-
-  /**
-   * dummyFiles2が期待通りバンドルされていることを確認する
-   */
-  suite('bundler() should generate bundled file as expected.', () => {
-    let bundledCode = '';
-
-    test('bundle dummyFiles2 successfully:', async () => {
-      try {
-        const dummyTree = generateTreeForBundler(dummyFiles2);
-        bundledCode = await api.bundler(
-          getLasComponentFromPath('src/index.ts'),
-          dummyTree
-        );
-
+        const result = await esbuild.build({
+          entryPoints: [getLasComponentFromPath('src/index.ts')],
+          bundle: true,
+          write: false,
+          plugins: [
+            virtualTreePlugin(
+              generateTreeForBundler(dummyFilesWitRelativePaths)
+            ),
+          ],
+        });
+        chai.assert.isDefined(result);
+        bundledCode = result.outputFiles[0].text;
         chai.expect(bundledCode.length).to.be.greaterThan(0);
+        chai.assert.isTrue(
+          bundledCode.includes('// virtual-file:src/index.ts')
+        );
+        chai.assert.isTrue(
+          bundledCode.includes('// virtual-file:src/double.ts')
+        );
+        chai.assert.isTrue(
+          bundledCode.includes('// virtual-file:src/doubleSquare.ts')
+        );
+        chai.assert.isTrue(
+          bundledCode.includes('// virtual-file:src/styles.css')
+        );
       } catch (e) {
-        if (e instanceof Error) {
-          console.error(e.message);
-        } else {
-          console.error(e);
-        }
-        chai.assert.fail();
+        console.error(e);
+        chai.assert.fail('something went wrong. Build has been failed.');
       }
     }, 10000);
 
-    test('Bundled code should includes src/index.ts', () => {
-      const isIncluding = bundledCode.includes('// virtual-file:src/index.ts');
-      chai.assert.strictEqual(isIncluding, true);
-    });
-
-    test('Bundled code should includes src/Calculator.ts', () => {
-      const isIncluding = bundledCode.includes(
-        '// virtual-file:src/Calculator.ts'
-      );
-      chai.assert.strictEqual(isIncluding, true);
-    });
-
-    test('Bundled code should includes JavaScript code converted from src/styles.css', () => {
-      const f = dummyFiles2.find((d) => d.path === 'src/styles.css');
-      if (f !== undefined) {
-        const isIncludingLine1 = bundledCode.includes(
-          '// virtual-file:src/styles.css'
+    test('Bundled code should contain css file converted to JavaScript code.', async () => {
+      try {
+        const f = dummyFilesWitRelativePaths.find(
+          (d) => d.path === 'src/styles.css'
         );
-        const isIncludingLine2 = bundledCode.includes(
+        if (f === undefined) {
+          throw new Error(`src/styles.css was not found`);
+        }
+        const isIncludingLine1 = bundledCode.includes(
           'var style = document.createElement("style");'
         );
         // virtulTreePllugin.tsでは`\n`だけエスケープしているのでその通りにする
-        const isIncludingLine3 = bundledCode.includes(
+        const isIncludingLine2 = bundledCode.includes(
           'style.innerText = "' + f.value.replace(/[\n]+/g, '') + '";'
         );
-        const isIncludingLine4 = bundledCode.includes(
+        const isIncludingLine3 = bundledCode.includes(
           'document.head.appendChild(style);'
         );
         chai.assert.strictEqual(
-          isIncludingLine1 &&
-            isIncludingLine2 &&
-            isIncludingLine3 &&
-            isIncludingLine4,
+          isIncludingLine1 && isIncludingLine2 && isIncludingLine3,
           true
         );
+      } catch (e) {
+        console.error(e);
+        chai.assert.fail('something went wrong. Build has been failed.');
       }
-    });
+    }, 10000);
+  });
 
-    /**
-     * dummyFiles1のコード中にimportしているnpm依存関係がすべて取得され、
-     * IndexedDBへ保存されていることを確認
-     *
-     * 保存されるデータ例：
-     * key: 'https://unpkg.com/react', value: reactのコード
-     */
-    suite('All dependencies should be stored in cacheDB', () => {
-      test('react, react-dom, react-dom/client should be stored', async () => {
-        try {
-          const dummyTree = generateTreeForBundler(dummyFiles1);
-          bundledCode = await api.bundler(
-            getLasComponentFromPath('src/index.tsx'),
-            dummyTree
-          );
-
-          for (let i = 0; i < dummyFiles1Dependencies.length; i++) {
-            chai.assert.strictEqual(
-              await isDataExistsInIndexedDBStoreByKey(
-                dbName,
-                1,
-                storeName,
-                `https://unpkg.com/${dummyFiles1Dependencies[i]}`
-              ),
-              true
-            );
-          }
-        } catch (e) {
-          console.error(e);
-          chai.assert.fail();
-        }
-      }, 10000);
-    });
-
-    // .cssファイルが複数でも正しく取り込まれているのか確認
+  suite('Resolve dependencies', () => {
+    test('Bundled code should include dependencies: react, react-dom, react-dom/client', async () => {
+      try {
+        const result = await esbuild.build({
+          entryPoints: [getLasComponentFromPath('src/index.tsx')],
+          bundle: true,
+          write: false,
+          plugins: [
+            virtualTreePlugin(
+              generateTreeForBundler(dummyFilesWithDependencies)
+            ),
+          ],
+        });
+        chai.assert.isDefined(result);
+        chai.expect(result.outputFiles[0].text.length).to.be.greaterThan(0);
+      } catch (e) {
+        console.error(e);
+        chai.assert.fail('something went wrong. Build has been failed.');
+      }
+    }, 10000);
   });
 
   mocha.run();

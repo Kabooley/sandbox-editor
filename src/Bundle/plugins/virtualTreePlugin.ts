@@ -31,7 +31,11 @@ const reLibrary = /^(?!\.)(?!.*\.$)(?!.*\.\.)[a-zA-Z0-9_.\/\-_$@]+$/;
 //   storeName: 'keyvaluepairs',
 // });
 
-const cacheDB = createStore('sandbox-editor-cache-db', 'keyvaluepairs');
+const dbName = 'sandbox-editor-cache-db';
+const storeName = 'keyvaluepairs';
+const cacheDB = createStore(dbName, storeName);
+// DEBUG:
+console.log('generated cache db');
 
 /**
  * Polyfill of Object.entires
@@ -49,10 +53,14 @@ const objectEntries = (obj: any) => {
   return resArray;
 };
 
+let map: Map<string, string>;
+
 export function virtualTreePlugin(
   tree: Record<string, string>
 ): esbuild.Plugin {
-  const map = new Map<string, string>(objectEntries(tree));
+  map = new Map<string, string>(objectEntries(tree));
+
+  console.log(map);
 
   return {
     name: 'example',
@@ -211,9 +219,9 @@ export function virtualTreePlugin(
 
       build.onLoad({ filter: /.*/ }, async (args: esbuild.OnLoadArgs) => {
         if (args.namespace === 'npm') {
-          // DEBUG:
-          console.log('[virtualTreePlugin][onload /.*/] npm');
-          console.log(args);
+          // // DEBUG:
+          // console.log('[virtualTreePlugin][onload /.*/] npm');
+          // console.log(args);
 
           const cachedModule = await getItem<esbuild.OnLoadResult>(
             args.path,
@@ -221,16 +229,16 @@ export function virtualTreePlugin(
           );
 
           if (cachedModule) {
-            // DEBUG:
-            console.log('[virtualTreePlugin] cached');
-            console.log(cachedModule);
+            // // DEBUG:
+            // console.log('[virtualTreePlugin] cached');
+            // console.log(cachedModule);
             return cachedModule;
           }
 
           const { data, request } = await axios.get(args.path);
 
-          console.log(request.responseURL);
-          console.log(new URL('./', request.responseURL).pathname);
+          // console.log(request.responseURL);
+          // console.log(new URL('./', request.responseURL).pathname);
 
           const result: esbuild.OnLoadResult = {
             loader: 'jsx',
@@ -238,7 +246,7 @@ export function virtualTreePlugin(
             resolveDir: new URL('./', request.responseURL).pathname,
           };
 
-          console.log(`store to cacheDB: ${args.path}`);
+          // console.log(`store to cacheDB: ${args.path}`);
 
           await setItem(args.path, result, cacheDB);
           return result;

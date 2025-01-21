@@ -168,13 +168,19 @@ export const isDataExistsInIndexedDBStoreByKey = (
 
 /***
  * 指定のindexedDBを削除する
+ * 
+ * `IDBFactory: deleteDatabase()`を呼び出すと、そのデータベースに開かれた接続はすべて`IDBDatabase: versionchange event`イベントを取得する
  */
 export const deleteIndexedDB = (dbName: string): Promise<void> => {
   return new Promise((resolve, reject) => {
     const request = window.indexedDB.deleteDatabase(dbName);
+    request.onupgradeneeded = () => {
+      console.error('[deleteDB] something went wrong');
+      reject('Error: Failed to delete db: ' + dbName);
+    };
     request.onerror = (e) => {
       console.error(`[deleteDB] Error: Faield to delete db: ${dbName}`);
-      reject(`Error: Faield to delete db: ${dbName}`);
+      reject(`Error: Failed to delete db: ${dbName}`);
     };
     request.onsuccess = (e) => {
       resolve();
