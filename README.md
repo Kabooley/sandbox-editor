@@ -2,7 +2,7 @@
 
 ## TEST
 
-#### Directory構成
+## Directory構成
 
 ```bash
 +---__tests__/       # NOTE: jest排除予定につき削除予定。jestを使ったテスト対象ファイル群。
@@ -24,14 +24,29 @@
 +---rollup.config.js # browser-test用バンドラ。
 ```
 
-#### ブラウザテスト
+## ブラウザテスト
 
 手順：
 
 ```bash
 # /browser-test/*.test.tsをブラウザテストファイルとして生成する
-$ node scripts/generateBrowserTestFiles.msj
-# 
+$ npm run bundle:browser-test
+# テストサーバである/browser-test/server.mjsを起動する
+$ npm run server:test-server
+# ブラウザテストファイルをすべてブラウザ上で実行して結果をテストする
+$ npm run test:browser-test
+```
+
+TODO: `browserTest.test.ts`はrollupの対象外にしなくてはならない
+TODO: 各ブラウザテストファイルの記述における前提を定める（reportBrowserTest.tsを必ず呼び出すなど）
+
+#### 前提
+
+
+#### 単体ファイルからブラウザテストを生成する
+
+```bash
+$ npx rollup --config=rollup.config.mjs --input=browser-test/your-test-file.test.ts
 ```
 
 ## TODOs

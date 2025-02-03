@@ -17,9 +17,15 @@ mocha.setup({
 mocha.checkLeaks();
 
 (async () => {
+  let customStore: import('idb-keyval').UseStore | undefined;
+  beforeAll(async function () {
+    customStore = createStore(dbName, storeName);
+  });
+  afterAll(async function () {
+    // TODO: dbを削除すること
+  });
   suite('test idb-keyval', () => {
-    const dummyDB = createStore(dbName, storeName);
-    chai.assert.fail();
+    test('should get "woof" after stored {woof: "woof" }', async function () {});
   });
 
   mocha.run();
