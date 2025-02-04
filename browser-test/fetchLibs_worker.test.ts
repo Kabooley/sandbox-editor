@@ -9,6 +9,7 @@ import 'mocha/mocha';
 import * as chai from 'chai';
 import * as Comlink from 'comlink';
 import type { iFetchLibsApi } from '../src/worker/fetchLibs.worker';
+import { reportBrowserTest } from './utils/reportBrowserTest';
 
 // NOTE: 現状こいつを実行するとなぜかdbは作られてるのにstoreが生成されないという現象が発生してテストを失敗に導くので避けておく
 //
@@ -168,36 +169,53 @@ const deleteDB = (dbName: string) => {
   });
 };
 
-mocha.setup('tdd');
+const generateWorkerAndApi = () => {
+  try {
+    worker = new Worker(
+      new URL('../src/worker/fetchLibs.worker.ts', import.meta.url),
+      { type: 'module' }
+    );
+    api = Comlink.wrap<iFetchLibsApi>(worker);
+    worker.onerror = (e) => {
+      console.error(e);
+      console.error(e.message);
+      throw e;
+    };
+  } catch (e) {
+    console.error('Error during generating worker or api');
+    throw e;
+  }
+};
+
+const db1 = 'sandbox-editor--modulename-n-version--cache-v1-db';
+const store1 = 'sandbox-editor--modulename-n-version--cache-v1-store';
+const db2 = 'sandbox-editor--set-of-dependency--cachde-v1-db';
+const store2 = 'sandbox-editor--set-of-dependency--cachde-v1-store';
+let worker: Worker | undefined;
+let api: Comlink.Remote<iFetchLibsApi>;
+
+mocha.setup({
+  rootHooks: {
+    async afterAll() {
+      try {
+        worker && worker.terminate();
+        api && api[Comlink.releaseProxy]();
+        await Promise.all([deleteDB(db1), deleteDB(db2)]);
+      } catch (e) {
+        if (e instanceof Error) {
+          console.error(e.message);
+        } else {
+          console.error(e);
+        }
+      }
+    },
+  },
+  ui: 'tdd',
+  timeout: 10000
+});
 mocha.checkLeaks();
 
 (async () => {
-  let worker: Worker | undefined;
-  let api: Comlink.Remote<iFetchLibsApi>;
-
-  const db1 = 'sandbox-editor--modulename-n-version--cache-v1-db';
-  const store1 = 'sandbox-editor--modulename-n-version--cache-v1-store';
-  const db2 = 'sandbox-editor--set-of-dependency--cachde-v1-db';
-  const store2 = 'sandbox-editor--set-of-dependency--cachde-v1-store';
-
-  const generateWorkerAndApi = () => {
-    try {
-      worker = new Worker(
-        new URL('../src/worker/fetchLibs.worker.ts', import.meta.url),
-        { type: 'module' }
-      );
-      api = Comlink.wrap<iFetchLibsApi>(worker);
-      worker.onerror = (e) => {
-        console.error(e);
-        console.error(e.message);
-        throw e;
-      };
-    } catch (e) {
-      console.error('Error during generating worker or api');
-      throw e;
-    }
-  };
-
   suite('Environment should support WebWorker', () => {
     test('Environment should support WebWorker', () => {
       chai.expect(window.Worker).to.not.be.undefined;
@@ -355,25 +373,6 @@ mocha.checkLeaks();
     });
   });
 
-  // 後始末
-  // mocha/mochaだとafterが呼び出せないため
-  suite('[Not test] Clean up', () => {
-    test('Terminate worker instance and Comlink proxy', () => {
-      try {
-        worker && worker.terminate();
-        api && api[Comlink.releaseProxy]();
-        deleteDB(db1);
-        deleteDB(db2);
-      } catch (e) {
-        if (e instanceof Error) {
-          console.error(e.message);
-        } else {
-          console.log(e);
-        }
-        chai.assert.fail();
-      }
-    });
-  });
-
-  mocha.run();
+  const runner = mocha.run();
+  reportBrowserTest(runner);
 })();

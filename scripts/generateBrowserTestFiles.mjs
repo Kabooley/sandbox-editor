@@ -4,16 +4,26 @@
  * 出力されたファイルはブラウザテストファイルである
  * *******************************************************/
 import { exec } from 'node:child_process';
-import { glob } from 'glob';
+import { globSync } from 'glob';
 import path from 'node:path';
 
 const browserTestFilesPattern = path.resolve('./browser-test/*.test.ts');
 
 /**
- * @param {string} pattern
- * @returns {Promise<Array<string>>}
+ * /browser-test/*.test.tsの内、
+ * バンドルに含めないファイルのpathをここへ追加する。
+ * pathはbrowser-test/以下のpathを登録する
+ * e.g. /browser-test/browserTest.test.ts
+ * --> browserTest.test.ts
  */
-const getTestFilePaths = (pattern) => glob(pattern);
+const excludeFiles = [path.resolve('./browser-test/browserTest.test.ts')];
+
+/**
+ * @param {string} pattern
+ * @returns {Array<string>}
+ */
+const getTestFilePaths = (pattern) =>
+  globSync(pattern).filter((file) => !excludeFiles.includes(file));
 
 /**
  * @param {string} filePath - test file path.
@@ -51,7 +61,9 @@ const handleSignal = (s) => {
   process.on('SIGINT', handleSignal);
   process.on('SIGTERM', handleSignal);
 
-  const testFilePaths = await getTestFilePaths(browserTestFilesPattern);
+  const testFilePaths = getTestFilePaths(browserTestFilesPattern);
+
+  console.log(testFilePaths);
 
   for (const path of testFilePaths) {
     await generateBrowserTestFile(path);

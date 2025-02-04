@@ -6,27 +6,19 @@
  * バンドルされたコードをテストする方法の参考
  * https://github.com/markwylde/esbuild-plugin-resolve/blob/master/test/index.js
  *
- * TODO: resolve関数とload関数をspyできるか試す
- *
- * https://github.com/vitest-dev/vitest/issues/2771#issuecomment-1408489296
  * *******************************************************************/
 import 'mocha/mocha';
 import * as chai from 'chai';
 import * as esbuild from 'esbuild-wasm';
+import { promisifyRequest } from 'idb-keyval';
 import { getLasComponentFromPath } from '../src/utils/getLasComponentFromPath';
 import { generateTreeForBundler } from '../src/utils/generateTreeForBundler';
 import {
   virtualTreePlugin,
-  resolveAllPath,
-  resolveRelativePaths,
-  loadAllFiles,
-  loadSrcFiles,
-  loadCSSFile,
+  dbName,
 } from '../src/Bundle/plugins/virtualTreePlugin2';
 import type { iFile } from '../src/data/types';
-
-const dbName = 'dummy-db-for-test';
-const storeName = 'dummy-store-for-test';
+import { reportBrowserTest } from './utils/reportBrowserTest';
 
 /**
  * react, react-domを依存関係に持つファイル群
@@ -160,17 +152,13 @@ let isInitialized = false;
 mocha.setup({
   ui: 'tdd',
   rootHooks: {
-    beforeEach() {
-      console.log('[virtualTreePlugin.test] beforeEach');
-    },
-    afterEach() {
-      console.log('[virtualTreePlugin.test] afterEach');
-    },
+    /**
+     * virtualTreePlugin.tsで生成するIndexedDBを削除する
+     */
     afterAll() {
-      console.log('[virtualTreePlugin.test] afterAll');
+      return promisifyRequest(indexedDB.deleteDatabase(dbName));
     },
     async beforeAll() {
-      console.log('[virtualTreePlugin.test] beforeAll');
       if (!isInitialized) {
         await esbuild.initialize(initializeOptions);
         isInitialized = true;
@@ -268,5 +256,6 @@ mocha.setup({
     });
   });
 
-  mocha.run();
+  const runner = mocha.run();
+  reportBrowserTest(runner);
 })();

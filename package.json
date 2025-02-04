@@ -12,7 +12,7 @@
     "clean": "rm -rf ./output/*",
     "bundle:browser-test": "node ./scripts/generateBrowserTestFiles.mjs",
     "serve:test-server": "node ./browser-test/server.mjs",
-    "test:browser-test": "viest run -c ./vitest.config.ts browser-test/browserTest.test.ts"
+    "test:browser-test": "vitest --config ./browser-test/vitest.config.ts --testTimeout 40000"
   },
   "dependencies": {
     "@mdi/js": "^7.4.47",

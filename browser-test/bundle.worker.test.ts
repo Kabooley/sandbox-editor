@@ -16,16 +16,18 @@ import 'mocha/mocha';
 import * as chai from 'chai';
 import * as Comlink from 'comlink';
 import {
-  isIndexedDBAndStoreGenerated,
   isDataExistsInIndexedDBStoreByKey,
-  getDataByKeyFromIndexedDBStore,
-  deleteIndexedDB,
+  // isIndexedDBAndStoreGenerated,
+  // getDataByKeyFromIndexedDBStore,
+  // deleteIndexedDB,
 } from './utils';
-import { files } from '../src/data/files';
-import type { iFile } from '../src/data/types';
 import { generateTreeForBundler } from '../src/utils/generateTreeForBundler';
 import { getLasComponentFromPath } from '../src/utils/getLasComponentFromPath';
+import { reportBrowserTest } from './utils/reportBrowserTest';
+import { files } from '../src/data/files';
+import type { iFile } from '../src/data/types';
 import type { iBundlerApi } from '../src/worker/bundle.worker';
+
 
 const dbName = 'sandbox-editor-cache-db';
 const storeName = 'keyvaluepairs';
@@ -397,5 +399,5 @@ const dummyFiles2 = [
   });
 
   const runner = mocha.run();
-  runner.on('end', () => { console.log('[bundle.worker.test] mocha test end'); });
+  reportBrowserTest(runner);
 })();
