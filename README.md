@@ -1,25 +1,5 @@
 ## 私を読んで
 
-## TEST
-
-#### Directory構成
-
-```bash
-+---__tests__/       # NOTE: jest排除予定につき削除予定。jestを使ったテスト対象ファイル群。
-+---browser-test/    # ブラウザ環境で実行されるテストファイル群。
-+---mocha-tests/     # TODO: 削除予定。mochaの使い方を知るために設けたディレクトリ。
-+---vitest-tests/    # ローカル環境でテスト可能なテストファイル群。
-|   +---mocks/       # Web APIもキングファイル群
-|   +---src-utils/   # src/utils/ファイル群のテストファイル群
-|   +---src-worker/  # TODO: 削除予定。workerファイルはbrowser-testでテストすることにしたいので。
-|   +---utils/       # TODO: 削除予定。
-|   +--- *.test.ts[x]    # src/以下のReactファイルのテストファイル
-|
-|
-+---babel.config.js  # TODO: 削除していいのか要確認。jestで使っていたbabelコンフィグファイル。jest削除予定につき削除予定。
-+---jest.config.mjs  # TODO: 削除予定。jest削除予定につき。
-+---rollup.config.js # browser-test用バンドラ。
-```
 
 ## TODOs
 
@@ -48,26 +28,97 @@
 - TODO: テストフレームワークを動作させるためにpackage.jsonの`"type": "module"`を追加したけど開発用途においてまだ対応していないことの対応
 
 
-#### TEST
+#### テスト
 
-- TODO: script `test:browser`でブラウザテストする対象全てをテストしたい
 - TODO: 自動テスト（watchモード）の導入
 
 
-## Browser Test
+## TEST
+
+## Directory構成
 
 ```bash
-$ npm run test:browser
++---__tests__/       # NOTE: jest排除予定につき削除予定。jestを使ったテスト対象ファイル群。
++---browser-test/    # ブラウザ環境で実行されるテストファイル群。
++---mocha-tests/     # TODO: 削除予定。mochaの使い方を知るために設けたディレクトリ。
++---scripts/
+|   `---generateBrowserTestFiles.mjs    # /browser-test/*.test.tsをブラウザテストファイルとして生成するscirpt
+|
++---vitest-tests/    # ローカル環境でテスト可能なテストファイル群。
+|   +---mocks/       # Web APIもキングファイル群
+|   +---src-utils/   # src/utils/ファイル群のテストファイル群
+|   +---src-worker/  # TODO: 削除予定。workerファイルはbrowser-testでテストすることにしたいので。
+|   +---utils/       # TODO: 削除予定。
+|   +--- *.test.ts[x]    # src/以下のReactファイルのテストファイル
+|
+|
++---babel.config.js  # TODO: 削除していいのか要確認。jestで使っていたbabelコンフィグファイル。jest削除予定につき削除予定。
++---jest.config.mjs  # TODO: 削除予定。jest削除予定につき。
++---rollup.config.js # browser-test用バンドラ。
 ```
 
-関連ディレクトリ
+## ブラウザテスト
 
-- `output`
-- `browser`
+手順：
 
-要確認：`package.json`に`"type": "module"`が追加されていること
+```bash
+# /browser-test/*.test.tsをブラウザテストファイルとして生成する
+$ npm run bundle:browser-test
+# テストサーバである/browser-test/server.mjsを起動する
+$ npm run server:test-server
+# ブラウザテストファイルをすべてブラウザ上で実行して結果をテストする
+$ npm run test:browser-test
+```
 
-NOTE: `test:browser`コマンドはrollupのエントリファイルがbrowser/index.test.ts固定なので任意のファイルをエントリファイルにしたい場合はscriptを使わず直接コマンドを打つこと
+
+#### ブラウザテストを書くときの定型文
+
+- テストは即時関数で囲ってグローバル環境に影響しないようにする
+- Mochaはアロー関数を使うべきでないという公式の指摘を守る
+- MochaのrunnerをreportBrowserTest()へ渡す
+
+```JavaScript
+import 'mocha/mocha';
+import * as chai from 'chai';
+import { reportBrowserTest } from './utils/reportBrowserTest';
+
+const { assert } = chai;
+
+mocha.setup({
+  ui: 'tdd',
+  rootHooks: {
+    afterAll() {
+      // return promise可能
+    },
+    async beforeAll() {
+        // async/await可能
+    },
+  },
+    // 各testは通常5秒経過でtimeout
+  timeout: 30000,
+});
+
+(function() {
+    suite('test suite', () => {
+        test('test', async function() {
+            // ...
+            assert.strictEqual(value, true);
+        })
+    })
+
+    const runner = mocha.run();
+    reportBrowserTest(runner);
+})()
+```
+
+
+#### 単体ファイルからブラウザテストを生成する
+
+```bash
+$ npx rollup --config=rollup.config.mjs --input=browser-test/your-test-file.test.ts
+```
+
+
 
 ## Lint
 

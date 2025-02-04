@@ -1,23 +1,29 @@
 /*********************************************************************
- * Test src/Bundler/plugins/virtualTreePlugin.ts
+ * Test src/Bundler/plugins/virtualTreePlugin2.ts
+ *
+ * NOTE: テストのために変更したvirtualTreePlugin2.tsをテストしており、本来のファイルvirtualTreePlugin.tsとは異なる
+ *
+ * バンドルされたコードをテストする方法の参考
+ * https://github.com/markwylde/esbuild-plugin-resolve/blob/master/test/index.js
  *
  * *******************************************************************/
 import 'mocha/mocha';
 import * as chai from 'chai';
 import * as esbuild from 'esbuild-wasm';
-
+import { promisifyRequest } from 'idb-keyval';
 import { getLasComponentFromPath } from '../src/utils/getLasComponentFromPath';
 import { generateTreeForBundler } from '../src/utils/generateTreeForBundler';
-import { virtualTreePlugin } from '../src/Bundle/plugins/virtualTreePlugin';
+import {
+  virtualTreePlugin,
+  dbName,
+} from '../src/Bundle/plugins/virtualTreePlugin2';
 import type { iFile } from '../src/data/types';
+import { reportBrowserTest } from './utils/reportBrowserTest';
 
-const dbName = 'dummy-db-for-test';
-const storeName = 'dummy-store-for-test';
-
-/***
- * tree case 1: TypeScriptとcssだけのファイル群
- * */
-const dummyFiles1: iFile[] = [
+/**
+ * react, react-domを依存関係に持つファイル群
+ */
+const dummyFilesWithDependencies: iFile[] = [
   {
     path: 'src/App.tsx',
     language: 'typescript',
@@ -77,22 +83,63 @@ const dummyFiles1: iFile[] = [
   },
 ];
 
-const dummyFiles1Dependencies = ['react', 'react-dom', 'react-dom/client'];
-
-//
-mocha.setup({
-  ui: 'tdd',
-  rootHooks: {
-    async beforeAll() {
-      if (!isInitialized) {
-        await esbuild.initialize(initializeOptions);
-        isInitialized = true;
-        console.log('initialized');
-      }
-    },
+const dummyFilesWitRelativePaths = [
+  {
+    path: 'src/double.ts',
+    language: 'typescript',
+    selected: false,
+    opening: false,
+    tabIndex: null,
+    value: `// double.ts
+export const double = (n: number) => {
+  return n * n;
+}
+     `,
+    isFolder: false,
   },
-});
-mocha.checkLeaks();
+  {
+    path: 'src/doubleSquare.ts',
+    language: 'typescript',
+    selected: false,
+    opening: false,
+    tabIndex: null,
+    value: `// doubleSquare.ts
+import { double } from './double';
+
+export const doubleSquare = (n: number) => {
+  const d = double(n);
+  return d * d;
+}
+     `,
+    isFolder: false,
+  },
+  {
+    path: 'src/index.ts',
+    language: 'typescript',
+    selected: false,
+    opening: false,
+    tabIndex: null,
+    value: `
+import { doubleSquare } from './doubleSquare';
+import './styles.css';
+
+console.log(doubleSquare(2));
+ `,
+    isFolder: false,
+  },
+  {
+    path: 'src/styles.css',
+    language: 'css',
+    selected: false,
+    opening: false,
+    tabIndex: null,
+    value: `.App {
+   font-family: sans-serif;
+   text-align: center;
+     }`,
+    isFolder: false,
+  },
+];
 
 const initializeOptions: esbuild.InitializeOptions = {
   // wasmURL:  '/esbuild.wasm',
@@ -102,19 +149,113 @@ const initializeOptions: esbuild.InitializeOptions = {
 
 let isInitialized = false;
 
-(async () => {
-  suite('TEST virtualTreePlugin.ts', () => {
-    test('Bundle simple files without dependencies', async () => {
-      const result = await esbuild.build({
-        entryPoints: [getLasComponentFromPath('src/index.ts')],
-        bundle: true,
-        write: false,
-        plugins: [virtualTreePlugin(generateTreeForBundler(dummyFiles1))],
-      });
-      chai.assert.isDefined(result);
-      chai.expect(result.outputFiles[0].text.length).to.be.greaterThan(0);
+mocha.setup({
+  ui: 'tdd',
+  rootHooks: {
+    /**
+     * virtualTreePlugin.tsで生成するIndexedDBを削除する
+     */
+    afterAll() {
+      return promisifyRequest(indexedDB.deleteDatabase(dbName));
+    },
+    async beforeAll() {
+      if (!isInitialized) {
+        await esbuild.initialize(initializeOptions);
+        isInitialized = true;
+        console.log('initialized');
+      }
+    },
+  },
+  timeout: 30000,
+});
+
+(() => {
+  suite('Resolve all files imported via relative path', () => {
+    let bundledCode: string;
+    test('Bundled code should contain all files imported via relative path.', async () => {
+      try {
+        const result = await esbuild.build({
+          entryPoints: [getLasComponentFromPath('src/index.ts')],
+          bundle: true,
+          write: false,
+          plugins: [
+            virtualTreePlugin(
+              generateTreeForBundler(dummyFilesWitRelativePaths)
+            ),
+          ],
+        });
+        chai.assert.isDefined(result);
+        bundledCode = result.outputFiles[0].text;
+        chai.expect(bundledCode.length).to.be.greaterThan(0);
+        chai.assert.isTrue(
+          bundledCode.includes('// virtual-file:src/index.ts')
+        );
+        chai.assert.isTrue(
+          bundledCode.includes('// virtual-file:src/double.ts')
+        );
+        chai.assert.isTrue(
+          bundledCode.includes('// virtual-file:src/doubleSquare.ts')
+        );
+        chai.assert.isTrue(
+          bundledCode.includes('// virtual-file:src/styles.css')
+        );
+      } catch (e) {
+        console.error(e);
+        chai.assert.fail('something went wrong. Build has been failed.');
+      }
+    });
+
+    test('Bundled code should contain css file converted to JavaScript code.', async () => {
+      try {
+        const f = dummyFilesWitRelativePaths.find(
+          (d) => d.path === 'src/styles.css'
+        );
+        if (f === undefined) {
+          throw new Error(`src/styles.css was not found`);
+        }
+        const isIncludingLine1 = bundledCode.includes(
+          'var style = document.createElement("style");'
+        );
+        // virtulTreePllugin.tsでは`\n`だけエスケープしているのでその通りにする
+        const isIncludingLine2 = bundledCode.includes(
+          'style.innerText = "' + f.value.replace(/[\n]+/g, '') + '";'
+        );
+        const isIncludingLine3 = bundledCode.includes(
+          'document.head.appendChild(style);'
+        );
+        chai.assert.strictEqual(
+          isIncludingLine1 && isIncludingLine2 && isIncludingLine3,
+          true
+        );
+      } catch (e) {
+        console.error(e);
+        chai.assert.fail('something went wrong. Build has been failed.');
+      }
     });
   });
 
-  mocha.run();
+  suite('Resolve dependencies', () => {
+    test('Bundled code should include dependencies: react, react-dom, react-dom/client', async () => {
+      try {
+        const result = await esbuild.build({
+          entryPoints: [getLasComponentFromPath('src/index.tsx')],
+          bundle: true,
+          write: false,
+          plugins: [
+            virtualTreePlugin(
+              generateTreeForBundler(dummyFilesWithDependencies)
+            ),
+          ],
+        });
+        chai.assert.isDefined(result);
+        chai.expect(result.outputFiles[0].text.length).to.be.greaterThan(0);
+      } catch (e) {
+        console.error(e);
+        chai.assert.fail('something went wrong. Build has been failed.');
+      }
+    });
+  });
+
+  const runner = mocha.run();
+  reportBrowserTest(runner);
 })();

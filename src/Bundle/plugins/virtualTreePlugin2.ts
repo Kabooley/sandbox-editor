@@ -31,7 +31,7 @@ const reLibrary = /^(?!\.)(?!.*\.$)(?!.*\.\.)[a-zA-Z0-9_.\/\-_$@]+$/;
 //   storeName: 'keyvaluepairs',
 // });
 
-const dbName = 'sandbox-editor-cache-db';
+export const dbName = 'sandbox-editor-cache-db';
 const storeName = 'keyvaluepairs';
 const cacheDB = createStore(dbName, storeName);
 // DEBUG:

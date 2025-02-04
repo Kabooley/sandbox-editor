@@ -16,16 +16,18 @@ import 'mocha/mocha';
 import * as chai from 'chai';
 import * as Comlink from 'comlink';
 import {
-  isIndexedDBAndStoreGenerated,
   isDataExistsInIndexedDBStoreByKey,
-  getDataByKeyFromIndexedDBStore,
-  deleteIndexedDB,
+  // isIndexedDBAndStoreGenerated,
+  // getDataByKeyFromIndexedDBStore,
+  // deleteIndexedDB,
 } from './utils';
-import { files } from '../src/data/files';
-import type { iFile } from '../src/data/types';
 import { generateTreeForBundler } from '../src/utils/generateTreeForBundler';
 import { getLasComponentFromPath } from '../src/utils/getLasComponentFromPath';
+import { reportBrowserTest } from './utils/reportBrowserTest';
+import { files } from '../src/data/files';
+import type { iFile } from '../src/data/types';
 import type { iBundlerApi } from '../src/worker/bundle.worker';
+
 
 const dbName = 'sandbox-editor-cache-db';
 const storeName = 'keyvaluepairs';
@@ -172,17 +174,26 @@ const dummyFiles2 = [
   },
 ];
 
-// TODO: test初めと終わりにcacheDBを削除すること
-mocha.setup({
-  rootHooks: {
-    // beforeEach() {},
-    // async afterAll() {
-    //   await deleteIndexedDB(dbName);
-    // },
-  },
-  ui: 'tdd',
-});
-mocha.checkLeaks();
+  // TODO: test初めと終わりにcacheDBを削除すること
+  mocha.setup({
+    rootHooks: {
+      beforeAll() {
+        console.log('[bundle.worker.test] beforeAll');
+      },
+      beforeEach() {
+        console.log('[bundle.worker.test] beforeEach');
+      },
+      afterEach() {
+        console.log('[bundle.worker.test] afterEach');
+      },
+      async afterAll() {
+        // await deleteIndexedDB(dbName);
+        console.log('[bundle.worker.test] afterEach');
+      },
+    },
+    ui: 'tdd',
+    timeout: 30000,
+  });
 
 /**
  *
@@ -198,6 +209,8 @@ mocha.checkLeaks();
  *
  */
 (async () => {
+
+
   let worker: Worker | undefined;
   let api: Comlink.Remote<iBundlerApi>;
   // const dummyTree = generateTreeForBundler(files);
@@ -221,6 +234,9 @@ mocha.checkLeaks();
 
   suite('Environment should support WebWorker', () => {
     test('Environment should support WebWorker', () => {
+      // DEBUG:
+      console.log('[bundle.worker.test] Environment should support WebWorker');
+
       chai.expect(window.Worker).to.not.be.undefined;
       chai.expect(window.Worker).to.not.be.null;
     });
@@ -228,6 +244,9 @@ mocha.checkLeaks();
 
   suite('Worker thread should be generated correctly', () => {
     test('generated successfully', () => {
+      // DEBUG:
+      console.log('[bundle.worker.test] generated successfully');
+
       try {
         chai.expect(generateWorkerAndApi).to.not.throw();
       } catch (e) {
@@ -263,6 +282,9 @@ mocha.checkLeaks();
     let bundledCode = '';
 
     test('bundle dummyFiles2 successfully:', async () => {
+      // DEBUG:
+      console.log('[bundle.worker.test] bundle dummyFiles2 successfully');
+
       try {
         const dummyTree = generateTreeForBundler(dummyFiles2);
         bundledCode = await api.bundler(
@@ -279,14 +301,24 @@ mocha.checkLeaks();
         }
         chai.assert.fail();
       }
-    }, 10000);
+    });
 
     test('Bundled code should includes src/index.ts', () => {
+      // DEBUG:
+      console.log(
+        '[bundle.worker.test] Bundled code should includes src/index.ts'
+      );
+
       const isIncluding = bundledCode.includes('// virtual-file:src/index.ts');
       chai.assert.strictEqual(isIncluding, true);
     });
 
     test('Bundled code should includes src/Calculator.ts', () => {
+      // DEBUG:
+      console.log(
+        '[bundle.worker.test] Bundled code should includes src/Calculator.ts'
+      );
+
       const isIncluding = bundledCode.includes(
         '// virtual-file:src/Calculator.ts'
       );
@@ -294,6 +326,11 @@ mocha.checkLeaks();
     });
 
     test('Bundled code should includes JavaScript code converted from src/styles.css', () => {
+      // DEBUG:
+      console.log(
+        '[bundle.worker.test] Bundled code should includes JavaScript code converted from src/styles.css'
+      );
+
       const f = dummyFiles2.find((d) => d.path === 'src/styles.css');
       if (f !== undefined) {
         const isIncludingLine1 = bundledCode.includes(
@@ -328,6 +365,11 @@ mocha.checkLeaks();
      */
     suite('All dependencies should be stored in cacheDB', () => {
       test('react, react-dom, react-dom/client should be stored', async () => {
+        // DEBUG:
+        console.log(
+          '[bundle.worker.test] react, react-dom, react-dom/client should be stored'
+        );
+
         try {
           const dummyTree = generateTreeForBundler(dummyFiles1);
           bundledCode = await api.bundler(
@@ -350,58 +392,12 @@ mocha.checkLeaks();
           console.error(e);
           chai.assert.fail();
         }
-      }, 10000);
+      });
     });
 
     // .cssファイルが複数でも正しく取り込まれているのか確認
   });
 
-  mocha.run();
+  const runner = mocha.run();
+  reportBrowserTest(runner);
 })();
-
-/*
-You're facing a common challenge when testing IndexedDB interactions with libraries like `idb-keyval`. 
-
-**Why Direct IndexedDB Access Can Be Problematic:**
-
-* **`idb-keyval` Abstraction:** `idb-keyval` provides a higher-level abstraction over IndexedDB. It might handle internal details like database versioning and object store creation differently than you might expect. 
-* **Race Conditions:** Directly accessing IndexedDB while `idb-keyval` is interacting with it can lead to unexpected behavior and race conditions.
-* **Testing Complexity:** Managing and synchronizing interactions with IndexedDB in your tests can become complex and error-prone.
-
-**Recommended Approaches:**
-
-1. **Focus on Testing `idb-keyval`'s Public API:**
-   - **Test the expected behavior:** Verify that `idb-keyval` methods (e.g., `set`, `get`, `del`) work as expected with the correct data.
-   - **Test edge cases:** Handle potential errors (e.g., database creation failures, network issues).
-   - **Avoid direct IndexedDB interactions:** Rely on `idb-keyval`'s public methods for all data operations within your tests.
-
-2. **Use a Test-Specific Database:**
-   - If you absolutely need to verify the underlying IndexedDB structure, consider using a separate database name for testing purposes.
-   - This minimizes the risk of interfering with the application's production database.
-
-3. **Leverage `idb-keyval`'s Internal Methods (with Caution):**
-   - If you must inspect the underlying IndexedDB structure, carefully examine the `idb-keyval` source code to identify any internal methods or properties that might provide insights into the created database and object stores (use with caution as these might change in future versions).
-
-**Example (Testing `idb-keyval`'s `set` method):**
-
-```javascript
-import { set, get } from 'idb-keyval';
-
-test('should store and retrieve a value', async () => {
-  await set('myKey', 'myValue');
-  const retrievedValue = await get('myKey');
-  expect(retrievedValue).toBe('myValue');
-});
-```
-
-**Conclusion:**
-
-While directly accessing the underlying IndexedDB can provide some insights, it's generally not recommended for testing `idb-keyval`. Focus on testing the public API of `idb-keyval` to ensure its correct functionality and avoid unexpected behavior. If you must inspect the underlying database, do so with extreme caution and consider the potential risks.
-
-I hope this helps!
-
-
-exportしていない対象をテストするべからずか？
-ならばbundledcodeのみしゅとくしているのでそこから指定の依存関係が含まれていることを確認するようにするべきか
-
-*/

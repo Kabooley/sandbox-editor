@@ -9,7 +9,10 @@
     "test:vitest": "vitest run -c ./vitest.config.ts",
     "test:mocha-ts": "TS_NODE_PROJECT=\"mocha-tests/tsconfig.mocha-ts.json\" mocha --loader=ts-node/esm --config=.mocharc.json",
     "test:browser": "rollup --config=rollup.config.js --input=browser-test/index.test.ts && http-server ./ --port=8080 -c-1 -o output/index.html",
-    "clean": "rm -rf ./output/*"
+    "clean": "rm -rf ./output/*",
+    "bundle:browser-test": "node ./scripts/generateBrowserTestFiles.mjs",
+    "serve:test-server": "node ./browser-test/server.mjs",
+    "test:browser-test": "vitest --config ./browser-test/vitest.config.ts --testTimeout 40000"
   },
   "dependencies": {
     "@mdi/js": "^7.4.47",
@@ -45,6 +48,7 @@
     "@testing-library/react": "12.1.5",
     "@testing-library/user-event": "^14.5.2",
     "@types/chai": "^5.0.0",
+    "@types/glob": "^8.1.0",
     "@types/jest": "^29.5.12",
     "@types/lodash.debounce": "^4.0.9",
     "@types/mocha": "^10.0.8",
@@ -66,8 +70,9 @@
     "eslint": "8.x",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-react": "^7.34.3",
+    "express": "^4.21.2",
     "file-loader": "^6.2.0",
-    "glob": "^7.2.0",
+    "glob": "^11.0.1",
     "globals": "^15.8.0",
     "html-webpack-plugin": "^5.5.0",
     "http-server": "^14.1.1",
@@ -77,6 +82,7 @@
     "mocha": "^10.7.3",
     "monaco-editor": "^0.32.1",
     "monaco-editor-webpack-plugin": "^7.0.1",
+    "puppeteer": "^24.1.1",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",
     "react-refresh": "^0.11.0",
