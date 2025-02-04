@@ -1,9 +1,9 @@
-const { merge } = require('webpack-merge');
-const common = require('./webpack.common');
+import { merge } from 'webpack-merge';
+import common from './webpack.common.mjs';
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
-module.exports = merge(common, {
+export default merge(common, {
   mode: 'development',
   devServer: {
     static: './dist',

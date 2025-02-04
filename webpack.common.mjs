@@ -1,10 +1,11 @@
-const path = require('path');
-const HtmlWebPackPlugin = require('html-webpack-plugin');
-const ReactRefreshWebpackPlugin = require('@pmmmwh/react-refresh-webpack-plugin');
+import path from 'path';
+import { createRequire } from 'node:module';
+import HtmlWebPackPlugin from 'html-webpack-plugin';
+import ReactRefreshWebpackPlugin from '@pmmmwh/react-refresh-webpack-plugin';
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
-module.exports = {
+export default {
   entry: {
     index: './src/index.tsx',
     'fetchLibs.worker': './src/worker/fetchLibs.worker.ts',
@@ -22,7 +23,7 @@ module.exports = {
   output: {
     globalObject: 'self',
     filename: '[name].bundle.js',
-    path: path.resolve(__dirname, 'dist'),
+    path: path.resolve(import.meta.dirname, 'dist'),
   },
   module: {
     rules: [
@@ -31,7 +32,13 @@ module.exports = {
         exclude: /node_modules/,
         use: [
           {
-            loader: require.resolve('babel-loader'),
+            // to convert require.resolve() in esm,
+            // should use import.meta.resolve()
+            // https://nodejs.org/api/esm.html#no-requireresolve
+            // loader: require.resolve('babel-loader'),
+            // loader: import.meta.resolve('babel-loader'),
+            // loader: 'babel-loader',
+            loader: createRequire(import.meta.url).resolve('babel-loader'),
             options: {
               presets: [
                 '@babel/preset-env',
@@ -39,7 +46,8 @@ module.exports = {
                 '@babel/preset-react',
               ],
               plugins: [
-                isDevelopment && require.resolve('react-refresh/babel'),
+                isDevelopment &&
+                  createRequire(import.meta.url).resolve('react-refresh/babel'),
               ].filter(Boolean),
             },
           },

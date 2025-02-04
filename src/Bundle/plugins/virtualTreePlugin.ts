@@ -12,15 +12,30 @@
  * **********************************************************************/
 import * as esbuild from 'esbuild-wasm';
 import axios from 'axios';
-import { createDBInstance } from '../../Storage';
 import * as Path from '../../Path';
+// import localforage from 'localforage';
+// import { createDBInstance } from '../../Storage';
+import {
+  createStore,
+  set as setItem,
+  get as getItem,
+  del as deleteItem,
+} from 'idb-keyval';
 
 // Specifies npm package if matched
 const reLibrary = /^(?!\.)(?!.*\.$)(?!.*\.\.)[a-zA-Z0-9_.\/\-_$@]+$/;
 
-const chacheDB: LocalForage = createDBInstance({
-    name: 'sandbox-editor-cache-db',
-});
+// const chacheDB: LocalForage = createDBInstance({
+//   driver: localforage.INDEXEDDB,
+//   name: 'sandbox-editor-cache-db',
+//   storeName: 'keyvaluepairs',
+// });
+
+const dbName = 'sandbox-editor-cache-db';
+const storeName = 'keyvaluepairs';
+const cacheDB = createStore(dbName, storeName);
+// DEBUG:
+console.log('generated cache db');
 
 /**
  * Polyfill of Object.entires
@@ -30,245 +45,250 @@ const chacheDB: LocalForage = createDBInstance({
  * https://github.com/zloirock/core-js/blob/master/packages/core-js/modules/es.object.entries.js
  * */
 const objectEntries = (obj: any) => {
-    var ownProps = Object.keys(obj),
-        i = ownProps.length,
-        resArray = new Array(i);
-    while (i--) resArray[i] = [ownProps[i], obj[ownProps[i]]];
+  var ownProps = Object.keys(obj),
+    i = ownProps.length,
+    resArray = new Array(i);
+  while (i--) resArray[i] = [ownProps[i], obj[ownProps[i]]];
 
-    return resArray;
+  return resArray;
 };
 
+let map: Map<string, string>;
+
 export function virtualTreePlugin(
-    tree: Record<string, string>
+  tree: Record<string, string>
 ): esbuild.Plugin {
-    const map = new Map<string, string>(objectEntries(tree));
+  map = new Map<string, string>(objectEntries(tree));
 
-    return {
-        name: 'example',
+  console.log(map);
 
-        setup: (build: esbuild.PluginBuild) => {
-            /****
-             * Solves related path
-             * - Related path on virtual filesystem
-             * - Related path in npm library.
-             ***/
-            build.onResolve(
-                { filter: /^\.+\// },
-                (args: esbuild.OnResolveArgs) => {
-                    // // DEBUG:
-                    // console.log('[virtualTreePlugin][onResolve /^.+//]');
-                    // console.log(args.path);
+  return {
+    name: 'example',
 
-                    // In case resolving related path in library module
-                    if (args.namespace === 'npm') {
-                        // // DEBUG:
-                        // console.log(
-                        //     '[resolveVirtualFile][onresolve /^.+//] npm'
-                        // );
-                        // console.log(args);
+    setup: (build: esbuild.PluginBuild) => {
+      /****
+       * Solves related path
+       * - Related path on virtual filesystem
+       * - Related path in npm library.
+       ***/
+      build.onResolve({ filter: /^\.+\// }, (args: esbuild.OnResolveArgs) => {
+        // // DEBUG:
+        // console.log('[virtualTreePlugin][onResolve /^.+//]');
+        // console.log(args.path);
 
-                        return {
-                            namespace: 'npm',
-                            path: new URL(
-                                args.path,
-                                'https://unpkg.com' + args.resolveDir + '/'
-                            ).href,
-                        };
-                    }
-                }
-            );
+        // In case resolving related path in library module
+        if (args.namespace === 'npm') {
+          // // DEBUG:
+          // console.log(
+          //     '[resolveVirtualFile][onresolve /^.+//] npm'
+          // );
+          // console.log(args);
 
-            // Any other path
-            build.onResolve({ filter: /.*/ }, (args: esbuild.OnResolveArgs) => {
-                // In case entry point
-                if (args.kind === 'entry-point') {
-                    return {
-                        path: 'src/' + args.path,
-                        namespace: 'virtual-file',
-                    };
-                }
+          return {
+            namespace: 'npm',
+            path: new URL(
+              args.path,
+              'https://unpkg.com' + args.resolveDir + '/'
+            ).href,
+          };
+        }
+      });
 
-                // In case path is library.
-                else if (reLibrary.test(args.path)) {
-                    // // DEBUG:
-                    // console.log('[virtualTreePlugin][onresolve /.*/] npm');
-                    // console.log(args);
+      // Any other path
+      build.onResolve({ filter: /.*/ }, (args: esbuild.OnResolveArgs) => {
+        // In case entry point
+        if (args.kind === 'entry-point') {
+          return {
+            path: 'src/' + args.path,
+            namespace: 'virtual-file',
+          };
+        }
 
-                    return {
-                        path: `https://unpkg.com/${args.path}`,
-                        namespace: 'npm',
-                    };
-                }
+        // In case path is library.
+        else if (reLibrary.test(args.path)) {
+          // // DEBUG:
+          // console.log('[virtualTreePlugin][onresolve /.*/] npm');
+          // console.log(args);
 
-                // In case path is virtual tree
-                else {
-                    // // DEBUG:
-                    // console.log(
-                    //     '[virtualTreePlugin][onresolve /.*/] import-statement'
-                    // );
-                    // console.log(args);
+          return {
+            path: `https://unpkg.com/${args.path}`,
+            namespace: 'npm',
+          };
+        }
 
-                    const dirname = Path.dirname(args.importer);
-                    const path = Path.join(dirname, args.path);
+        // In case path is virtual tree
+        else {
+          // // DEBUG:
+          // console.log(
+          //     '[virtualTreePlugin][onresolve /.*/] import-statement'
+          // );
+          // console.log(args);
 
-                    // In case path is not including extension
-                    let fullpath: string = '';
-                    if (!Path.extname(path)) {
-                        if (map.has(path + '.tsx')) {
-                            fullpath = path + '.tsx';
-                        } else if (map.has(path + '.ts')) {
-                            fullpath = path + '.ts';
-                        }
-                    } else {
-                        fullpath = path;
-                    }
+          const dirname = Path.dirname(args.importer);
+          const path = Path.join(dirname, args.path);
 
-                    return { path: fullpath, namespace: 'virtual-file' };
-                }
-            });
+          // In case path is not including extension
+          let fullpath: string = '';
+          if (!Path.extname(path)) {
+            if (map.has(path + '.tsx')) {
+              fullpath = path + '.tsx';
+            } else if (map.has(path + '.ts')) {
+              fullpath = path + '.ts';
+            }
+          } else {
+            fullpath = path;
+          }
 
-            // CSS Modules will be embeded to HTML as style tag
-            build.onLoad(
-                { filter: /\S+\.css$/ },
-                async (args: esbuild.OnLoadArgs) => {
-                    if (!map.has(args.path)) {
-                        console.log(`[onLoad] Error on loading ${args.path}`);
-                        throw Error('not loadable');
-                    }
+          return { path: fullpath, namespace: 'virtual-file' };
+        }
+      });
 
-                    const escaped = map
-                        .get(args.path)!
-                        .replace(/\n/g, '')
-                        .replace(/"/g, '\\"')
-                        .replace(/'/g, "\\'");
-                    const content = `
+      // CSS Modules will be embeded to HTML as style tag
+      build.onLoad(
+        { filter: /\S+\.css$/ },
+        async (args: esbuild.OnLoadArgs) => {
+          if (!map.has(args.path)) {
+            console.log(`[onLoad] Error on loading ${args.path}`);
+            throw Error('not loadable');
+          }
+
+          const escaped = map
+            .get(args.path)!
+            .replace(/\n/g, '')
+            .replace(/"/g, '\\"')
+            .replace(/'/g, "\\'");
+          const content = `
             const style = document.createElement("style");
             style.innerText = '${escaped}';
             document.head.appendChild(style);
           `;
 
-                    return {
-                        loader: 'jsx',
-                        contents: content,
-                        resolveDir: Path.dirname(args.path),
-                    };
-                }
-            );
+          return {
+            loader: 'jsx',
+            contents: content,
+            resolveDir: Path.dirname(args.path),
+          };
+        }
+      );
 
-            // `src/*`
-            build.onLoad(
-                { filter: /^src\/[a-zA-Z0-9.-_$]+$/ },
-                // { filter: /.*/ },
-                async (args: esbuild.OnLoadArgs) => {
-                    // NOTE: コード上のimport文は拡張子が省略されている
-                    // なので拡張子を戻さないといけない
-                    let fullpath = '';
-                    if (!Path.extname(args.path)) {
-                        if (map.has(args.path + '.tsx')) {
-                            fullpath = args.path + '.tsx';
-                        } else if (map.has(args.path + '.ts')) {
-                            fullpath = args.path + '.ts';
-                        }
-                    } else {
-                        fullpath = args.path;
-                    }
+      // `src/*`
+      build.onLoad(
+        { filter: /^src\/[a-zA-Z0-9.-_$]+$/ },
+        // { filter: /.*/ },
+        async (args: esbuild.OnLoadArgs) => {
+          // NOTE: コード上のimport文は拡張子が省略されている
+          // なので拡張子を戻さないといけない
+          let fullpath = '';
+          if (!Path.extname(args.path)) {
+            if (map.has(args.path + '.tsx')) {
+              fullpath = args.path + '.tsx';
+            } else if (map.has(args.path + '.ts')) {
+              fullpath = args.path + '.ts';
+            }
+          } else {
+            fullpath = args.path;
+          }
 
-                    if (!map.has(fullpath)) {
-                        console.log(`[onLoad] Error on loading ${args.path}`);
-                        throw Error('not loadable');
-                    }
+          if (!map.has(fullpath)) {
+            console.log(`[onLoad] Error on loading ${args.path}`);
+            throw Error('not loadable');
+          }
 
-                    const ext = Path.extname(args.path);
-                    const contents = map.get(args.path)!;
-                    const loader =
-                        ext === '.ts'
-                            ? 'ts'
-                            : ext === '.tsx'
-                            ? 'tsx'
-                            : ext === '.js'
-                            ? 'js'
-                            : ext === '.jsx'
-                            ? 'jsx'
-                            : ext === '.css'
-                            ? 'css'
-                            : 'default';
+          const ext = Path.extname(args.path);
+          const contents = map.get(args.path)!;
+          const loader =
+            ext === '.ts'
+              ? 'ts'
+              : ext === '.tsx'
+              ? 'tsx'
+              : ext === '.js'
+              ? 'js'
+              : ext === '.jsx'
+              ? 'jsx'
+              : ext === '.css'
+              ? 'css'
+              : 'default';
 
-                    return {
-                        contents: contents,
-                        loader: loader,
-                        resolveDir: Path.dirname(args.path),
-                    };
-                }
-            );
+          return {
+            contents: contents,
+            loader: loader,
+            resolveDir: Path.dirname(args.path),
+          };
+        }
+      );
 
-            build.onLoad({ filter: /.*/ }, async (args: esbuild.OnLoadArgs) => {
-                if (args.namespace === 'npm') {
-                    // // DEBUG:
-                    // console.log('[virtualTreePlugin][onload /.*/] npm');
-                    // console.log(args);
+      build.onLoad({ filter: /.*/ }, async (args: esbuild.OnLoadArgs) => {
+        if (args.namespace === 'npm') {
+          // // DEBUG:
+          // console.log('[virtualTreePlugin][onload /.*/] npm');
+          // console.log(args);
 
-                    const cachedModule =
-                        await chacheDB.getItem<esbuild.OnLoadResult>(args.path);
+          const cachedModule = await getItem<esbuild.OnLoadResult>(
+            args.path,
+            cacheDB
+          );
 
-                    if (cachedModule) {
-                        // // DEBUG:
-                        // console.log('[virtualTreePlugin] cached');
-                        // console.log(cachedModule);
-                        return cachedModule;
-                    }
+          if (cachedModule) {
+            // // DEBUG:
+            // console.log('[virtualTreePlugin] cached');
+            // console.log(cachedModule);
+            return cachedModule;
+          }
 
-                    const { data, request } = await axios.get(args.path);
+          const { data, request } = await axios.get(args.path);
 
-                    console.log(request.responseURL);
-                    console.log(new URL('./', request.responseURL).pathname);
+          // console.log(request.responseURL);
+          // console.log(new URL('./', request.responseURL).pathname);
 
-                    const result: esbuild.OnLoadResult = {
-                        loader: 'jsx',
-                        contents: data,
-                        resolveDir: new URL('./', request.responseURL).pathname,
-                    };
+          const result: esbuild.OnLoadResult = {
+            loader: 'jsx',
+            contents: data,
+            resolveDir: new URL('./', request.responseURL).pathname,
+          };
 
-                    chacheDB.setItem<esbuild.OnLoadResult>(args.path, result);
-                    return result;
-                }
+          // console.log(`store to cacheDB: ${args.path}`);
 
-                // NOTE: コード上のimport文は拡張子が省略されている
-                // なので拡張子を戻さないといけない
-                let fullpath = '';
-                if (!Path.extname(args.path)) {
-                    if (map.has(args.path + '.tsx')) {
-                        fullpath = args.path + '.tsx';
-                    } else if (map.has(args.path + '.ts')) {
-                        fullpath = args.path + '.ts';
-                    }
-                } else {
-                    fullpath = args.path;
-                }
+          await setItem(args.path, result, cacheDB);
+          return result;
+        }
 
-                if (!map.has(fullpath)) {
-                    console.log(`[onLoad] Error on loading ${args.path}`);
-                    throw Error('not loadable');
-                }
+        // NOTE: コード上のimport文は拡張子が省略されている
+        // なので拡張子を戻さないといけない
+        let fullpath = '';
+        if (!Path.extname(args.path)) {
+          if (map.has(args.path + '.tsx')) {
+            fullpath = args.path + '.tsx';
+          } else if (map.has(args.path + '.ts')) {
+            fullpath = args.path + '.ts';
+          }
+        } else {
+          fullpath = args.path;
+        }
 
-                const ext = Path.extname(args.path);
-                const contents = map.get(fullpath)!;
-                const loader =
-                    ext === '.ts'
-                        ? 'ts'
-                        : ext === '.tsx'
-                        ? 'tsx'
-                        : ext === '.js'
-                        ? 'js'
-                        : ext === '.jsx'
-                        ? 'jsx'
-                        : ext === '.css'
-                        ? 'css'
-                        : 'default';
+        if (!map.has(fullpath)) {
+          console.log(`[onLoad] Error on loading ${args.path}`);
+          throw Error('not loadable');
+        }
 
-                return { contents: contents, loader: loader };
-            });
-        },
-    };
+        const ext = Path.extname(args.path);
+        const contents = map.get(fullpath)!;
+        const loader =
+          ext === '.ts'
+            ? 'ts'
+            : ext === '.tsx'
+            ? 'tsx'
+            : ext === '.js'
+            ? 'js'
+            : ext === '.jsx'
+            ? 'jsx'
+            : ext === '.css'
+            ? 'css'
+            : 'default';
+
+        return { contents: contents, loader: loader };
+      });
+    },
+  };
 }
 
 // -----------------------------------------------------------
