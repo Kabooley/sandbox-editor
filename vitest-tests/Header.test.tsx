@@ -3,7 +3,7 @@ import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import './mocks/matchMedia.mock';
 import './mocks/Worker.mock';
 import { screen, cleanup } from '@testing-library/react';
-import { renderWithProviders } from '../__tests__/utils/test-utils';
+import { renderWithProviders } from './utils/react-redux-render-util';
 import type { RootState } from '../src/store';
 import Header from '../src/components/Header';
 

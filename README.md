@@ -2,11 +2,7 @@
 
 ## branch cleanup/unnecessary-test-filesですること
 
-- TODO: 削除）mocha-tests/
-- TODO: 削除）.mocharc.json
-- TODO: 削除）./vitest-tests/temporary/
-- TODO: 削除）./vitest-tests/*以下のファイル内のすべてのconsole.logを削除
-- TODO: 削除）
+- Jest関係をすべて取り除くけど、別プロジェクトに設定内容を退避する
 
 
 #### vitest-tests/実施結果
