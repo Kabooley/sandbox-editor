@@ -7,7 +7,6 @@
     "lint:fix": "eslint --fix",
     "test:esm": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" npx jest -c=jest.config.mjs --no-cache",
     "test:vitest": "vitest run -c ./vitest.config.ts",
-    "test:mocha-ts": "TS_NODE_PROJECT=\"mocha-tests/tsconfig.mocha-ts.json\" mocha --loader=ts-node/esm --config=.mocharc.json",
     "test:browser": "rollup --config=rollup.config.js --input=browser-test/index.test.ts && http-server ./ --port=8080 -c-1 -o output/index.html",
     "clean": "rm -rf ./output/*",
     "bundle:browser-test": "node ./scripts/generateBrowserTestFiles.mjs",

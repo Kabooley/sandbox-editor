@@ -1,5 +1,12 @@
 ## 私を読んで
 
+## branch cleanup/unnecessary-test-filesですること
+
+いらないテストファイル、ディレクトリを削除
+
+.mocharcを削除したけどブラウザテストに影響していないか確認。
+のちmocha-test/など削除したことをコミット
+
 
 ## TODOs
 
