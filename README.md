@@ -2,10 +2,33 @@
 
 ## branch cleanup/unnecessary-test-filesですること
 
-いらないテストファイル、ディレクトリを削除
+- TODO: 削除）mocha-tests/
+- TODO: 削除）.mocharc.json
+- TODO: 削除）./vitest-tests/temporary/
+- TODO: 削除）./vitest-tests/*以下のファイル内のすべてのconsole.logを削除
+- TODO: 削除）
 
-.mocharcを削除したけどブラウザテストに影響していないか確認。
-のちmocha-test/など削除したことをコミット
+
+#### vitest-tests/実施結果
+
+テストが通ってないやつ
+
+```bash
+ ❯ vitest-tests/generateTree.test.ts (6)
+   ❯ Test generateTree() (6)
+     ✓ "public" tree should be included to root items, "public/index.html" should be included "public" items
+     × Initializing tree from files should be done correctly
+     × Should add empty folder src/components to src items
+     ✓ File tree should be generated correctly if passed file data
+     × Folder trees should be generated correctly if passed deep nested folder data
+     ✓ Passed 'src/App.tsx', 'tsconfig.json', 'public/index.html' files should generate 'src', 'public', 'src/App.tsx', 'public/index.html', 'tsconfig.json' tree data
+ ❯ vitest-tests/import-meta-url.test.ts (1)
+   ❯ Make sure how to use import.meta.url() (1)
+     × resolve babel-loader
+ ❯ vitest-tests/semver.test.ts (1)
+   ❯ Test semver (1)
+     × Should return only version
+```
 
 
 ## TODOs
