@@ -25,7 +25,7 @@
 - TODO: 初期のバンドル処理が行われていないのか、バンドル結果が preview に表示されない
 - TODO: format 機能がいつの間にかなくなっている？右クリックメニューでできるようにする
 
-- TODO: テストフレームワークを動作させるためにpackage.jsonの`"type": "module"`を追加したけど開発用途においてまだ対応していないことの対応
+- TODO: [テストフレームワークを動作させるためにpackage.jsonの`"type": "module"`を追加したけど開発用途においてまだ対応していないことの対応](#webpackの`"type": "module"`対応)
 
 
 #### テスト
@@ -183,4 +183,9 @@ Error: Can't resolve 'module' in /home/USER/sandbox-editor/node_modules/typescri
 話にならんのでこれまで通り通常はyarn@1.22.22を採用することにする。
 
 ほんとあほじゃないの？
+
+
+## webpackの`"type": "module"`対応
+
+なんでか問題なくコンパイルできる...
 
