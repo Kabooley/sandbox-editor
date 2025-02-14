@@ -1,31 +1,5 @@
 ## 私を読んで
 
-## branch cleanup/unnecessary-test-filesですること
-
-- Jest関係をすべて取り除くけど、別プロジェクトに設定内容を退避する
-
-
-#### vitest-tests/実施結果
-
-テストが通ってないやつ
-
-```bash
- ❯ vitest-tests/generateTree.test.ts (6)
-   ❯ Test generateTree() (6)
-     ✓ "public" tree should be included to root items, "public/index.html" should be included "public" items
-     × Initializing tree from files should be done correctly
-     × Should add empty folder src/components to src items
-     ✓ File tree should be generated correctly if passed file data
-     × Folder trees should be generated correctly if passed deep nested folder data
-     ✓ Passed 'src/App.tsx', 'tsconfig.json', 'public/index.html' files should generate 'src', 'public', 'src/App.tsx', 'public/index.html', 'tsconfig.json' tree data
- ❯ vitest-tests/import-meta-url.test.ts (1)
-   ❯ Make sure how to use import.meta.url() (1)
-     × resolve babel-loader
- ❯ vitest-tests/semver.test.ts (1)
-   ❯ Test semver (1)
-     × Should return only version
-```
-
 
 ## TODOs
 
@@ -64,22 +38,17 @@
 ## Directory構成
 
 ```bash
-+---__tests__/       # NOTE: jest排除予定につき削除予定。jestを使ったテスト対象ファイル群。
 +---browser-test/    # ブラウザ環境で実行されるテストファイル群。
-+---mocha-tests/     # TODO: 削除予定。mochaの使い方を知るために設けたディレクトリ。
 +---scripts/
 |   `---generateBrowserTestFiles.mjs    # /browser-test/*.test.tsをブラウザテストファイルとして生成するscirpt
 |
 +---vitest-tests/    # ローカル環境でテスト可能なテストファイル群。
 |   +---mocks/       # Web APIもキングファイル群
 |   +---src-utils/   # src/utils/ファイル群のテストファイル群
-|   +---src-worker/  # TODO: 削除予定。workerファイルはbrowser-testでテストすることにしたいので。
-|   +---utils/       # TODO: 削除予定。
+|   +---utils/       # vitest-tests内で使うヘルパ
 |   +--- *.test.ts[x]    # src/以下のReactファイルのテストファイル
 |
 |
-+---babel.config.js  # TODO: 削除していいのか要確認。jestで使っていたbabelコンフィグファイル。jest削除予定につき削除予定。
-+---jest.config.mjs  # TODO: 削除予定。jest削除予定につき。
 +---rollup.config.js # browser-test用バンドラ。
 ```
 
