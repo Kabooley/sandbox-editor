@@ -14,6 +14,7 @@
             "es2015.collection",
             "es2015.promise",
             "ES2017.Object",
+            "es2020",
             "WebWorker"
         ],
         "types": [],

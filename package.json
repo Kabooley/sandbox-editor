@@ -1,8 +1,8 @@
 {
   "name": "sandbox-editor",
   "scripts": {
-    "start": "node ./node_modules/webpack-dev-server/bin/webpack-dev-server.js --config webpack.dev.js",
-    "build": "NODE_ENV='production' node ./node_modules/webpack/bin/webpack.js --progress --config webpack.prod.js",
+    "start": "node ./node_modules/webpack-dev-server/bin/webpack-dev-server.js --config webpack.dev.mjs",
+    "build": "NODE_ENV='production' node ./node_modules/webpack/bin/webpack.js --progress --config webpack.prod.mjs",
     "lint": "eslint src",
     "lint:fix": "eslint --fix",
     "test:vitest": "vitest run -c ./vitest.config.ts",
