@@ -51,7 +51,6 @@ const cases = [
  * Other special characters and alphanumeric should be allowed.
  * */
 describe('Test isFolderNameValid()', () => {
-  cases.forEach((c) => console.log(c.name));
   cases.forEach((c) => {
     it(c.describe, () => {
       expect(isFolderNameValid(c.name)).toBe(c.shouldBe);

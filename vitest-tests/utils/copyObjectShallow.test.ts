@@ -7,7 +7,7 @@
  * propertyだけコピーする
  * */
 import { describe, test, expect } from 'vitest';
-import { shallowCopyObject } from './utils/copyObjectShallow';
+import { shallowCopyObject } from './copyObjectShallow';
 
 export interface iFile {
   path: string;
@@ -154,8 +154,6 @@ describe('Test shallowCopyObject', () => {
   copiedFiles.forEach((cf) => (cf.path = cf.path + 'extra-path'));
   copiedFiles.forEach((cf, index) => {
     test('copied files should not have references to origin objects', () => {
-      console.log(cf.path);
-      console.log(files[index].path);
       expect(cf.path === files[index].path).toBe(false);
     });
   });

@@ -38,22 +38,17 @@
 ## Directory構成
 
 ```bash
-+---__tests__/       # NOTE: jest排除予定につき削除予定。jestを使ったテスト対象ファイル群。
 +---browser-test/    # ブラウザ環境で実行されるテストファイル群。
-+---mocha-tests/     # TODO: 削除予定。mochaの使い方を知るために設けたディレクトリ。
 +---scripts/
 |   `---generateBrowserTestFiles.mjs    # /browser-test/*.test.tsをブラウザテストファイルとして生成するscirpt
 |
 +---vitest-tests/    # ローカル環境でテスト可能なテストファイル群。
 |   +---mocks/       # Web APIもキングファイル群
 |   +---src-utils/   # src/utils/ファイル群のテストファイル群
-|   +---src-worker/  # TODO: 削除予定。workerファイルはbrowser-testでテストすることにしたいので。
-|   +---utils/       # TODO: 削除予定。
+|   +---utils/       # vitest-tests内で使うヘルパ
 |   +--- *.test.ts[x]    # src/以下のReactファイルのテストファイル
 |
 |
-+---babel.config.js  # TODO: 削除していいのか要確認。jestで使っていたbabelコンフィグファイル。jest削除予定につき削除予定。
-+---jest.config.mjs  # TODO: 削除予定。jest削除予定につき。
 +---rollup.config.js # browser-test用バンドラ。
 ```
 

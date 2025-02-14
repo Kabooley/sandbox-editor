@@ -36,10 +36,10 @@ describe('Test isSameShallowObject()', () => {
     Object.assign(_compareWith, compareWith);
   });
 
-  afterEach(() => {
-    console.log(_target);
-    console.log(_compareWith);
-  });
+  // afterEach(() => {
+  //   console.log(_target);
+  //   console.log(_compareWith);
+  // });
 
   test('Should be no difference', () => {
     expect(isSameShallowObject(_target, _compareWith)).toBe(true);
